@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SwaGGa HQ — Your personal command center for trading, learning, and daily habit tracking.">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <title>SwaGGa HQ — Personal Command Center</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Chart.js from CDN -->
+    <!-- TODO(security): Pin exact version and add SRI hash when deploying to production -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+
+    <!-- TradingView Widget Library -->
+    <script src="https://s3.tradingview.com/tv.js" defer></script>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/trading.css">
+    <link rel="stylesheet" href="css/learning.css">
+    <link rel="stylesheet" href="css/streaks.css">
+</head>
+<body>
+    <!-- App root — all DOM built dynamically by app.js for security (no innerHTML with user data) -->
+    <div id="app"></div>
+
+    <!-- Application Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
