@@ -50,7 +50,7 @@ function showWelcomePopup() {
   const glow = el('div', 'welcome-glow-bar');
   modal.appendChild(glow);
 
-  modal.appendChild(el('span', 'welcome-modal__emoji', '⚡'));
+  modal.appendChild(el('span', 'welcome-modal__emoji', '🪖'));
   modal.appendChild(el('h2', 'welcome-modal__title', `${greeting}, SwaGGa`));
 
   // Quick stats row
@@ -117,7 +117,7 @@ function renderDashboard(container) {
   /* ---- Hero banner ---- */
   const hero = el('div', 'dashboard-hero');
   const greeting = getGreeting();
-  hero.appendChild(el('h1', 'hero-title', `${greeting}, SwaGGa ⚡`));
+  hero.appendChild(el('h1', 'hero-title', `${greeting}, SwaGGa 🪖`));
   hero.appendChild(el('p', 'hero-subtitle', 'Your personal command centre for trading, learning, and daily streaks.'));
 
   const dateBadge = el('span', 'welcome-banner__date');
@@ -382,7 +382,7 @@ function buildAppShell() {
   sidebar.id = 'sidebar';
 
   const brand = el('div', 'sidebar-brand');
-  brand.appendChild(el('span', 'brand-logo', '⚡'));
+  brand.appendChild(el('span', 'brand-logo', '🪖'));
   brand.appendChild(el('span', 'brand-text', 'SwaGGa HQ'));
   sidebar.appendChild(brand);
 

@@ -1,0 +1,19 @@
+{
+  "name": "SwaGGa HQ — Personal Command Center",
+  "short_name": "SwaGGa HQ",
+  "description": "Your personal command center for trading, learning, and daily habit tracking.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d0b0f",
+  "theme_color": "#0d0b0f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "education", "productivity"]
+}

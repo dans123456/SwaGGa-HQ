@@ -7,6 +7,15 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <title>SwaGGa HQ — Personal Command Center</title>
 
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d0b0f">
+    <link rel="icon" type="image/png" href="img/icon-512.png">
+    <link rel="apple-touch-icon" href="img/icon-512.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SwaGGa HQ">
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,5 +42,18 @@
 
     <!-- Application Scripts -->
     <script type="module" src="js/app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then((reg) => {
+            console.log('SW registered, scope:', reg.scope);
+          }).catch((err) => {
+            console.log('SW registration failed:', err);
+          });
+        });
+      }
+    </script>
 </body>
 </html>
