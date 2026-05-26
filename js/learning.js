@@ -195,17 +195,67 @@ function openMentorProfile(mentor) {
 
   const profile = el('div', 'mentor-profile');
 
-  // Avatar — show image if available, fallback to emoji
+  // Avatar — check for custom uploaded photo first, then default, then emoji
+  const avatarKey = mentor.key || '';
+  const customAvatar = avatarKey ? storage.get(`mentor_avatar_${avatarKey}`, null) : null;
+  const avatarSrc = customAvatar || mentor.avatar || null;
+
   const avatarWrap = el('div', 'mentor-profile__avatar');
-  if (mentor.avatar) {
+  avatarWrap.classList.add('mentor-profile__avatar--clickable');
+
+  if (avatarSrc) {
     const img = document.createElement('img');
-    img.src = mentor.avatar;
+    img.src = avatarSrc;
     img.alt = mentor.name;
     img.className = 'mentor-profile__img';
     avatarWrap.appendChild(img);
   } else {
     avatarWrap.appendChild(el('span', 'mentor-profile__emoji', mentor.emoji));
   }
+
+  // Camera overlay hint
+  const camHint = el('div', 'mentor-profile__cam-hint');
+  camHint.appendChild(el('span', '', '📷'));
+  avatarWrap.appendChild(camHint);
+
+  // Hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    // Limit to 500KB to avoid localStorage quota
+    if (file.size > 512000) {
+      const warn = el('p', 'mentor-profile__upload-warn', '⚠️ Image too large (max 500KB). Try a smaller photo.');
+      profile.insertBefore(warn, profile.children[1]);
+      setTimeout(() => warn.remove(), 3000);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      storage.set(`mentor_avatar_${avatarKey}`, dataUrl);
+      // Update the displayed image immediately
+      const existingImg = avatarWrap.querySelector('.mentor-profile__img');
+      if (existingImg) {
+        existingImg.src = dataUrl;
+      } else {
+        avatarWrap.replaceChildren();
+        const newImg = document.createElement('img');
+        newImg.src = dataUrl;
+        newImg.alt = mentor.name;
+        newImg.className = 'mentor-profile__img';
+        avatarWrap.appendChild(newImg);
+        avatarWrap.appendChild(camHint);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  avatarWrap.appendChild(fileInput);
+
+  avatarWrap.addEventListener('click', () => fileInput.click());
   profile.appendChild(avatarWrap);
 
   // Name + role
@@ -374,7 +424,7 @@ function renderMentorCards(container, onLessonLogged, curriculumContainer, baCur
   gohProfileBtn.setAttribute('aria-label', 'View profile');
   gohProfileBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const gohData = { ...MENTOR_DATA.brahGoh };
+    const gohData = { ...MENTOR_DATA.brahGoh, key: 'brahGoh' };
     gohData.stats = [
       { icon: '📚', label: 'Lessons', value: `${completedCount}/${totalLessons}` },
       { icon: '📝', label: 'Assignments', value: String(getAssignments().length) },
@@ -418,7 +468,7 @@ function renderMentorCards(container, onLessonLogged, curriculumContainer, baCur
   ackahProfileBtn.setAttribute('aria-label', 'View profile');
   ackahProfileBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const ackahData = { ...MENTOR_DATA.bossAckah };
+    const ackahData = { ...MENTOR_DATA.bossAckah, key: 'bossAckah' };
     ackahData.stats = [
       { icon: '📚', label: 'Lessons', value: `${baCompletedCount}/${baTotalLessons}` },
       { icon: '🧠', label: 'Focus', value: 'Psychology' },
@@ -1206,7 +1256,9 @@ function renderBossAckahCurriculum(container, onRefresh) {
 
   const timeline = el('div', 'curriculum-timeline');
 
-  BOSS_ACKAH_CURRICULUM.forEach((lesson) => {
+  const effectiveBA = getEffectiveBaCurriculum();
+
+  effectiveBA.forEach((lesson) => {
     const isLogged = loggedIds.has(lesson.id);
     const progress = getBaProgress(lesson.id);
 
@@ -1313,7 +1365,147 @@ function renderBossAckahCurriculum(container, onRefresh) {
   });
 
   wrapper.appendChild(timeline);
+
+  // Add Lesson button
+  const addBtn = el('button', 'btn btn-outline btn-add-ba-lesson', '➕ Add New Lesson');
+  addBtn.addEventListener('click', () => openAddBaLessonPopup(effectiveBA.length + 1, container, onRefresh));
+  wrapper.appendChild(addBtn);
+
   container.appendChild(wrapper);
+}
+
+/* ── Boss Ackah — User-Added Lessons ──────────────────────── */
+
+const STORAGE_BA_USER_LESSONS = 'ba_user_lessons';
+
+function getUserBaLessons() {
+  return storage.get(STORAGE_BA_USER_LESSONS, []);
+}
+
+function getEffectiveBaCurriculum() {
+  return [...BOSS_ACKAH_CURRICULUM, ...getUserBaLessons()];
+}
+
+/** Popup to add a new Boss Ackah lesson */
+function openAddBaLessonPopup(nextNum, currContainer, onRefresh) {
+  const { body, close } = createModal('➕ Add Boss Ackah Lesson');
+
+  const form = el('form', 'modal-form');
+  form.setAttribute('novalidate', '');
+
+  // Title
+  const titleGroup = el('div', 'form-group');
+  titleGroup.appendChild(el('label', 'form-label', 'Lesson Title'));
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.className = 'form-input';
+  titleInput.placeholder = 'e.g. Risk Management Fundamentals';
+  titleInput.required = true;
+  titleGroup.appendChild(titleInput);
+  form.appendChild(titleGroup);
+
+  // Type
+  const typeGroup = el('div', 'form-group');
+  typeGroup.appendChild(el('label', 'form-label', 'Lesson Type'));
+  const typeSelect = document.createElement('select');
+  typeSelect.className = 'form-select';
+  [
+    { value: 'audio', label: '🎧 Audio / Video' },
+    { value: 'session', label: '📝 Live Session' },
+    { value: 'text', label: '📄 Text / Reading' },
+    { value: 'assignment', label: '📋 Assignment' },
+  ].forEach(opt => {
+    const o = el('option', '', opt.label);
+    o.value = opt.value;
+    typeSelect.appendChild(o);
+  });
+  typeGroup.appendChild(typeSelect);
+  form.appendChild(typeGroup);
+
+  // Description / Boss Ackah's words
+  const descGroup = el('div', 'form-group');
+  descGroup.appendChild(el('label', 'form-label', 'Description / Boss Ackah\'s Words'));
+  const descInput = document.createElement('textarea');
+  descInput.className = 'form-textarea';
+  descInput.rows = 4;
+  descInput.placeholder = 'Paste what Boss Ackah said about this lesson...';
+  descInput.required = true;
+  descGroup.appendChild(descInput);
+  form.appendChild(descGroup);
+
+  // Resource link (optional)
+  const linkGroup = el('div', 'form-group');
+  linkGroup.appendChild(el('label', 'form-label', 'Resource Link (optional)'));
+  const linkInput = document.createElement('input');
+  linkInput.type = 'url';
+  linkInput.className = 'form-input';
+  linkInput.placeholder = 'https://youtu.be/... or any link';
+  linkGroup.appendChild(linkInput);
+  form.appendChild(linkGroup);
+
+  // Link label
+  const linkLabelGroup = el('div', 'form-group');
+  linkLabelGroup.appendChild(el('label', 'form-label', 'Resource Label (optional)'));
+  const linkLabelInput = document.createElement('input');
+  linkLabelInput.type = 'text';
+  linkLabelInput.className = 'form-input';
+  linkLabelInput.placeholder = 'e.g. Risk Management Video';
+  linkLabelGroup.appendChild(linkLabelInput);
+  form.appendChild(linkLabelGroup);
+
+  // Instructions
+  const instrGroup = el('div', 'form-group');
+  instrGroup.appendChild(el('label', 'form-label', 'Instructions (optional)'));
+  const instrInput = document.createElement('input');
+  instrInput.type = 'text';
+  instrInput.className = 'form-input';
+  instrInput.placeholder = 'e.g. Watch → Take notes → Share notes';
+  instrGroup.appendChild(instrInput);
+  form.appendChild(instrGroup);
+
+  // Concepts
+  const conceptGroup = el('div', 'form-group');
+  conceptGroup.appendChild(el('label', 'form-label', 'Key Concepts (comma separated, optional)'));
+  const conceptInput = document.createElement('input');
+  conceptInput.type = 'text';
+  conceptInput.className = 'form-input';
+  conceptInput.placeholder = 'e.g. risk-management, position-sizing';
+  conceptGroup.appendChild(conceptInput);
+  form.appendChild(conceptGroup);
+
+  const submitBtn = el('button', 'btn btn-primary btn-lg', '➕ Add Lesson');
+  submitBtn.type = 'submit';
+  form.appendChild(submitBtn);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = sanitizeText(titleInput.value.trim());
+    const desc = sanitizeText(descInput.value.trim(), 5000);
+    if (!title || !desc) return;
+
+    const newLesson = {
+      id: `ba-${nextNum}`,
+      lesson: nextNum,
+      title,
+      type: typeSelect.value,
+      concepts: conceptInput.value.trim()
+        ? conceptInput.value.split(',').map(c => sanitizeText(c.trim())).filter(Boolean)
+        : [],
+      description: desc,
+      resource: linkInput.value.trim() || null,
+      resourceLabel: sanitizeText(linkLabelInput.value.trim()) || null,
+      instructions: sanitizeText(instrInput.value.trim()) || null,
+    };
+
+    const userLessons = getUserBaLessons();
+    userLessons.push(newLesson);
+    storage.set(STORAGE_BA_USER_LESSONS, userLessons);
+
+    close();
+    if (typeof onRefresh === 'function') onRefresh();
+  });
+
+  body.appendChild(form);
 }
 
 /** Popup to log notes for a Boss Ackah lesson. */

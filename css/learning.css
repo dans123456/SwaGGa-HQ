@@ -938,6 +938,17 @@
   justify-content: center;
   overflow: hidden;
   box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+  position: relative;
+}
+
+.mentor-profile__avatar--clickable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mentor-profile__avatar--clickable:hover {
+  border-color: rgba(0, 212, 255, 0.5);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.25);
 }
 
 .mentor-profile__img {
@@ -949,6 +960,32 @@
 
 .mentor-profile__emoji {
   font-size: 2.5rem;
+}
+
+/* Camera overlay hint */
+.mentor-profile__cam-hint {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.mentor-profile__avatar--clickable:hover .mentor-profile__cam-hint {
+  opacity: 1;
+}
+
+.mentor-profile__upload-warn {
+  font-size: var(--text-xs);
+  color: var(--red);
+  text-align: center;
+  animation: fadeIn 0.3s ease;
 }
 
 .mentor-profile__name {
@@ -1194,6 +1231,24 @@
 
 .ba-curriculum-section {
   margin-top: var(--space-8);
+}
+
+.btn-add-ba-lesson {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border: 2px dashed rgba(142, 14, 0, 0.3) !important;
+  color: #e84040 !important;
+  background: rgba(142, 14, 0, 0.04) !important;
+  font-weight: 600 !important;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.btn-add-ba-lesson:hover {
+  background: rgba(142, 14, 0, 0.1) !important;
+  border-color: rgba(142, 14, 0, 0.5) !important;
 }
 
 /* Type badge (Audio/Video, Session) */
