@@ -226,18 +226,33 @@ function openMentorProfile(mentor) {
   fileInput.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    // Limit to 500KB to avoid localStorage quota
-    if (file.size > 512000) {
-      const warn = el('p', 'mentor-profile__upload-warn', '⚠️ Image too large (max 500KB). Try a smaller photo.');
-      profile.insertBefore(warn, profile.children[1]);
-      setTimeout(() => warn.remove(), 3000);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      storage.set(`mentor_avatar_${avatarKey}`, dataUrl);
-      // Update the displayed image immediately
+
+    // Resize any image to 200x200 via canvas to keep localStorage small
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const SIZE = 200;
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext('2d');
+
+      // Crop to center square
+      const minDim = Math.min(img.width, img.height);
+      const sx = (img.width - minDim) / 2;
+      const sy = (img.height - minDim) / 2;
+      ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, SIZE, SIZE);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      const saved = storage.set(`mentor_avatar_${avatarKey}`, dataUrl);
+
+      if (!saved) {
+        const warn = el('p', 'mentor-profile__upload-warn', '⚠️ Could not save — storage may be full.');
+        profile.insertBefore(warn, profile.children[1]);
+        setTimeout(() => warn.remove(), 3000);
+        return;
+      }
+
+      // Update displayed image immediately
       const existingImg = avatarWrap.querySelector('.mentor-profile__img');
       if (existingImg) {
         existingImg.src = dataUrl;
@@ -251,7 +266,7 @@ function openMentorProfile(mentor) {
         avatarWrap.appendChild(camHint);
       }
     };
-    reader.readAsDataURL(file);
+    img.src = URL.createObjectURL(file);
   });
   avatarWrap.appendChild(fileInput);
 
