@@ -597,13 +597,6 @@ function showLoginScreen() {
   });
   card.appendChild(googleBtn);
 
-  // Skip option
-  const skipBtn = el('button', 'login-skip', 'Continue without signing in →');
-  skipBtn.addEventListener('click', () => {
-    launchApp();
-  });
-  card.appendChild(skipBtn);
-
   screen.appendChild(card);
   appRoot.appendChild(screen);
 }
