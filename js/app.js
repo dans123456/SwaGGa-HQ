@@ -13,7 +13,7 @@ import { getTrades, calculateStats } from './trading.js';
 import { getTimeAgo, formatCurrency } from './utils.js';
 import storage from './storage.js';
 import { checkAutoAssignment } from './notifications.js';
-import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud } from './firebase-sync.js';
+import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser } from './firebase-sync.js';
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -534,10 +534,90 @@ function buildAppShell() {
 }
 
 /* ================================================================ */
-/*  INIT                                                             */
+/*  LOGIN SCREEN                                                      */
 /* ================================================================ */
 
-function init() {
+function showLoginScreen() {
+  const appRoot = document.getElementById('app');
+  appRoot.replaceChildren();
+
+  const screen = el('div', 'login-screen');
+
+  // Background glow effects
+  const glow1 = el('div', 'login-glow login-glow--1');
+  const glow2 = el('div', 'login-glow login-glow--2');
+  screen.appendChild(glow1);
+  screen.appendChild(glow2);
+
+  const card = el('div', 'login-card');
+
+  // Logo
+  const logoWrap = el('div', 'login-logo');
+  logoWrap.appendChild(el('span', 'login-logo__icon', '🪖'));
+  card.appendChild(logoWrap);
+
+  // Title
+  card.appendChild(el('h1', 'login-title', 'SwaGGa HQ'));
+  card.appendChild(el('p', 'login-subtitle', 'Your personal command center for trading, learning & daily streaks'));
+
+  // Features list
+  const features = el('div', 'login-features');
+  const featureItems = [
+    { icon: '📊', text: 'Track your trades & analytics' },
+    { icon: '📚', text: 'Learn from Brah Goh & Boss Ackah' },
+    { icon: '🔥', text: 'Build daily streaks & habits' },
+    { icon: '☁️', text: 'Sync across all your devices' },
+  ];
+  featureItems.forEach(({ icon, text }) => {
+    const item = el('div', 'login-feature');
+    item.appendChild(el('span', 'login-feature__icon', icon));
+    item.appendChild(el('span', 'login-feature__text', text));
+    features.appendChild(item);
+  });
+  card.appendChild(features);
+
+  // Google Sign-In button
+  const googleBtn = el('button', 'login-google-btn');
+  const gIcon = el('span', 'login-google-btn__icon', '🔐');
+  const gText = el('span', 'login-google-btn__text', 'Sign in with Google');
+  googleBtn.appendChild(gIcon);
+  googleBtn.appendChild(gText);
+
+  googleBtn.addEventListener('click', async () => {
+    gText.textContent = 'Signing in...';
+    googleBtn.disabled = true;
+    googleBtn.classList.add('login-google-btn--loading');
+    const user = await signInWithGoogle();
+    if (!user) {
+      gText.textContent = 'Sign in with Google';
+      googleBtn.disabled = false;
+      googleBtn.classList.remove('login-google-btn--loading');
+    }
+    // onAuthChange will handle the rest
+  });
+  card.appendChild(googleBtn);
+
+  // Skip option
+  const skipBtn = el('button', 'login-skip', 'Continue without signing in →');
+  skipBtn.addEventListener('click', () => {
+    launchApp();
+  });
+  card.appendChild(skipBtn);
+
+  screen.appendChild(card);
+  appRoot.appendChild(screen);
+}
+
+/* ================================================================ */
+/*  APP LAUNCH (after login or skip)                                  */
+/* ================================================================ */
+
+let _appLaunched = false;
+
+async function launchApp() {
+  if (_appLaunched) return;
+  _appLaunched = true;
+
   buildAppShell();
 
   router.registerRoute('#dashboard', renderDashboard);
@@ -548,9 +628,33 @@ function init() {
 
   router.init();
   showWelcomePopup();
-
-  // Auto-assignment check — fires popup on scheduled days
   checkAutoAssignment();
+
+  // Auto-save to cloud every 30 seconds if signed in
+  setInterval(async () => {
+    const user = getCurrentUser();
+    if (user) {
+      await pushToCloud();
+    }
+  }, 30000);
+}
+
+/* ================================================================ */
+/*  INIT                                                             */
+/* ================================================================ */
+
+function init() {
+  // Show login screen first
+  showLoginScreen();
+
+  // When auth state resolves, either launch app or stay on login
+  onAuthChange(async (user) => {
+    if (user && !_appLaunched) {
+      // Signed in — sync from cloud then launch
+      await syncNow();
+      launchApp();
+    }
+  });
 }
 
 if (document.readyState === 'loading') {
