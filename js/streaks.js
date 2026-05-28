@@ -21,9 +21,9 @@ const STORAGE_KEY = 'habits';
 
 /** Default habits with brand-style theming. */
 export const DEFAULT_HABITS = [
-  { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive' },
-  { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily' },
-  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson' },
+  { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
+  { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
+  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 45 },
 ];
 
 /* ================================================================== */
@@ -40,6 +40,17 @@ export function getHabits() {
   if (!habits) {
     habits = DEFAULT_HABITS.map((h) => ({ ...h, log: {} }));
     storage.set(STORAGE_KEY, habits);
+  } else {
+    // Migration: add baseStreak if missing
+    let migrated = false;
+    habits.forEach(h => {
+      if (h.baseStreak === undefined) {
+        const def = DEFAULT_HABITS.find(d => d.id === h.id);
+        h.baseStreak = def ? def.baseStreak : 0;
+        migrated = true;
+      }
+    });
+    if (migrated) _saveHabits(habits);
   }
   return habits;
 }
@@ -106,7 +117,8 @@ export function calculateStreak(habitId) {
       break;
     }
   }
-  return streak;
+  // Add base streak (for habits like Duolingo where you started before the app)
+  return streak + (habit.baseStreak || 0);
 }
 
 /**
@@ -455,4 +467,74 @@ export function renderStreaksPage(container) {
 
   refresh();
   renderAddHabitForm(formContainer, refresh);
+}
+
+/* ================================================================== */
+/*  STREAK NOTIFICATIONS                                               */
+/* ================================================================== */
+
+/**
+ * Request notification permission and schedule streak reminders.
+ * Checks every 30 minutes if habits are incomplete and it's past 8 PM.
+ */
+export function initStreakNotifications() {
+  if (!('Notification' in window)) return;
+
+  // Request permission on first visit
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Check every 30 minutes
+  setInterval(() => {
+    checkAndNotify();
+  }, 30 * 60 * 1000);
+
+  // Also check once on load
+  setTimeout(() => checkAndNotify(), 5000);
+}
+
+function checkAndNotify() {
+  if (Notification.permission !== 'granted') return;
+
+  const now = new Date();
+  const hour = now.getHours();
+
+  // Only notify between 8 AM and 11 PM
+  if (hour < 8 || hour > 23) return;
+
+  const today = now.toISOString().slice(0, 10);
+  const habits = getHabits();
+  const undone = habits.filter(h => !h.log[today]);
+
+  if (undone.length === 0) return; // All done!
+
+  // Don't spam — check if we already notified in the last 2 hours
+  const lastNotif = storage.get('streak_last_notif', null);
+  if (lastNotif) {
+    const elapsed = Date.now() - new Date(lastNotif).getTime();
+    if (elapsed < 2 * 60 * 60 * 1000) return; // 2 hours
+  }
+
+  // Build notification
+  const names = undone.map(h => `${h.emoji} ${h.name}`).join(', ');
+  const body = undone.length === habits.length
+    ? `None of your streaks are done today! Don't break them 💥`
+    : `${undone.length} streak${undone.length > 1 ? 's' : ''} left: ${names}`;
+
+  const notif = new Notification('🪖 SwaGGa HQ — Streak Reminder', {
+    body,
+    icon: 'img/icon-512.png',
+    badge: 'img/icon-512.png',
+    tag: 'streak-reminder',
+    renotify: true,
+  });
+
+  notif.addEventListener('click', () => {
+    window.focus();
+    window.location.hash = '#streaks';
+    notif.close();
+  });
+
+  storage.set('streak_last_notif', new Date().toISOString());
 }

@@ -8,7 +8,7 @@ import router from './router.js';
 import { renderTradingPage } from './trading.js';
 import { renderChartPage } from './trading.js';
 import { renderLearningPage, getLessons, getAssignments } from './learning.js';
-import { renderStreaksPage, getHabits, calculateStreak } from './streaks.js';
+import { renderStreaksPage, getHabits, calculateStreak, initStreakNotifications } from './streaks.js';
 import { getTrades, calculateStats } from './trading.js';
 import { getTimeAgo, formatCurrency } from './utils.js';
 import storage from './storage.js';
@@ -629,6 +629,7 @@ async function launchApp() {
   router.init();
   showWelcomePopup();
   checkAutoAssignment();
+  initStreakNotifications();
 
   // Auto-save to cloud every 30 seconds if signed in
   setInterval(async () => {
