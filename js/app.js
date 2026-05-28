@@ -597,6 +597,13 @@ function showLoginScreen() {
   });
   card.appendChild(googleBtn);
 
+  // Offline fallback
+  const skipBtn = el('button', 'login-skip', 'Use offline — data syncs when you sign in later');
+  skipBtn.addEventListener('click', () => {
+    launchApp();
+  });
+  card.appendChild(skipBtn);
+
   screen.appendChild(card);
   appRoot.appendChild(screen);
 }
