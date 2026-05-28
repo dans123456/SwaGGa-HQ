@@ -13,6 +13,7 @@ import { getTrades, calculateStats } from './trading.js';
 import { getTimeAgo, formatCurrency } from './utils.js';
 import storage from './storage.js';
 import { checkAutoAssignment } from './notifications.js';
+import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud } from './firebase-sync.js';
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -400,6 +401,90 @@ function buildAppShell() {
     nav.appendChild(item);
   });
   sidebar.appendChild(nav);
+
+  // ---- Cloud Sync section ----
+  const syncSection = el('div', 'sidebar-sync');
+  const syncDivider = el('div', 'sidebar-divider');
+  syncSection.appendChild(syncDivider);
+
+  // Signed-out state
+  const signInBtn = el('button', 'sidebar-sync__btn', '☁️ Sign In to Sync');
+  signInBtn.addEventListener('click', async () => {
+    signInBtn.textContent = '⏳ Signing in...';
+    signInBtn.disabled = true;
+    const user = await signInWithGoogle();
+    if (!user) {
+      signInBtn.textContent = '☁️ Sign In to Sync';
+      signInBtn.disabled = false;
+    }
+  });
+  syncSection.appendChild(signInBtn);
+
+  // Signed-in state (hidden initially)
+  const userRow = el('div', 'sidebar-sync__user');
+  userRow.style.display = 'none';
+
+  const userAvatar = document.createElement('img');
+  userAvatar.className = 'sidebar-sync__avatar';
+  userAvatar.alt = 'User';
+  userRow.appendChild(userAvatar);
+
+  const userName = el('span', 'sidebar-sync__name');
+  userRow.appendChild(userName);
+  syncSection.appendChild(userRow);
+
+  // Sync button
+  const syncBtn = el('button', 'sidebar-sync__sync-btn', '🔄 Sync Now');
+  syncBtn.style.display = 'none';
+  syncBtn.addEventListener('click', async () => {
+    syncBtn.textContent = '⏳ Syncing...';
+    syncBtn.disabled = true;
+    const result = await syncNow();
+    syncBtn.textContent = result.success ? '✅ Synced!' : '❌ Sync failed';
+    syncBtn.disabled = false;
+    setTimeout(() => { syncBtn.textContent = '🔄 Sync Now'; }, 2000);
+    if (result.success) {
+      // Refresh current page to show synced data
+      router.init();
+    }
+  });
+  syncSection.appendChild(syncBtn);
+
+  // Sign out
+  const signOutBtn = el('button', 'sidebar-sync__signout', 'Sign Out');
+  signOutBtn.style.display = 'none';
+  signOutBtn.addEventListener('click', async () => {
+    await firebaseSignOut();
+  });
+  syncSection.appendChild(signOutBtn);
+
+  // Listen for auth changes
+  onAuthChange(async (user) => {
+    if (user) {
+      signInBtn.style.display = 'none';
+      userRow.style.display = 'flex';
+      syncBtn.style.display = 'block';
+      signOutBtn.style.display = 'block';
+      userAvatar.src = user.photoURL || '';
+      userName.textContent = user.displayName || user.email || 'User';
+
+      // Auto-sync on sign in
+      syncBtn.textContent = '⏳ Syncing...';
+      const result = await syncNow();
+      syncBtn.textContent = result.success ? '✅ Synced!' : '🔄 Sync Now';
+      if (result.success) {
+        setTimeout(() => { syncBtn.textContent = '🔄 Sync Now'; }, 2000);
+        router.init();
+      }
+    } else {
+      signInBtn.style.display = 'block';
+      userRow.style.display = 'none';
+      syncBtn.style.display = 'none';
+      signOutBtn.style.display = 'none';
+    }
+  });
+
+  sidebar.appendChild(syncSection);
 
   const collapseBtn = el('button', 'sidebar-collapse-btn', '◀');
   collapseBtn.setAttribute('aria-label', 'Toggle sidebar');

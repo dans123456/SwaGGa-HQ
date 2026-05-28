@@ -4,7 +4,7 @@
  * Strategy: Cache-first for static assets, network-first for dynamic.
  */
 
-const CACHE_NAME = 'swagga-hq-v2';
+const CACHE_NAME = 'swagga-hq-v3';
 
 // Core files to cache on install
 const CORE_ASSETS = [
@@ -26,6 +26,7 @@ const CORE_ASSETS = [
   './js/streaks.js',
   './js/trading.js',
   './js/utils.js',
+  './js/firebase-sync.js',
   './img/icon-512.png',
   './img/brad-goh.png',
   './img/boss-ackah.png',
