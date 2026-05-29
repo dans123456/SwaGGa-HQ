@@ -660,6 +660,43 @@ const ACHIEVEMENTS = [
   }},
   { id: 'rising-star',   emoji: '🏅', name: 'Rising Star',     desc: 'Reach Level 5 (Lieutenant)',           check: () => getLevel().level >= 5 },
   { id: 'the-legend',    emoji: '👑', name: 'The Legend',       desc: 'Reach Level 10 (Legend)',              check: () => getLevel().level >= 10 },
+  // ---- New Premium upgrades ----
+  { id: 'risk-manager',  emoji: '🛡️', name: 'Risk Manager',     desc: 'Log 5 consecutive trades with SL',      check: () => {
+    const trades = getTrades();
+    if (trades.length < 5) return false;
+    const sorted = [...trades].sort((a,b) => new Date(a.date) - new Date(b.date));
+    let run = 0;
+    for (const t of sorted) {
+      if (Number(t.stop || 0) > 0) {
+        run++;
+        if (run >= 5) return true;
+      } else {
+        run = 0;
+      }
+    }
+    return false;
+  }},
+  { id: 'unstoppable',   emoji: '💪', name: 'Unstoppable',     desc: 'Hit a 14-day streak on any habit',     check: () => getHabits().some(h => calculateStreak(h.id) >= 14) },
+  { id: 'flawless-execution', emoji: '⚔️', name: 'Flawless Win', desc: 'Record a 5-trade win streak',         check: () => {
+    const trades = getTrades();
+    if (trades.length < 5) return false;
+    const sorted = [...trades].sort((a,b) => new Date(a.date) - new Date(b.date));
+    let currentStreak = 0;
+    let maxStreak = 0;
+    for (const t of sorted) {
+      if (t.outcome === 'win') {
+        currentStreak++;
+        if (currentStreak > maxStreak) maxStreak = currentStreak;
+      } else if (t.outcome === 'loss') {
+        currentStreak = 0;
+      }
+    }
+    return maxStreak >= 5;
+  }},
+  { id: 'absolute-discipline', emoji: '🍅', name: 'Focus Master', desc: 'Complete 4 Pomodoro blocks in one day', check: () => {
+    const pData = storage.get('pomodoro_data', null);
+    return pData && pData.completedToday >= 4;
+  }}
 ];
 
 function renderAchievementBadges(container, trades, tradeStats, lessons, habits) {
@@ -668,13 +705,196 @@ function renderAchievementBadges(container, trades, tradeStats, lessons, habits)
   ACHIEVEMENTS.forEach(a => {
     const unlocked = a.check();
     const badge = el('div', `achieve-badge${unlocked ? ' achieve-badge--unlocked' : ''}`);
+    badge.style.cursor = 'pointer';
     badge.appendChild(el('span', 'achieve-badge__emoji', unlocked ? a.emoji : '🔒'));
     badge.appendChild(el('span', 'achieve-badge__name', a.name));
     badge.setAttribute('title', a.desc);
+    
+    badge.addEventListener('click', () => {
+      openAchievementDetail(a);
+    });
     grid.appendChild(badge);
   });
 
   container.appendChild(grid);
+}
+
+function openAchievementDetail(a) {
+  // Setup overlay & modal
+  const overlay = el('div', 'modal-overlay');
+  const modal = el('div', 'modal');
+  modal.style.maxWidth = '400px';
+
+  const topBar = el('div', 'modal__topbar');
+  topBar.style.background = 'linear-gradient(90deg, var(--cyan), var(--purple), var(--neon-green))';
+  modal.appendChild(topBar);
+
+  const header = el('div', 'modal__header');
+  header.appendChild(el('h2', 'modal__title', '🏆 Milestone Achievement'));
+  const closeBtn = el('button', 'modal__close', '✕');
+  closeBtn.addEventListener('click', () => {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 250);
+  });
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const body = el('div', 'modal__body');
+  const container = el('div', 'achieve-detail-modal');
+
+  const unlocked = a.check();
+
+  const emojiWrap = el('div', `achieve-detail-emoji-wrap ${unlocked ? 'unlocked' : 'locked'}`);
+  emojiWrap.appendChild(el('span', 'achieve-detail-emoji', unlocked ? a.emoji : '🔒'));
+  container.appendChild(emojiWrap);
+
+  container.appendChild(el('h3', 'achieve-detail-name', a.name));
+  
+  const desc = el('p', 'achieve-detail-desc');
+  desc.textContent = a.desc;
+  container.appendChild(desc);
+
+  const statusBox = el('div', `achieve-detail-status ${unlocked ? 'unlocked' : 'locked'}`);
+  statusBox.textContent = unlocked ? '🔓 Status: Completed & Claimed (+50 XP)' : '🔒 Status: Locked (In Progress)';
+  container.appendChild(statusBox);
+
+  // Dynamic progress tracker inside modal
+  const progressBox = el('div', 'achieve-detail-progress-box');
+  let currentVal = 0;
+  let targetVal = 1;
+  let labelText = '';
+
+  if (a.id === 'first-trade') {
+    currentVal = getTrades().length;
+    targetVal = 1;
+    labelText = `${currentVal} / ${targetVal} trades logged`;
+  } else if (a.id === '10-trades') {
+    currentVal = getTrades().length;
+    targetVal = 10;
+    labelText = `${currentVal} / ${targetVal} trades logged`;
+  } else if (a.id === 'sharpshooter') {
+    const t = getTrades();
+    currentVal = t.length >= 5 ? calculateStats(t).winRate : 0;
+    targetVal = 60;
+    labelText = `${currentVal.toFixed(0)}% / ${targetVal}% win rate`;
+  } else if (a.id === 'first-profit') {
+    currentVal = getTrades().some(t => Number(t.pnl) > 0) ? 1 : 0;
+    targetVal = 1;
+    labelText = currentVal > 0 ? 'Profit earned!' : 'No profitable trade logged';
+  } else if (a.id === '100-club') {
+    currentVal = calculateStats(getTrades()).totalPnL;
+    targetVal = 100;
+    labelText = `$${currentVal.toFixed(2)} / $${targetVal}.00 P&L earned`;
+  } else if (a.id === 'scholar') {
+    currentVal = getLessons().length;
+    targetVal = 10;
+    labelText = `${currentVal} / ${targetVal} lessons completed`;
+  } else if (a.id === 'graduate') {
+    currentVal = getLessons().length;
+    targetVal = 33;
+    labelText = `${currentVal} / ${targetVal} lessons completed`;
+  } else if (a.id === '7-day-warrior') {
+    const streaks = getHabits().map(h => calculateStreak(h.id));
+    currentVal = streaks.length ? Math.max(...streaks) : 0;
+    targetVal = 7;
+    labelText = `${currentVal} / ${targetVal} day habit streak`;
+  } else if (a.id === '30-day-legend') {
+    const streaks = getHabits().map(h => calculateStreak(h.id));
+    currentVal = streaks.length ? Math.max(...streaks) : 0;
+    targetVal = 30;
+    labelText = `${currentVal} / ${targetVal} day habit streak`;
+  } else if (a.id === 'perfect-week') {
+    let consec = 0;
+    const habits = getHabits();
+    if (habits.length) {
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        if (habits.every(h => h.log && h.log[key])) consec++;
+        else break;
+      }
+    }
+    currentVal = consec;
+    targetVal = 7;
+    labelText = `${currentVal} / ${targetVal} consecutive perfect days`;
+  } else if (a.id === 'rising-star') {
+    currentVal = getLevel().level;
+    targetVal = 5;
+    labelText = `Level ${currentVal} / ${targetVal} reached`;
+  } else if (a.id === 'the-legend') {
+    currentVal = getLevel().level;
+    targetVal = 10;
+    labelText = `Level ${currentVal} / ${targetVal} reached`;
+  } else if (a.id === 'risk-manager') {
+    const trades = getTrades();
+    let run = 0;
+    let maxRun = 0;
+    if (trades.length) {
+      const sorted = [...trades].sort((a,b) => new Date(a.date) - new Date(b.date));
+      for (const t of sorted) {
+        if (Number(t.stop || 0) > 0) {
+          run++;
+          if (run > maxRun) maxRun = run;
+        } else {
+          run = 0;
+        }
+      }
+    }
+    currentVal = maxRun;
+    targetVal = 5;
+    labelText = `${currentVal} / ${targetVal} consecutive protected trades`;
+  } else if (a.id === 'unstoppable') {
+    const streaks = getHabits().map(h => calculateStreak(h.id));
+    currentVal = streaks.length ? Math.max(...streaks) : 0;
+    targetVal = 14;
+    labelText = `${currentVal} / ${targetVal} day habit streak`;
+  } else if (a.id === 'flawless-execution') {
+    const trades = getTrades();
+    let run = 0;
+    let maxRun = 0;
+    if (trades.length) {
+      const sorted = [...trades].sort((a,b) => new Date(a.date) - new Date(b.date));
+      for (const t of sorted) {
+        if (t.outcome === 'win') {
+          run++;
+          if (run > maxRun) maxRun = run;
+        } else {
+          run = 0;
+        }
+      }
+    }
+    currentVal = maxRun;
+    targetVal = 5;
+    labelText = `${currentVal} / ${targetVal} consecutive wins`;
+  } else if (a.id === 'absolute-discipline') {
+    const pData = storage.get('pomodoro_data', null);
+    currentVal = pData ? pData.completedToday || 0 : 0;
+    targetVal = 4;
+    labelText = `${currentVal} / ${targetVal} focus blocks completed today`;
+  }
+
+  const pct = Math.min((currentVal / targetVal) * 100, 100);
+
+  const progressText = el('span', 'achieve-progress-text', labelText);
+  progressBox.appendChild(progressText);
+
+  const track = el('div', 'achieve-progress-track');
+  const fill = el('div', 'achieve-progress-fill');
+  fill.style.width = `${pct}%`;
+  if (unlocked) {
+    fill.style.background = 'linear-gradient(90deg, var(--neon-green), var(--cyan))';
+  }
+  track.appendChild(fill);
+  progressBox.appendChild(track);
+  container.appendChild(progressBox);
+
+  body.appendChild(container);
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBtn.click(); });
+  document.body.appendChild(overlay);
 }
 
 /* ================================================================ */
