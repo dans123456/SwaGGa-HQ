@@ -273,7 +273,8 @@ function renderDashboard(container) {
   const trades = getTrades();
   const tradeStats = calculateStats(trades);
   const habits = getHabits();
-  const activeStreaks = habits.filter(h => calculateStreak(h.id) > 0).length;
+  const _todayKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+  const todayDone = habits.filter(h => h.log && h.log[_todayKey]).length;
   const lessons = getLessons();
   const assignments = getAssignments();
   const completedAssignments = assignments.filter(a => a.completed).length;
@@ -283,7 +284,7 @@ function renderDashboard(container) {
     { icon: '📊', label: 'Total Trades', value: String(tradeStats.totalTrades) },
     { icon: '🎯', label: 'Win Rate', value: `${tradeStats.winRate}%` },
     { icon: '💰', label: 'Total P&L', value: formatCurrency(tradeStats.totalPnL) },
-    { icon: '🔥', label: 'Active Streaks', value: `${activeStreaks}/${habits.length}` },
+    { icon: '🔥', label: 'Done Today', value: `${todayDone}/${habits.length}` },
     { icon: '📚', label: 'Lessons Done', value: `${lessons.length}/33` },
     { icon: '📝', label: 'Assignments', value: `${completedAssignments}/${assignments.length}` },
   ];
