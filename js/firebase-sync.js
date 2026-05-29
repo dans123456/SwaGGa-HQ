@@ -11,7 +11,7 @@
  */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut }
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
@@ -59,7 +59,30 @@ export async function signInWithGoogle() {
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (err) {
-    console.error('Sign-in failed:', err.code, err.message);
+    console.warn('Popup sign-in failed, trying redirect fallback...', err.code, err.message);
+    
+    const isPopupOrStorageError = 
+      err.code === 'auth/popup-blocked' ||
+      err.code === 'auth/popup-closed-by-user' ||
+      err.code === 'auth/cancelled-popup-request' ||
+      err.code === 'auth/web-storage-unsupported' ||
+      err.code === 'auth/operation-not-allowed' ||
+      err.code === 'auth/internal-error' ||
+      err.message?.toLowerCase().includes('popup') ||
+      err.message?.toLowerCase().includes('cookie') ||
+      err.message?.toLowerCase().includes('storage') ||
+      err.message?.toLowerCase().includes('tracking');
+
+    if (isPopupOrStorageError) {
+      console.log('Redirecting to Google instead...');
+      try {
+        await signInWithRedirect(auth, provider);
+        return { redirecting: true };
+      } catch (redirectErr) {
+        console.error('Redirect sign-in failed:', redirectErr.code, redirectErr.message);
+        return null;
+      }
+    }
     return null;
   }
 }
@@ -78,6 +101,17 @@ onAuthStateChanged(auth, (user) => {
   _currentUser = user || null;
   _authListeners.forEach(cb => cb(_currentUser));
 });
+
+// Process redirect results if any (e.g. from Firefox popup-blocked redirect fallback)
+getRedirectResult(auth)
+  .then((result) => {
+    if (result && result.user) {
+      console.log('Redirect sign-in successful:', result.user.email);
+    }
+  })
+  .catch((err) => {
+    console.error('Redirect sign-in failed on page load:', err.code, err.message);
+  });
 
 /* ================================================================ */
 /*  FIRESTORE SYNC                                                    */

@@ -1007,10 +1007,20 @@ function buildAppShell() {
   // Signed-out state
   const signInBtn = el('button', 'sidebar-sync__btn', '☁️ Sign In to Sync');
   signInBtn.addEventListener('click', async () => {
-    signInBtn.textContent = '⏳ Signing in...';
-    signInBtn.disabled = true;
-    const user = await signInWithGoogle();
-    if (!user) {
+    try {
+      signInBtn.textContent = '⏳ Signing in...';
+      signInBtn.disabled = true;
+      const res = await signInWithGoogle();
+      if (res && res.redirecting) {
+        signInBtn.textContent = '⏳ Redirecting...';
+        return; // Redirect is in progress, keep disabled
+      }
+      if (!res) {
+        signInBtn.textContent = '☁️ Sign In to Sync';
+        signInBtn.disabled = false;
+      }
+    } catch (err) {
+      console.error('Sign in click failed:', err);
       signInBtn.textContent = '☁️ Sign In to Sync';
       signInBtn.disabled = false;
     }
@@ -1186,16 +1196,26 @@ function showLoginScreen() {
   googleBtn.appendChild(gText);
 
   googleBtn.addEventListener('click', async () => {
-    gText.textContent = 'Signing in...';
-    googleBtn.disabled = true;
-    googleBtn.classList.add('login-google-btn--loading');
-    const user = await signInWithGoogle();
-    if (!user) {
+    try {
+      gText.textContent = 'Signing in...';
+      googleBtn.disabled = true;
+      googleBtn.classList.add('login-google-btn--loading');
+      const res = await signInWithGoogle();
+      if (res && res.redirecting) {
+        gText.textContent = 'Redirecting to Google...';
+        return; // Redirect is in progress, keep disabled
+      }
+      if (!res) {
+        gText.textContent = 'Sign in with Google';
+        googleBtn.disabled = false;
+        googleBtn.classList.remove('login-google-btn--loading');
+      }
+    } catch (err) {
+      console.error('Google sign in button failed:', err);
       gText.textContent = 'Sign in with Google';
       googleBtn.disabled = false;
       googleBtn.classList.remove('login-google-btn--loading');
     }
-    // onAuthChange will handle the rest
   });
   card.appendChild(googleBtn);
 
