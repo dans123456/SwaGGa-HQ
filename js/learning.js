@@ -1689,6 +1689,23 @@ const DAILY_ICT_TIPS = [
   'Smart money doesn\'t chase. They wait for price to come to their level. Learn to be patient.',
   'The Sunday candle open and the Monday range often set the tone for the entire week.',
   'When in doubt, stay out. No trade is better than a bad trade. Protect your capital always.',
+  // — Brad Goh "Market Mechanics" Inspired Tips —
+  'Trading is a mechanical process. Build rules, follow rules, trust the process. Emotions are the enemy of consistency.',
+  'Your Point of Interest (POI) is where you expect smart money to react. Mark it on the HTF, refine it on the LTF.',
+  'Success in trading is non-linear. You will have losing weeks. What matters is the long-term equity curve going up.',
+  'Stop looking for the "holy grail" setup. One edge, mastered and backtested, is all you need to be profitable.',
+  'The market doesn\'t care about your feelings. It only cares about liquidity. Learn to think like the market maker.',
+  'Draw liquidity pools on your chart like magnets. Price is always moving toward the nearest cluster of stop losses.',
+  'Do the work. 500 hours of screen time is the minimum before you should expect consistency. There are no shortcuts.',
+  'Your win rate doesn\'t need to be 80%. A 40% win rate with 1:3 risk-to-reward is highly profitable. Do the math.',
+  'The market moves in 3 phases: expansion, retracement, and continuation. Learn to identify which phase you\'re in.',
+  'Order blocks are the last candle before a strong move. They represent institutional entry points. Trade with them, not against them.',
+  'Every loss is tuition. If you journaled it, reviewed it, and found the mistake — it wasn\'t a loss, it was a lesson.',
+  'Patience is not waiting for a setup. Patience is watching a setup form, waiting for confirmation, and THEN entering.',
+  'Don\'t trade every day. The best traders wait for A+ setups and skip everything else. Quality over quantity.',
+  'Before entering any trade, ask: "Where is the liquidity?" If you can\'t answer that, you shouldn\'t be trading.',
+  'Fractal markets: what happens on D1 also happens on M15. The same patterns repeat across all timeframes.',
+  'The goal is not to make money — the goal is to execute your plan perfectly. The money follows the discipline.',
 ];
 
 function renderDailyTip(container) {
