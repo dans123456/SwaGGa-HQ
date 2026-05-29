@@ -11,7 +11,7 @@
  */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut }
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, inMemoryPersistence }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
@@ -33,6 +33,17 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
+
+// Configure persistence safely to handle strict browser privacy settings (e.g. Firefox private browsing)
+try {
+  setPersistence(auth, browserLocalPersistence)
+    .catch((err) => {
+      console.warn('Local storage persistence unsupported, falling back to in-memory:', err);
+      setPersistence(auth, inMemoryPersistence).catch(console.error);
+    });
+} catch (e) {
+  console.warn('Failed to set persistence:', e);
+}
 
 /* ================================================================ */
 /*  AUTH                                                              */
@@ -111,6 +122,13 @@ getRedirectResult(auth)
   })
   .catch((err) => {
     console.error('Redirect sign-in failed on page load:', err.code, err.message);
+    if (window.showGlobalError) {
+      window.showGlobalError(
+        'Google Sign-In Blocked by Firefox!',
+        'Firefox blocked the authentication transfer between Google and your local server.<br><strong>Error Code:</strong> ' + err.code + '<br><strong>Details:</strong> ' + err.message,
+        'Click the <strong>Shield Icon</strong> on the left side of the Firefox URL bar and toggle <strong>Enhanced Tracking Protection OFF</strong> for SwaGGa HQ, then refresh and try again!'
+      );
+    }
   });
 
 /* ================================================================ */

@@ -36,38 +36,61 @@
     <link rel="stylesheet" href="css/learning.css">
     <!-- Global JavaScript Error Boundary for debugging browser-side blocks -->
     <script>
-      window.addEventListener('error', function(e) {
-        console.error("GLOBAL ERROR DETECTED:", e);
+      window.showGlobalError = function(title, errorMsg, fixMsg) {
+        // Prevent duplicate overlays
+        if (document.getElementById('global-error-overlay')) return;
+
         var div = document.createElement('div');
+        div.id = 'global-error-overlay';
         div.style.position = 'fixed';
         div.style.top = '20px';
         div.style.left = '20px';
         div.style.right = '20px';
         div.style.background = '#8e0e00';
         div.style.color = '#fff';
-        div.style.padding = '20px';
-        div.style.borderRadius = '12px';
+        div.style.padding = '24px';
+        div.style.borderRadius = '16px';
         div.style.zIndex = '999999';
-        div.style.fontFamily = 'sans-serif';
-        div.style.fontSize = '13px';
+        div.style.fontFamily = "'Outfit', sans-serif";
+        div.style.fontSize = '14px';
         div.style.lineHeight = '1.6';
-        div.style.boxShadow = '0 20px 50px rgba(0,0,0,0.6), 0 0 30px rgba(142, 14, 0, 0.3)';
-        div.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+        div.style.boxShadow = '0 24px 60px rgba(0,0,0,0.7), 0 0 40px rgba(142, 14, 0, 0.4)';
+        div.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        div.style.position = 'fixed';
+
+        var titleHtml = '<div style="font-size: 18px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">⚠️ ' + title + '</div>';
+        var bodyHtml = '<div>' + errorMsg + '</div><br>';
+        var fixHtml = '<div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">' +
+                      '💡 <strong>How to Fix:</strong> ' + fixMsg +
+                      '</div>';
         
+        var closeBtn = '<button onclick="this.parentElement.remove()" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: rgba(255,255,255,0.7); font-size: 18px; cursor: pointer; padding: 4px;">✕</button>';
+
+        div.innerHTML = titleHtml + bodyHtml + fixHtml + closeBtn;
+        document.body.appendChild(div);
+      };
+
+      window.addEventListener('error', function(e) {
+        console.error("GLOBAL ERROR DETECTED:", e);
         var msg = e.message || 'Script failed to load (likely blocked by browser security shields or tracking protection).';
         var file = e.filename ? e.filename.split('/').pop() : 'Unknown Script';
         var line = e.lineno || '?';
-        
-        div.innerHTML = '<div style="font-size: 16px; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">⚠️ Browser Script Block Detected!</div>' +
-                        'Your browser or tracking shields are blocking a crucial file from loading.<br><br>' +
-                        '<strong>Error:</strong> <span style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + msg + '</span><br>' +
-                        '<strong>File:</strong> ' + file + ' | <strong>Line:</strong> ' + line + '<br><br>' +
-                        '<div style="font-size: 11px; color: rgba(255,255,255,0.7);">💡 <strong>Fix:</strong> Click the shield icon in Firefox\'s URL bar and toggle "Enhanced Tracking Protection" OFF, or try opening this link in Google Chrome!</div>';
-        document.body.appendChild(div);
+        window.showGlobalError(
+          'Browser Script Blocked!',
+          'Crucial application scripts failed to run.<br><strong>Error:</strong> ' + msg + ' (' + file + ':' + line + ')',
+          'Firefox\'s Enhanced Tracking Protection or a browser extension is blocking local scripts. Click the <strong>Shield Icon</strong> next to the URL bar and toggle Enhanced Tracking Protection <strong>OFF</strong>, then refresh!'
+        );
       });
       
       window.addEventListener('unhandledrejection', function(e) {
         console.error("UNHANDLED REJECTION:", e.reason);
+        var msg = (e.reason && e.reason.message) || String(e.reason);
+        var code = (e.reason && e.reason.code) || 'N/A';
+        window.showGlobalError(
+          'Sign-In / Firebase Error!',
+          'Firebase encountered a storage or security shield restriction.<br><strong>Details:</strong> ' + msg + ' (Code: ' + code + ')',
+          'Firefox restricts cross-domain storage on local servers (127.0.0.1). Click the <strong>Shield Icon</strong> next to the URL bar and toggle "Enhanced Tracking Protection" <strong>OFF</strong> for SwaGGa HQ, then refresh and try again!'
+        );
       });
     </script>
 </head>
