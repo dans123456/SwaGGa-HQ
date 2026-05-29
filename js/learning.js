@@ -1338,6 +1338,15 @@ function openQuizPopup() {
     const totalScore = mcqScore + openScore;
     const maxScore = mcqTotal + openTotal;
     const percentage = Math.round((totalScore / maxScore) * 100);
+    
+    if (percentage === 100) {
+      const currentTokens = storage.get('streak_freeze_tokens', 0);
+      if (currentTokens < 3) {
+        storage.set('streak_freeze_tokens', currentTokens + 1);
+        showNotificationToast('Perfect Score! Earned 1 Streak Freeze ❄️');
+      }
+    }
+
     let grade = 'F';
     let gradeColor = '#ff4757';
     let gradeEmoji = '😤';
@@ -1448,7 +1457,17 @@ function renderAssignments(container, onRefresh) {
         const all = getAssignments();
         const target = all.find((x) => x.id === a.id);
         if (target) {
+          const wasCompleted = target.completed;
           target.completed = !target.completed;
+          
+          if (!wasCompleted && target.completed) {
+            const currentTokens = storage.get('streak_freeze_tokens', 0);
+            if (currentTokens < 3) {
+              storage.set('streak_freeze_tokens', currentTokens + 1);
+              showNotificationToast('Assignment Completed! Earned 1 Streak Freeze ❄️');
+            }
+          }
+          
           storage.set(STORAGE_ASSIGNMENTS, all);
           if (typeof onRefresh === 'function') onRefresh();
         }
@@ -2040,4 +2059,24 @@ function openBaLogPopup(lesson, onSaved) {
   });
 
   body.appendChild(form);
+}
+
+function showNotificationToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'freeze-toast';
+  const icon = document.createElement('span');
+  icon.textContent = '❄️ ';
+  toast.appendChild(icon);
+  toast.appendChild(document.createTextNode(message));
+  document.body.appendChild(toast);
+
+  // Force layout reflow
+  toast.offsetHeight;
+
+  toast.classList.add('freeze-toast--visible');
+
+  setTimeout(() => {
+    toast.classList.remove('freeze-toast--visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
 }

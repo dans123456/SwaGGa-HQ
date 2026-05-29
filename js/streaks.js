@@ -98,9 +98,6 @@ export function toggleHabit(habitId, date) {
   _saveHabits(habits);
 }
 
-/**
- * Calculate current consecutive streak (counting back from today).
- */
 export function calculateStreak(habitId) {
   const habits = getHabits();
   const habit = habits.find((h) => h.id === habitId);
@@ -108,16 +105,23 @@ export function calculateStreak(habitId) {
 
   let streak = 0;
   const d = new Date();
+  
+  // If today is not checked (and not frozen), start counting from yesterday
+  const todayKey = d.toISOString().slice(0, 10);
+  const todayDone = habit.log[todayKey] || (habit.freezes && habit.freezes[todayKey]);
+  if (!todayDone) {
+    d.setDate(d.getDate() - 1);
+  }
+
   while (true) {
     const key = d.toISOString().slice(0, 10);
-    if (habit.log[key]) {
+    if (habit.log[key] || (habit.freezes && habit.freezes[key])) {
       streak++;
       d.setDate(d.getDate() - 1);
     } else {
       break;
     }
   }
-  // Add base streak (for habits like Duolingo where you started before the app)
   return streak + (habit.baseStreak || 0);
 }
 
@@ -129,14 +133,16 @@ export function getBestStreak(habitId) {
   const habit = habits.find((h) => h.id === habitId);
   if (!habit) return 0;
 
-  const dates = Object.keys(habit.log).sort();
-  if (!dates.length) return 0;
+  const logDates = Object.keys(habit.log || {});
+  const freezeDates = Object.keys(habit.freezes || {});
+  const allDates = [...new Set([...logDates, ...freezeDates])].sort();
+  if (!allDates.length) return 0;
 
   let best = 1;
   let current = 1;
-  for (let i = 1; i < dates.length; i++) {
-    const prev = new Date(dates[i - 1]);
-    const curr = new Date(dates[i]);
+  for (let i = 1; i < allDates.length; i++) {
+    const prev = new Date(allDates[i - 1]);
+    const curr = new Date(allDates[i]);
     const diffDays = Math.round((curr - prev) / 86_400_000);
     if (diffDays === 1) {
       current++;
@@ -155,7 +161,7 @@ export function isPerfectDay(date) {
   const dateKey = date || new Date().toISOString().slice(0, 10);
   const habits = getHabits();
   if (!habits.length) return false;
-  return habits.every((h) => h.log[dateKey]);
+  return habits.every((h) => h.log[dateKey] || (h.freezes && h.freezes[dateKey]));
 }
 
 /* ================================================================== */
@@ -179,7 +185,7 @@ function renderFireBanner(container) {
   container.replaceChildren();
   const today = new Date().toISOString().slice(0, 10);
   const habits = getHabits();
-  const doneCount = habits.filter((h) => h.log[today]).length;
+  const doneCount = habits.filter((h) => h.log[today] || (h.freezes && h.freezes[today])).length;
   const total = habits.length;
   const perfect = doneCount === total && total > 0;
 
@@ -207,14 +213,48 @@ function renderFireBanner(container) {
   // Progress dots
   const dots = el('div', 'fire-banner__dots');
   habits.forEach((h) => {
-    const dot = el('span', `fire-dot${h.log[today] ? ' fire-dot--done' : ''}`);
-    dot.style.backgroundColor = h.log[today] ? (h.color || '#00d4ff') : 'rgba(255,255,255,0.1)';
+    const isCompleted = h.log[today] || (h.freezes && h.freezes[today]);
+    const dot = el('span', `fire-dot${isCompleted ? ' fire-dot--done' : ''}`);
+    dot.style.backgroundColor = isCompleted ? (h.color || '#00d4ff') : 'rgba(255,255,255,0.1)';
     dot.setAttribute('title', h.name);
     dots.appendChild(dot);
   });
   banner.appendChild(dots);
 
   container.appendChild(banner);
+}
+
+/* ---------- Streak Freeze Helpers --------------------------------- */
+
+function getRecentMissedDate(habit) {
+  const d = new Date();
+  d.setDate(d.getDate() - 1); // Yesterday
+  const yesterdayKey = d.toISOString().slice(0, 10);
+  
+  const yesterdayDone = habit.log[yesterdayKey] || (habit.freezes && habit.freezes[yesterdayKey]);
+  if (!yesterdayDone) {
+    return yesterdayKey;
+  }
+  return null;
+}
+
+function playFreezeAnimation(cardElement, callback) {
+  cardElement.classList.add('habit-card-pro--freezing');
+  
+  const overlay = el('div', 'ice-animation-overlay');
+  overlay.textContent = '❄️❄️❄️';
+  cardElement.appendChild(overlay);
+  
+  setTimeout(() => {
+    overlay.classList.add('ice-animation-overlay--fade');
+    overlay.textContent = '🔥 Restored! 🔥';
+  }, 1000);
+
+  setTimeout(() => {
+    cardElement.classList.remove('habit-card-pro--freezing');
+    overlay.remove();
+    callback();
+  }, 2200);
 }
 
 /* ---------- Professional Habit Card ------------------------------- */
@@ -280,8 +320,9 @@ export function renderHabitCard(habit, onToggle) {
 
   card.appendChild(stats);
 
-  // Action button
+  // Action buttons
   const actionRow = el('div', 'habit-pro__action');
+  
   const toggleBtn = el('button', `habit-pro__btn${done ? ' habit-pro__btn--done' : ''}`);
   toggleBtn.textContent = done ? '✓ Completed' : 'Mark Done';
   if (done) {
@@ -294,6 +335,43 @@ export function renderHabitCard(habit, onToggle) {
     if (typeof onToggle === 'function') onToggle();
   });
   actionRow.appendChild(toggleBtn);
+
+  // Freeze button if yesterday was missed
+  const yesterdayKey = getRecentMissedDate(habit);
+  if (yesterdayKey) {
+    const tokens = storage.get('streak_freeze_tokens', 0);
+    const freezeBtn = el('button', 'btn btn-outline btn-sm habit-pro__freeze-btn');
+    freezeBtn.textContent = `❄️ Freeze Yesterday (${tokens > 0 ? 'Use Token' : '0 Tokens'})`;
+    
+    if (tokens > 0) {
+      freezeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // Consume token
+        storage.set('streak_freeze_tokens', tokens - 1);
+        
+        // Add freeze date to habit
+        if (!habit.freezes) habit.freezes = {};
+        habit.freezes[yesterdayKey] = true;
+        
+        const habits = getHabits();
+        const index = habits.findIndex(h => h.id === habit.id);
+        if (index !== -1) {
+          habits[index] = habit;
+          _saveHabits(habits);
+        }
+        
+        playFreezeAnimation(card, () => {
+          if (typeof onToggle === 'function') onToggle();
+        });
+      });
+    } else {
+      freezeBtn.disabled = true;
+      freezeBtn.classList.add('btn-disabled');
+    }
+    actionRow.appendChild(freezeBtn);
+  }
+
   card.appendChild(actionRow);
 
   return card;
@@ -325,7 +403,7 @@ export function renderCalendarHeatmap(container, habitData) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    const count = habitData.filter((h) => h.log[key]).length;
+    const count = habitData.filter((h) => h.log[key] || (h.freezes && h.freezes[key])).length;
     const ratio = count / totalHabits;
 
     const cell = el('div', 'heatmap-cell');
@@ -438,6 +516,36 @@ function renderOverviewStats(container) {
 /*  MAIN RENDER                                                       */
 /* ================================================================== */
 
+function renderFreezeStatus(container) {
+  container.replaceChildren();
+  const tokens = storage.get('streak_freeze_tokens', 0);
+  
+  const card = el('div', 'freeze-banner-card');
+  
+  const icon = el('span', 'freeze-banner-icon', '❄️');
+  card.appendChild(icon);
+  
+  const info = el('div', 'freeze-banner-info');
+  const title = el('h3', 'freeze-banner-title', 'Streak Freeze Tokens');
+  info.appendChild(title);
+  
+  const desc = el('p', 'freeze-banner-desc', 'Earn freezes by scoring 100% on quizzes or completing assignments. Use them to save your streak if you miss a day.');
+  info.appendChild(desc);
+  card.appendChild(info);
+  
+  const tokensContainer = el('div', 'freeze-tokens-wrap');
+  for (let i = 1; i <= 3; i++) {
+    const dot = el('span', `freeze-token-dot${i <= tokens ? ' freeze-token-dot--active' : ''}`);
+    dot.textContent = '❄️';
+    tokensContainer.appendChild(dot);
+  }
+  const label = el('span', 'freeze-tokens-count', `${tokens} / 3 Tokens`);
+  tokensContainer.appendChild(label);
+  
+  card.appendChild(tokensContainer);
+  container.appendChild(card);
+}
+
 /**
  * Build the full Streaks page.
  * @param {HTMLElement} container - #page-streaks element.
@@ -446,12 +554,14 @@ export function renderStreaksPage(container) {
   container.replaceChildren();
   container.appendChild(el('h1', 'page-title', '🔥 Daily Streaks'));
 
+  const freezeContainer = el('div');
   const fireContainer = el('div');
   const statsContainer = el('div');
   const cardsContainer = el('div');
   const heatmapContainer = el('div');
   const formContainer = el('div');
 
+  container.appendChild(freezeContainer);
   container.appendChild(fireContainer);
   container.appendChild(statsContainer);
   container.appendChild(cardsContainer);
@@ -460,6 +570,7 @@ export function renderStreaksPage(container) {
 
   function refresh() {
     renderFireBanner(fireContainer);
+    renderFreezeStatus(freezeContainer);
     renderOverviewStats(statsContainer);
     renderHabitCards(cardsContainer, refresh);
     renderCalendarHeatmap(heatmapContainer, getHabits());
