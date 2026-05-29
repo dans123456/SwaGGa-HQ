@@ -15,6 +15,7 @@ import storage from './storage.js';
 import { checkAutoAssignment } from './notifications.js';
 import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser } from './firebase-sync.js';
 import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from './xp.js';
+import { renderCalendarPage } from './calendar.js';
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { hash: '#dashboard', label: 'Dashboard', icon: '🏠' },
   { hash: '#streaks', label: 'Streaks', icon: '🔥' },
   { hash: '#trading', label: 'Trading', icon: '💹' },
+  { hash: '#calendar', label: 'Calendar', icon: '📅' },
   { hash: '#chart', label: 'Live Chart', icon: '📊' },
   { hash: '#learning', label: 'Learning', icon: '📚' },
 ];
@@ -1098,6 +1100,22 @@ function buildAppShell() {
 
   sidebar.appendChild(syncSection);
 
+  // Theme switcher toggle button in sidebar
+  const currentTheme = storage.get('theme', 'dark');
+  const themeBtn = el('button', 'theme-switch-btn');
+  const themeEmoji = el('span', 'theme-switch-emoji', currentTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode');
+  themeBtn.appendChild(themeEmoji);
+  
+  themeBtn.addEventListener('click', () => {
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = activeTheme === 'light' ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    storage.set('theme', newTheme);
+    themeEmoji.textContent = newTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+  });
+  sidebar.appendChild(themeBtn);
+
   const collapseBtn = el('button', 'sidebar-collapse-btn', '◀');
   collapseBtn.setAttribute('aria-label', 'Toggle sidebar');
   collapseBtn.addEventListener('click', () => {
@@ -1108,11 +1126,34 @@ function buildAppShell() {
 
   app.appendChild(sidebar);
 
+  // ---- Mobile Bottom Nav Bar ----
+  const bottomNav = el('div', 'mobile-bottom-nav');
+  const bottomNavItems = [
+    { hash: '#dashboard', label: 'Dashboard', icon: '🏠' },
+    { hash: '#streaks', label: 'Streaks', icon: '🔥' },
+    { hash: '#trading', label: 'Trading', icon: '💹' },
+    { hash: '#calendar', label: 'Calendar', icon: '📅' },
+    { hash: '#learning', label: 'Learning', icon: '📚' },
+  ];
+  
+  bottomNavItems.forEach(({ hash, label, icon }) => {
+    const item = el('button', 'mobile-bottom-nav__item');
+    item.setAttribute('data-bottom-route', hash);
+    item.appendChild(el('span', 'mobile-bottom-nav__icon', icon));
+    item.appendChild(el('span', 'mobile-bottom-nav__label', label));
+    item.addEventListener('click', () => {
+      router.navigate(hash);
+      closeMobileMenu();
+    });
+    bottomNav.appendChild(item);
+  });
+  app.appendChild(bottomNav);
+
   // ---- Main content ----
   const main = el('main', 'main-content');
   main.id = 'main-content';
 
-  const pages = ['dashboard', 'streaks', 'trading', 'chart', 'learning'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -1247,6 +1288,7 @@ async function launchApp() {
   router.registerRoute('#chart', renderChartPage);
   router.registerRoute('#learning', renderLearningPage);
   router.registerRoute('#streaks', renderStreaksPage);
+  router.registerRoute('#calendar', renderCalendarPage);
 
   // Real-time XP & Level progression reactive updater
   window.addEventListener('xp-change', (e) => {
@@ -1294,6 +1336,10 @@ async function launchApp() {
 /* ================================================================ */
 
 function init() {
+  // Initialize the saved visual theme (defaults to dark mode)
+  const savedTheme = storage.get('theme', 'dark');
+  document.documentElement.setAttribute('data-theme', savedTheme);
+
   // Show login screen first
   showLoginScreen();
 

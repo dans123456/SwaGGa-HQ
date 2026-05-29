@@ -11,7 +11,7 @@
  */
 
 import storage from './storage.js';
-import { generateId, sanitizeText } from './utils.js';
+import { generateId, sanitizeText, triggerConfetti } from './utils.js';
 import { addXP } from './xp.js';
 
 /* ================================================================== */
@@ -364,6 +364,7 @@ export function renderHabitCard(habit, onToggle) {
       const allHabits = getHabits();
       if (allHabits.length > 0 && allHabits.every(h => h.log[today])) {
         addXP('perfectDay', 50);
+        triggerConfetti(); // Celebrate perfect day milestone!
       }
     }
     // Push updates to cloud immediately if signed in to prevent any lag or refresh loss
@@ -405,6 +406,7 @@ export function renderHabitCard(habit, onToggle) {
         });
         
         playFreezeAnimation(card, () => {
+          triggerConfetti(); // Celebrate restoring the streak!
           if (typeof onToggle === 'function') onToggle();
         });
       });

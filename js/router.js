@@ -160,6 +160,16 @@ class Router {
         item.classList.remove('active');
       }
     });
+
+    const bottomItems = document.querySelectorAll('.mobile-bottom-nav__item');
+    bottomItems.forEach((item) => {
+      const href = item.getAttribute('data-bottom-route');
+      if (href === activeHash) {
+        item.classList.add('mobile-bottom-nav__item--active');
+      } else {
+        item.classList.remove('mobile-bottom-nav__item--active');
+      }
+    });
   }
 
   /**

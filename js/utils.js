@@ -201,3 +201,82 @@ export function sanitizeText(text, maxLength = 500) {
   if (trimmed.length <= maxLength) return trimmed;
   return trimmed.substring(0, maxLength) + '…';
 }
+
+/**
+ * Visual falling confetti celebration rain.
+ * Creates a canvas overlay and draws multicolored physics-enabled falling confetti.
+ * Auto-destructs after 3.5 seconds to prevent memory leaks.
+ */
+export function triggerConfetti() {
+  const canvas = document.createElement('canvas');
+  canvas.style.position = 'fixed';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.width = '100vw';
+  canvas.style.height = '100vh';
+  canvas.style.pointerEvents = 'none';
+  canvas.style.zIndex = '999999';
+  document.body.appendChild(canvas);
+
+  const ctx = canvas.getContext('2d');
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  const handleResize = () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  };
+  window.addEventListener('resize', handleResize);
+
+  const colors = ['#00d4ff', '#ff8800', '#58cc02', '#ff0050', '#a855f7', '#fffc00'];
+  const particles = [];
+
+  for (let i = 0; i < 100; i++) {
+    particles.push({
+      x: Math.random() * width,
+      y: Math.random() * height - height,
+      r: Math.random() * 6 + 4,
+      d: Math.random() * 100,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.random() * 10 - 5,
+      tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+      tiltAngle: 0
+    });
+  }
+
+  let animationFrameId;
+  const startTime = Date.now();
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+
+    let living = false;
+    particles.forEach((p) => {
+      p.tiltAngle += p.tiltAngleIncremental;
+      p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2.2;
+      p.x += Math.sin(p.tiltAngle) * 0.5;
+      p.tilt = Math.sin(p.tiltAngle - (particles.indexOf(p) / 3)) * 12;
+
+      if (p.y <= height) {
+        living = true;
+      }
+
+      ctx.beginPath();
+      ctx.lineWidth = p.r;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+      ctx.stroke();
+    });
+
+    if (Date.now() - startTime < 3500 && living) {
+      animationFrameId = requestAnimationFrame(draw);
+    } else {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', handleResize);
+      canvas.remove();
+    }
+  }
+
+  draw();
+}
