@@ -1578,6 +1578,51 @@ body, .sidebar, .main-content, .card, .stat-card, .dash-card, .nav-item,
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* Daily Grades Colored Rings */
+.calendar-day--grade-Aplus, .calendar-day--grade-A {
+  border-color: var(--neon-green) !important;
+  box-shadow: inset 0 0 8px rgba(0, 255, 136, 0.12);
+}
+.calendar-day--grade-B, .calendar-day--grade-C {
+  border-color: var(--cyan) !important;
+  box-shadow: inset 0 0 8px rgba(0, 212, 255, 0.12);
+}
+.calendar-day--grade-D, .calendar-day--grade-F {
+  border-color: var(--crimson) !important;
+  box-shadow: inset 0 0 8px rgba(142, 14, 0, 0.15);
+}
+
+/* Pomodoro Tally overlays */
+.calendar-day-indicator--pomo {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ff4757 !important;
+}
+
+/* Grade indicator badge inside cells */
+.calendar-day-grade-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-family: var(--font-heading);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.calendar-day-grade-badge--Aplus, .calendar-day-grade-badge--A {
+  background: rgba(0, 255, 136, 0.15);
+  color: var(--neon-green);
+}
+.calendar-day-grade-badge--B, .calendar-day-grade-badge--C {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--cyan);
+}
+.calendar-day-grade-badge--D, .calendar-day-grade-badge--F {
+  background: rgba(142, 14, 0, 0.2);
+  color: #ff4757;
+}
+
 /* Day Details Popover inside modal */
 .popover-section-title {
   font-family: var(--font-heading);

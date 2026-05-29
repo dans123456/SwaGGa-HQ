@@ -152,6 +152,8 @@ const SYNC_KEYS = [
   'quiz_scores',
   'pomodoro_data',
   'mastered_terms',
+  'daily_grades',
+  'pomodoro_history',
 ];
 
 const NAMESPACE = 'swagga';
@@ -326,6 +328,17 @@ export async function pullFromCloud() {
           const localDate = local?.date ? new Date(local.date) : new Date(0);
           merged[key] = localDate >= cloudDate ? local : cloud;
         }
+      } else if (key === 'daily_grades') {
+        // Merge daily grade maps (local grade changes overwrite cloud if both exist)
+        merged[key] = { ...(cloud || {}), ...(local || {}) };
+      } else if (key === 'pomodoro_history') {
+        // Merge pomodoro history maps: keep all logged dates, taking max blocks completed for matching dates
+        const mergedPomo = {};
+        const allDates = new Set([...Object.keys(cloud || {}), ...Object.keys(local || {})]);
+        allDates.forEach(d => {
+          mergedPomo[d] = Math.max(Number(cloud?.[d]) || 0, Number(local?.[d]) || 0);
+        });
+        merged[key] = mergedPomo;
       } else if (key.startsWith('ba_progress_')) {
         // Progress percentage - maximum level/progress wins
         merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);

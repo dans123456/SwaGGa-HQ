@@ -477,6 +477,12 @@ function renderDashboard(container) {
   killzonesPanel.appendChild(checklistContainer);
   panelsCol.appendChild(killzonesPanel);
 
+  // 4. Volatility Economic News Feed Widget
+  const newsPanel = el('div', 'overview-panel news-panel');
+  newsPanel.appendChild(el('h3', 'overview-panel__title', '📰 Volatility Economic Feed'));
+  renderEconomicNewsWidget(newsPanel);
+  panelsCol.appendChild(newsPanel);
+
   let lastActiveSession = null;
 
   function updateKillzonesWidget() {
@@ -1577,4 +1583,189 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+/* ================================================================ */
+/*  ECONOMIC CALENDAR NEWS FEED WIDGET SUPPORT                       */
+/* ================================================================ */
+
+function renderEconomicNewsWidget(container) {
+  const listContainer = el('div', 'news-list-container');
+  container.appendChild(listContainer);
+
+  const loadingText = el('p', 'news-loading-text', '🔄 Fetching live economic calendar...');
+  loadingText.style.fontSize = 'var(--text-xs)';
+  loadingText.style.color = 'var(--text-muted)';
+  listContainer.appendChild(loadingText);
+
+  // We fetch through allorigins proxy with a curated fallback calendar so SwaGGa HQ NEVER breaks
+  const proxyUrl = 'https://api.allorigins.win/raw?url=';
+  const targetUrl = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+  
+  fetch(proxyUrl + encodeURIComponent(targetUrl))
+    .then(res => {
+      if (!res.ok) throw new Error('API request failed');
+      return res.json();
+    })
+    .then(events => {
+      if (!Array.isArray(events)) throw new Error('Invalid JSON structure');
+      renderEventsList(listContainer, events);
+    })
+    .catch(err => {
+      console.warn('Live news calendar fetch failed, loading curated fallback feed...', err);
+      // Generate standard fallback high-impact releases for the current week
+      const fallbackEvents = getCuratedFallbackEvents();
+      renderEventsList(listContainer, fallbackEvents);
+    });
+}
+
+function getCuratedFallbackEvents() {
+  const events = [];
+  const startOfWeek = new Date();
+  // Set to Monday of the current week
+  const day = startOfWeek.getDay();
+  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+  startOfWeek.setDate(diff);
+
+  const buildDate = (daysOffset, hour, min) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + daysOffset);
+    d.setHours(hour, min, 0, 0);
+    return d.toISOString();
+  };
+
+  return [
+    { title: 'USD ISM Manufacturing PMI', country: 'USD', impact: 'High', date: buildDate(0, 10, 0) }, // Monday 10:00 AM
+    { title: 'AUD Cash Rate & RBA Rate Statement', country: 'AUD', impact: 'High', date: buildDate(1, 0, 30) }, // Tuesday 12:30 AM
+    { title: 'GBP GDP MoM', country: 'GBP', impact: 'High', date: buildDate(2, 2, 0) }, // Wednesday 2:00 AM
+    { title: 'USD ADP Non-Farm Employment Change', country: 'USD', impact: 'Medium', date: buildDate(2, 8, 15) }, // Wednesday 8:15 AM
+    { title: 'EUR ECB Interest Rate Decision', country: 'EUR', impact: 'High', date: buildDate(3, 8, 15) }, // Thursday 8:15 AM
+    { title: 'USD Unemployment Claims', country: 'USD', impact: 'Medium', date: buildDate(3, 8, 30) }, // Thursday 8:30 AM
+    { title: 'USD Non-Farm Employment Change (NFP)', country: 'USD', impact: 'High', date: buildDate(4, 8, 30) }, // Friday 8:30 AM
+    { title: 'USD Unemployment Rate', country: 'USD', impact: 'High', date: buildDate(4, 8, 30) }, // Friday 8:30 AM
+  ];
+}
+
+function renderEventsList(container, events) {
+  container.replaceChildren();
+
+  const now = new Date();
+  
+  // Filter for major currencies, High and Medium impact events, and sort by date chronologically
+  const filtered = events
+    .filter(e => {
+      const isMajor = ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'CHF', 'NZD'].includes(e.country);
+      const isHighOrMed = ['High', 'Medium'].includes(e.impact);
+      return isMajor && isHighOrMed;
+    })
+    .map(e => ({ ...e, parsedDate: new Date(e.date) }))
+    .filter(e => {
+      // Show events from today or the future of this week
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return e.parsedDate >= startOfToday;
+    })
+    .sort((a, b) => a.parsedDate - b.parsedDate);
+
+  if (filtered.length === 0) {
+    container.appendChild(el('p', 'news-empty-text', '✅ No major high-impact news remaining this week.'));
+    return;
+  }
+
+  const listEl = el('div', 'news-event-list');
+  listEl.style.display = 'flex';
+  listEl.style.flexDirection = 'column';
+  listEl.style.gap = 'var(--space-3)';
+  listEl.style.marginTop = 'var(--space-3)';
+
+  // Volatility threat bar (if red news within 1 hour)
+  let threatReleased = false;
+
+  filtered.slice(0, 5).forEach(e => {
+    const eventRow = el('div', 'news-event-item');
+    eventRow.style.display = 'flex';
+    eventRow.style.justifyContent = 'space-between';
+    eventRow.style.alignItems = 'center';
+    eventRow.style.padding = 'var(--space-3)';
+    eventRow.style.borderRadius = 'var(--radius-md)';
+    eventRow.style.background = 'rgba(255, 255, 255, 0.02)';
+    eventRow.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+    eventRow.style.transition = 'all 0.3s ease';
+
+    // Left: Folder Icon + Currency + Title
+    const details = el('div', 'news-details');
+    details.style.display = 'flex';
+    details.style.alignItems = 'center';
+    details.style.gap = 'var(--space-2)';
+
+    // Folder badge
+    const folder = el('span', `news-folder news-folder--${e.impact.toLowerCase()}`);
+    folder.textContent = e.impact === 'High' ? '🔴' : '🟠';
+    folder.style.fontSize = '12px';
+    details.appendChild(folder);
+
+    const currencyBadge = el('span', 'news-currency', e.country);
+    currencyBadge.style.fontWeight = '800';
+    currencyBadge.style.fontSize = 'var(--text-xs)';
+    currencyBadge.style.color = e.impact === 'High' ? 'var(--crimson)' : 'var(--cyan)';
+    currencyBadge.style.padding = '2px 6px';
+    currencyBadge.style.borderRadius = '4px';
+    currencyBadge.style.background = e.impact === 'High' ? 'rgba(142, 14, 0, 0.15)' : 'rgba(0, 212, 255, 0.1)';
+    details.appendChild(currencyBadge);
+
+    const titleEl = el('span', 'news-title-text', e.title);
+    titleEl.style.fontSize = 'var(--text-xs)';
+    titleEl.style.fontWeight = '500';
+    details.appendChild(titleEl);
+    eventRow.appendChild(details);
+
+    // Right: Date & Time formatted locally
+    const timeVal = e.parsedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const dayVal = e.parsedDate.toLocaleDateString('en-US', { weekday: 'short' });
+    
+    const timeBox = el('div', 'news-time-box');
+    timeBox.style.textAlign = 'right';
+    timeBox.appendChild(el('span', 'news-day-label', `${dayVal} `));
+    
+    const timeLabel = el('span', 'news-time-label', timeVal);
+    timeLabel.style.fontWeight = '700';
+    timeLabel.style.fontSize = 'var(--text-xs)';
+    timeBox.appendChild(timeLabel);
+    
+    timeBox.style.fontSize = '11px';
+    timeBox.style.color = 'var(--text-muted)';
+    eventRow.appendChild(timeBox);
+
+    // Threat Check: Check if high-impact USD, EUR, or GBP news is within 60 minutes
+    const diffMin = Math.round((e.parsedDate - now) / 60000);
+    if (!threatReleased && e.impact === 'High' && diffMin >= -30 && diffMin <= 60) {
+      threatReleased = true;
+      const threatBar = el('div', 'news-threat-alert');
+      threatBar.style.background = 'linear-gradient(90deg, #8e0e00 0%, #1f1c18 100%)';
+      threatBar.style.border = '1px solid rgba(142, 14, 0, 0.5)';
+      threatBar.style.padding = 'var(--space-3)';
+      threatBar.style.borderRadius = 'var(--radius-md)';
+      threatBar.style.marginBottom = 'var(--space-3)';
+      threatBar.style.display = 'flex';
+      threatBar.style.alignItems = 'center';
+      threatBar.style.gap = 'var(--space-2)';
+      threatBar.style.animation = 'glow 1.5s infinite ease-in-out';
+      
+      threatBar.appendChild(el('span', '', '⚠️'));
+      const text = el('span', '', `${e.country} ${e.title} release ${diffMin > 0 ? `in ${diffMin} mins` : 'active now'}! Volatility alert.`);
+      text.style.fontSize = 'var(--text-xs)';
+      text.style.fontWeight = '700';
+      text.style.color = '#ffffff';
+      threatBar.appendChild(text);
+      
+      container.appendChild(threatBar);
+      
+      // Also highlight this event row with a threat border
+      eventRow.style.borderColor = 'var(--crimson)';
+      eventRow.style.boxShadow = '0 0 10px rgba(142, 14, 0, 0.2)';
+    }
+
+    listEl.appendChild(eventRow);
+  });
+
+  container.appendChild(listEl);
 }

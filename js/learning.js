@@ -2666,6 +2666,22 @@ function savePomoData() {
     completedToday: _pomoState.completedToday,
     date: _pomoState.lastUpdatedDate
   });
+
+  // Log focus block completion historically under pomodoro_history
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const dateKey = `${y}-${m}-${d}`;
+
+  const history = storage.get('pomodoro_history', {});
+  history[dateKey] = _pomoState.completedToday;
+  storage.set('pomodoro_history', history);
+
+  // Sync to Firestore immediately upon focus block completion
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  });
 }
 
 function formatPomoTime(secs) {

@@ -8,6 +8,7 @@ import { getTrades } from './trading.js';
 import { getLessons } from './learning.js';
 import { getHabits, calculateStreak } from './streaks.js';
 import { formatCurrency, formatDate } from './utils.js';
+import storage from './storage.js';
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -85,6 +86,8 @@ export function renderCalendarPage(container) {
     const trades = getTrades();
     const lessons = getLessons();
     const habits = getHabits();
+    const dailyGrades = storage.get('daily_grades', {});
+    const pomoHistory = storage.get('pomodoro_history', {});
 
     // Empty buffer cells
     for (let i = 0; i < firstDayIndex; i++) {
@@ -98,6 +101,14 @@ export function renderCalendarPage(container) {
       
       const dayCell = el('div', 'calendar-day');
       dayCell.appendChild(el('span', 'calendar-day-number', String(day)));
+
+      // 0. Daily Discipline Grade Ring & Badge
+      const grade = dailyGrades[dateKey];
+      if (grade) {
+        dayCell.classList.add(`calendar-day--grade-${grade.replace('+', 'plus')}`);
+        const badge = el('span', `calendar-day-grade-badge calendar-day-grade-badge--${grade.replace('+', 'plus')}`, grade);
+        dayCell.appendChild(badge);
+      }
 
       const indicators = el('div', 'calendar-day-indicators');
 
@@ -143,6 +154,14 @@ export function renderCalendarPage(container) {
         indicators.appendChild(lsIndicator);
       }
 
+      // 4. Tally Pomodoro Blocks
+      const pomoCount = Number(pomoHistory[dateKey]) || 0;
+      if (pomoCount > 0) {
+        const pomoIndicator = el('span', 'calendar-day-indicator calendar-day-indicator--pomo');
+        pomoIndicator.textContent = `🍅 ${pomoCount} Block${pomoCount > 1 ? 's' : ''}`;
+        indicators.appendChild(pomoIndicator);
+      }
+
       dayCell.appendChild(indicators);
 
       // Highlight Today
@@ -151,13 +170,11 @@ export function renderCalendarPage(container) {
         dayCell.classList.add('calendar-day--today');
       }
 
-      // Detailed popover click listener
-      if (dayTrades.length > 0 || checkedHabits.length > 0 || frozenHabits.length > 0 || dayLessons.length > 0) {
-        dayCell.classList.add('calendar-day--active');
-        dayCell.addEventListener('click', () => {
-          openDayPopover(dateKey, dayTrades, checkedHabits, frozenHabits, dayLessons);
-        });
-      }
+      // All days are now active and clickable for daily performance grading
+      dayCell.classList.add('calendar-day--active');
+      dayCell.addEventListener('click', () => {
+        openDayPopover(dateKey, dayTrades, checkedHabits, frozenHabits, dayLessons, pomoCount, grade);
+      });
 
       daysGrid.appendChild(dayCell);
     }
@@ -166,7 +183,7 @@ export function renderCalendarPage(container) {
   updateCalendar();
 }
 
-function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons) {
+function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount = 0, grade = null) {
   // Clear any existing modal
   const existing = document.getElementById('calendar-popover');
   if (existing) existing.remove();
@@ -261,12 +278,76 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons) {
     const list = el('div', 'popover-list');
     lessons.forEach(l => {
       const item = el('div', 'popover-list-item-lesson');
-      item.appendChild(el('strong', '', `Episode ${l.episodeId}: ${l.title || 'Logged Lesson'}`));
+      item.appendChild(el('strong', '', `Episode ${l.episodeId || l.id}: ${l.title || 'Logged Lesson'}`));
       list.appendChild(item);
     });
     section.appendChild(list);
     container.appendChild(section);
   }
+
+  // 4. Pomodoro Section
+  if (pomoCount > 0) {
+    const pomoSection = el('div', 'popover-section');
+    pomoSection.style.marginTop = 'var(--space-4)';
+    pomoSection.appendChild(el('h3', 'popover-section-title', '⏱️ Study Blocks'));
+    const blockText = el('p', '', `You completed ${pomoCount} Pomodoro study focus block${pomoCount > 1 ? 's' : ''} on this day! 🍅`);
+    blockText.style.fontSize = 'var(--text-sm)';
+    blockText.style.color = 'var(--text-secondary)';
+    blockText.style.marginTop = 'var(--space-2)';
+    pomoSection.appendChild(blockText);
+    container.appendChild(pomoSection);
+  }
+
+  // 5. Daily Performance Grade Selection Card
+  const gradeSection = el('div', 'popover-section');
+  gradeSection.style.marginTop = 'var(--space-4)';
+  gradeSection.style.borderTop = '1px solid rgba(255,255,255,0.06)';
+  gradeSection.style.paddingTop = 'var(--space-4)';
+
+  gradeSection.appendChild(el('h3', 'popover-section-title', '📊 Daily Discipline Grade'));
+  
+  const gradeSelectRow = el('div', 'grade-select-row');
+  gradeSelectRow.style.display = 'flex';
+  gradeSelectRow.style.flexWrap = 'wrap';
+  gradeSelectRow.style.gap = 'var(--space-2)';
+  gradeSelectRow.style.marginTop = 'var(--space-2)';
+
+  const gradesList = ['None', 'A+', 'A', 'B', 'C', 'D', 'F'];
+  gradesList.forEach(g => {
+    const isActive = g === (grade || 'None');
+    const btn = el('button', `btn btn-sm ${isActive ? 'btn-secondary' : 'btn-outline'}`);
+    btn.textContent = g;
+    btn.style.padding = '0.3rem 0.6rem';
+    btn.addEventListener('click', () => {
+      const dailyGradesMap = storage.get('daily_grades', {});
+      if (g === 'None') {
+        delete dailyGradesMap[dateKey];
+      } else {
+        dailyGradesMap[dateKey] = g;
+      }
+      storage.set('daily_grades', dailyGradesMap);
+
+      // Sync to cloud immediately
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      });
+
+      overlay.remove();
+      
+      // Force trigger the main calendar's updateCalendar function
+      const renderWrapper = document.getElementById('page-calendar');
+      if (renderWrapper) {
+        // Redraw page container
+        renderCalendarPage(renderWrapper);
+      }
+      
+      // Reopen popover modal with fresh grade selection
+      openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount, g === 'None' ? null : g);
+    });
+    gradeSelectRow.appendChild(btn);
+  });
+  gradeSection.appendChild(gradeSelectRow);
+  container.appendChild(gradeSection);
 
   modal.appendChild(container);
   overlay.appendChild(modal);
