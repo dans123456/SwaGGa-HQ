@@ -781,9 +781,10 @@
 
 .exercise-step-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-2) 0;
+  text-align: left;
 }
 
 .exercise-step-item + .exercise-step-item {
@@ -802,11 +803,25 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.exercise-step-text-wrap {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.exercise-step-title-inline {
+  color: var(--cyan);
+  font-weight: 700;
 }
 
 .exercise-step-text {
   font-size: var(--text-sm);
   color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 .exercise-actions {

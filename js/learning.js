@@ -28,9 +28,9 @@ export const BRAH_GOH_CURRICULUM = [
   { id: 'ep9',  episode: 9,  title: 'Fair Value Gaps',                 concepts: ['fair-value-gap', 'imbalance', 'price-inefficiency', 'FVG', 'liquidity-void'],      description: 'Price inefficiencies. How FVGs form and how to trade them.' },
   // Locked episodes (10-32) — user can add details when released
   { id: 'ep10', episode: 10, title: 'Lesson 10', concepts: [], description: '', locked: true },
-  { id: 'ep11', episode: 11, title: 'Lesson 11', concepts: [], description: '', locked: true },
-  { id: 'ep12', episode: 12, title: 'Lesson 12', concepts: [], description: '', locked: true },
-  { id: 'ep13', episode: 13, title: 'Lesson 13', concepts: [], description: '', locked: true },
+  { id: 'ep11', episode: 11, title: 'Top Down Analysis Strategy', concepts: ['top-down-analysis', 'HTF-bias', 'multi-timeframe', 'fractal-markets'], description: 'How to perform multi-timeframe analysis. Establish HTF bias on D1/H4 and execute on LTF (H1/M15) to avoid noise.', videoUrl: 'https://youtu.be/qtrATSo3-lQ?si=MhuT5JwI_Wkbp5eP' },
+  { id: 'ep12', episode: 12, title: 'ICT Killzones', concepts: ['killzones', 'session-timing', 'london-killzone', 'new-york-killzone'], description: 'Understanding session timing and high-volume windows. Exact times for Asian, London, New York, and London Close sessions.', videoUrl: 'https://youtu.be/uLw-qdpV3uk?si=elqDijw5R0RU4MCK' },
+  { id: 'ep13', episode: 13, title: 'Liquidity Concepts & Inducements', concepts: ['liquidity', 'inducement', 'liquidity-sweeps', 'retail-traps'], description: 'How smart money engineers traps to lure retail traders into early entries and sweep stop-losses for liquidity.', videoUrl: 'https://youtu.be/TthzSVTzWoE?si=4W_vBI8GGpg--REU' },
   { id: 'ep14', episode: 14, title: 'Lesson 14', concepts: [], description: '', locked: true },
   { id: 'ep15', episode: 15, title: 'Lesson 15', concepts: [], description: '', locked: true },
   { id: 'ep16', episode: 16, title: 'Lesson 16', concepts: [], description: '', locked: true },
@@ -74,6 +74,13 @@ const QUIZ_BANK = [
   { concept: 'mindset',            q: 'The growth mindset in trading involves:',                        choices: ['Viewing losses as learning opportunities', 'Never losing money', 'Trading without a plan', 'Only taking sure-win trades'], answer: 0 },
   { concept: 'doji',               q: 'A doji candle represents:',                                      choices: ['Indecision between buyers and sellers', 'Strong bullish momentum', 'A guaranteed reversal', 'Low volume'], answer: 0 },
   { concept: 'swing-points',       q: 'Swing highs and swing lows help identify:',                     choices: ['Market structure and trend direction', 'The exact entry price', 'News events', 'Lot sizes'], answer: 0 },
+  { concept: 'top-down-analysis',  q: 'What is the primary purpose of top-down analysis?',             choices: ['To establish the overall market bias/direction from higher time frames', 'To find the exact entry down to the millisecond', 'To calculate the spread and commissions', 'To check the economic news calendar'], answer: 0 },
+  { concept: 'HTF-bias',           q: 'If the Higher Time Frame (HTF) bias is bullish, you should:',    choices: ['Look strictly for buy setups on lower time frames', 'Look strictly for sell setups on lower time frames', 'Trade counter-trend on micro charts', 'Avoid trading completely'], answer: 0 },
+  { concept: 'killzones',          q: 'ICT Killzones refer to:',                                       choices: ['Specific time windows of high institutional activity and volatility', 'Areas where your account is at risk of margin call', 'Support and resistance lines on the chart', 'Price levels where volume is zero'], answer: 0 },
+  { concept: 'london-killzone',    q: 'When does the London Killzone occur in New York Time?',         choices: ['2:00 AM – 5:00 AM', '8:00 PM – 12:00 AM', '7:00 AM – 10:00 AM', '12:00 PM – 2:00 PM'], answer: 0 },
+  { concept: 'new-york-killzone',   q: 'The New York Killzone is generally active during:',             choices: ['7:00 AM – 10:00 AM NY Time', '2:00 AM – 5:00 AM NY Time', '8:00 PM – 12:00 AM NY Time', '10:00 AM – 12:00 PM NY Time'], answer: 0 },
+  { concept: 'inducement',         q: 'In SMC, an inducement (IDM) is defined as:',                    choices: ['A deliberate market trap to lure retail traders and build liquidity', 'An bonus payment from your broker', 'A candlestick patterns that is always green', 'A type of trailing stop loss'], answer: 0 },
+  { concept: 'liquidity-sweeps',   q: 'A liquidity sweep occurs when price:',                          choices: ['Clears stop-losses above/below swing points before reversing', 'Moves sideways in low volume consolidation', 'Stays exactly at a key Fibonacci level', 'Breaks out with no retracement'], answer: 0 },
 ];
 
 /** Open-ended question templates */
@@ -131,14 +138,207 @@ export function getConceptLibrary() {
   return [...conceptSet];
 }
 
+export function generateCumulativeAssignment(episodeNum, asset, timeframe) {
+  const steps = [];
+
+  // Add Top Down if selected >= 11
+  if (episodeNum >= 11) {
+    steps.push({
+      title: 'Top Down Analysis [Ep 11]',
+      text: `Analyze the market structure on a Higher Time Frame (e.g., H4) to establish a clear directional bias, then zoom into the ${timeframe} chart to execute.`
+    });
+  }
+
+  // Always include Market Structure if >= 5
+  if (episodeNum >= 5) {
+    steps.push({
+      title: 'Market Structure [Ep 5]',
+      text: `Identify the trend on the ${asset} ${timeframe} chart. Mark the most recent Break of Structure (BOS) or Change of Character (CHOCH), and label swing highs/lows.`
+    });
+  }
+
+  // Include Supply & Demand if >= 7
+  if (episodeNum >= 7) {
+    steps.push({
+      title: 'Supply & Demand [Ep 7]',
+      text: `Locate and mark the institutional Supply or Demand zone (Order Block) responsible for the structural breakout.`
+    });
+  }
+
+  // Include Premium/Discount if >= 8
+  if (episodeNum >= 8) {
+    steps.push({
+      title: 'Premium / Discount & Fibonacci [Ep 8]',
+      text: `Draw a Fibonacci retracement from the swing low to swing high (or vice-versa). Ensure the price is in Discount (for buys) or Premium (for sells) inside the OTE (0.618 - 0.786) region.`
+    });
+  }
+
+  // Include Fair Value Gaps if >= 9
+  if (episodeNum >= 9) {
+    steps.push({
+      title: 'Fair Value Gaps [Ep 9]',
+      text: `Spot any unmitigated Fair Value Gaps (FVG) or imbalances overlapping with your zone of interest.`
+    });
+  }
+
+  // Include Liquidity & Inducement if >= 13
+  if (episodeNum >= 13) {
+    steps.push({
+      title: 'Liquidity & Inducements [Ep 13]',
+      text: `Identify the Inducement (IDM) level / retail trap. Wait for price to sweep the liquidity of that swing high/low before entry.`
+    });
+  }
+
+  // Include ICT Killzones if >= 12
+  if (episodeNum >= 12) {
+    steps.push({
+      title: 'ICT Killzones [Ep 12]',
+      text: `Verify that your trade execution falls strictly within a valid ICT Killzone (London: 2-5 AM, NY: 7-10 AM, or Asian: 8-12 PM New York time).`
+    });
+  }
+
+  // Always include Candlestick trigger if >= 6
+  if (episodeNum >= 6) {
+    steps.push({
+      title: 'Candlestick Confirmation [Ep 6]',
+      text: `Wait for a candlestick rejection confirmation (e.g. bullish/bearish engulfing, pin bar, or strong wick rejection) inside the zone before entry.`
+    });
+  }
+
+  // Handle any custom dynamic lessons (> 13)
+  const overrides = storage.get('bg_unlocked_lessons', {});
+  const unlockedList = Object.values(overrides).filter(x => x.episode <= episodeNum);
+  unlockedList.forEach(ul => {
+    if (ul.episode > 13) {
+      if (Array.isArray(ul.concepts)) {
+        ul.concepts.forEach(concept => {
+          const exists = steps.some(s => s.title.toLowerCase().includes(concept.toLowerCase()));
+          if (!exists) {
+            steps.push({
+              title: `Custom Confluence (${concept}) [Ep ${ul.episode}]`,
+              text: `Locate and verify the ${concept} concept setup on the chart for ${asset}.`
+            });
+          }
+        });
+      }
+    }
+  });
+
+  const text = `Cumulative Trade Setup [Level ${episodeNum}]: Perform a full multi-confluence analysis on ${asset} (${timeframe} chart) integrating all steps from Episode 5 up to Episode ${episodeNum}.`;
+  
+  return {
+    text,
+    episodeNum,
+    asset,
+    timeframe,
+    steps
+  };
+}
+
 export function generateAssignment(conceptLibrary) {
-  const concepts = conceptLibrary.length ? conceptLibrary : ['price-action'];
-  const concept = concepts[Math.floor(Math.random() * concepts.length)];
+  // Fallback compatibility wrapper
   const asset = RANDOM_ASSETS[Math.floor(Math.random() * RANDOM_ASSETS.length)];
   const timeframe = RANDOM_TIMEFRAMES[Math.floor(Math.random() * RANDOM_TIMEFRAMES.length)];
-  const template = ASSIGNMENT_TEMPLATES[Math.floor(Math.random() * ASSIGNMENT_TEMPLATES.length)];
-  const text = template.replace('{concept}', concept).replace('{asset}', asset).replace('{timeframe}', timeframe);
-  return { text, concept, asset, timeframe };
+  return generateCumulativeAssignment(9, asset, timeframe);
+}
+
+function openPracticeLevelSelector(onRefresh) {
+  const { body, close } = createModal('🎲 Practice Level Selector');
+
+  body.appendChild(el('p', 'unlock-hint', 'Choose your practice level. Level 5 covers Market Structure. Each higher level adds confluences cumulatively (e.g., Level 9 adds FVGs on top of S/D, Fib, and Structure).'));
+
+  const form = el('form', 'modal-form');
+  form.setAttribute('novalidate', '');
+
+  // Level selection group
+  const lvlGroup = el('div', 'form-group');
+  lvlGroup.appendChild(el('label', 'form-label', 'Confluence Level'));
+  
+  const lvlSelect = document.createElement('select');
+  lvlSelect.className = 'form-select';
+  lvlSelect.name = 'level';
+  
+  // Find which levels are unlocked
+  const overrides = storage.get('bg_unlocked_lessons', {});
+  const effectiveCurriculum = BRAH_GOH_CURRICULUM.map(ep => {
+    if (overrides[ep.id]) return { ...ep, ...overrides[ep.id], locked: false };
+    return ep;
+  });
+
+  // Filter episodes >= 5 that are not locked
+  const activeLevels = effectiveCurriculum.filter(ep => ep.episode >= 5 && !ep.locked);
+
+  if (activeLevels.length === 0) {
+    const opt = el('option', '', 'No levels unlocked yet (need Ep 5+)');
+    opt.value = '';
+    lvlSelect.appendChild(opt);
+  } else {
+    activeLevels.forEach(ep => {
+      const opt = el('option', '', `Level ${ep.episode}: ${ep.title}`);
+      opt.value = String(ep.episode);
+      lvlSelect.appendChild(opt);
+    });
+  }
+  lvlGroup.appendChild(lvlSelect);
+  form.appendChild(lvlGroup);
+
+  // Asset selection
+  const assetGroup = el('div', 'form-group');
+  assetGroup.appendChild(el('label', 'form-label', 'Asset Pair (Optional)'));
+  const assetSelect = document.createElement('select');
+  assetSelect.className = 'form-select';
+  assetSelect.name = 'asset';
+  const defAssetOpt = el('option', '', '— Random Asset —');
+  defAssetOpt.value = '';
+  assetSelect.appendChild(defAssetOpt);
+  
+  RANDOM_ASSETS.forEach(asset => {
+    const opt = el('option', '', asset);
+    opt.value = asset;
+    assetSelect.appendChild(opt);
+  });
+  assetGroup.appendChild(assetSelect);
+  form.appendChild(assetGroup);
+
+  // Timeframe selection
+  const tfGroup = el('div', 'form-group');
+  tfGroup.appendChild(el('label', 'form-label', 'Timeframe (Optional)'));
+  const tfSelect = document.createElement('select');
+  tfSelect.className = 'form-select';
+  tfSelect.name = 'timeframe';
+  const defTfOpt = el('option', '', '— Random Timeframe —');
+  defTfOpt.value = '';
+  tfSelect.appendChild(defTfOpt);
+  
+  RANDOM_TIMEFRAMES.forEach(tf => {
+    const opt = el('option', '', tf);
+    opt.value = tf;
+    tfSelect.appendChild(opt);
+  });
+  tfGroup.appendChild(tfSelect);
+  form.appendChild(tfGroup);
+
+  // Submit button
+  const submitBtn = el('button', 'btn btn-primary btn-lg', 'Generate Setup ⚡');
+  submitBtn.type = 'submit';
+  if (activeLevels.length === 0) submitBtn.disabled = true;
+  form.appendChild(submitBtn);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const lvlVal = lvlSelect.value;
+    if (!lvlVal) return;
+
+    const level = Number(lvlVal);
+    const asset = assetSelect.value || RANDOM_ASSETS[Math.floor(Math.random() * RANDOM_ASSETS.length)];
+    const timeframe = tfSelect.value || RANDOM_TIMEFRAMES[Math.floor(Math.random() * RANDOM_TIMEFRAMES.length)];
+
+    const assignment = generateCumulativeAssignment(level, asset, timeframe);
+    close();
+    openExercisePopup(assignment, onRefresh);
+  });
+
+  body.appendChild(form);
 }
 
 /* ================================================================== */
@@ -1058,9 +1258,7 @@ function renderAssignments(container, onRefresh) {
 
   const genBtn = el('button', 'btn btn-secondary', '🎲 Generate Exercise');
   genBtn.addEventListener('click', () => {
-    const concepts = getConceptLibrary();
-    const assignment = generateAssignment(concepts);
-    openExercisePopup(assignment, onRefresh);
+    openPracticeLevelSelector(onRefresh);
   });
   wrapper.appendChild(genBtn);
 
@@ -1074,7 +1272,8 @@ function renderAssignments(container, onRefresh) {
       card.appendChild(el('p', 'assignment-text', a.text));
 
       const meta = el('div', 'assignment-meta');
-      meta.appendChild(el('span', 'tag', a.concept));
+      const conceptTag = a.episodeNum ? `Level ${a.episodeNum}` : (a.concept || 'SMC');
+      meta.appendChild(el('span', 'tag', conceptTag));
       meta.appendChild(el('span', 'tag', a.asset));
       meta.appendChild(el('span', 'tag', a.timeframe));
       card.appendChild(meta);
@@ -1091,6 +1290,13 @@ function renderAssignments(container, onRefresh) {
           });
         });
         actions.appendChild(chartBtn);
+      }
+
+      // View Steps button
+      if (Array.isArray(a.steps) && a.steps.length > 0) {
+        const stepsBtn = el('button', 'btn btn-sm assignment-btn-steps', '📋 View Steps');
+        stepsBtn.addEventListener('click', () => openExercisePopup(a, onRefresh));
+        actions.appendChild(stepsBtn);
       }
 
       const toggleBtn = el('button', 'btn btn-sm assignment-btn-toggle', a.completed ? '↩️ Reopen' : '✅ Done');
@@ -1154,34 +1360,53 @@ function openExercisePopup(assignment, onRefresh) {
 
   // Tags
   const tagRow = el('div', 'exercise-tag-row');
-  [assignment.asset, assignment.timeframe, assignment.concept].forEach(t => {
+  const levelTag = assignment.episodeNum ? `Level ${assignment.episodeNum}` : (assignment.concept || 'SMC');
+  [assignment.asset, assignment.timeframe, levelTag].forEach(t => {
     tagRow.appendChild(el('span', 'exercise-tag', t));
   });
   card.appendChild(tagRow);
 
   // Steps
   const stepsBox = el('div', 'exercise-steps-box');
-  stepsBox.appendChild(el('p', 'exercise-steps-title', 'HOW TO COMPLETE'));
-  const stepData = [
-    { num: '1', text: `Open the chart for ${assignment.asset}` },
-    { num: '2', text: `Switch to ${assignment.timeframe} timeframe` },
-    { num: '3', text: 'Mark & draw your analysis' },
-    { num: '4', text: 'Come back and mark as Done ✅' },
-  ];
-  stepData.forEach(s => {
-    const step = el('div', 'exercise-step-item');
-    step.appendChild(el('span', 'exercise-step-num', s.num));
-    step.appendChild(el('span', 'exercise-step-text', s.text));
-    stepsBox.appendChild(step);
-  });
+  if (Array.isArray(assignment.steps) && assignment.steps.length > 0) {
+    stepsBox.appendChild(el('p', 'exercise-steps-title', 'CONFLUENCE CHECKLIST'));
+    assignment.steps.forEach((s, idx) => {
+      const step = el('div', 'exercise-step-item');
+      step.appendChild(el('span', 'exercise-step-num', String(idx + 1)));
+      
+      const stepTextWrap = el('div', 'exercise-step-text-wrap');
+      stepTextWrap.appendChild(el('strong', 'exercise-step-title-inline', s.title + ': '));
+      stepTextWrap.appendChild(el('span', '', s.text));
+      step.appendChild(stepTextWrap);
+      
+      stepsBox.appendChild(step);
+    });
+  } else {
+    stepsBox.appendChild(el('p', 'exercise-steps-title', 'HOW TO COMPLETE'));
+    const stepData = [
+      { num: '1', text: `Open the chart for ${assignment.asset}` },
+      { num: '2', text: `Switch to ${assignment.timeframe} timeframe` },
+      { num: '3', text: 'Mark & draw your analysis' },
+      { num: '4', text: 'Come back and mark as Done ✅' },
+    ];
+    stepData.forEach(s => {
+      const step = el('div', 'exercise-step-item');
+      step.appendChild(el('span', 'exercise-step-num', s.num));
+      step.appendChild(el('span', 'exercise-step-text', s.text));
+      stepsBox.appendChild(step);
+    });
+  }
   card.appendChild(stepsBox);
 
   // Actions
   const actions = el('div', 'exercise-actions');
+  const isAlreadySaved = !!assignment.id;
 
   const goBtn = el('button', 'exercise-btn-go', '📊 Go to Chart Now');
   goBtn.addEventListener('click', () => {
-    saveAssignment(assignment);
+    if (!isAlreadySaved) {
+      saveAssignment(assignment);
+    }
     overlay.classList.add('exercise-closing');
     setTimeout(() => overlay.remove(), 300);
     if (typeof onRefresh === 'function') onRefresh();
@@ -1191,14 +1416,16 @@ function openExercisePopup(assignment, onRefresh) {
   });
   actions.appendChild(goBtn);
 
-  const laterBtn = el('button', 'exercise-btn-later', '💾 Save for Later');
-  laterBtn.addEventListener('click', () => {
-    saveAssignment(assignment);
-    overlay.classList.add('exercise-closing');
-    setTimeout(() => overlay.remove(), 300);
-    if (typeof onRefresh === 'function') onRefresh();
-  });
-  actions.appendChild(laterBtn);
+  if (!isAlreadySaved) {
+    const laterBtn = el('button', 'exercise-btn-later', '💾 Save for Later');
+    laterBtn.addEventListener('click', () => {
+      saveAssignment(assignment);
+      overlay.classList.add('exercise-closing');
+      setTimeout(() => overlay.remove(), 300);
+      if (typeof onRefresh === 'function') onRefresh();
+    });
+    actions.appendChild(laterBtn);
+  }
 
   card.appendChild(actions);
   overlay.appendChild(card);
