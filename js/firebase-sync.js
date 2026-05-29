@@ -193,15 +193,42 @@ export async function pullFromCloud() {
       } else if (local === undefined) {
         merged[key] = cloud;
       } else if (Array.isArray(cloud) && Array.isArray(local)) {
-        // Merge arrays by id (dedup)
-        const seen = new Map();
-        [...cloud, ...local].forEach(item => {
-          const itemId = item?.id || JSON.stringify(item);
-          if (!seen.has(itemId)) {
-            seen.set(itemId, item);
-          }
-        });
-        merged[key] = [...seen.values()];
+        if (key === 'habits') {
+          // Custom merge for habits: merge the logs and freezes of each habit by id
+          const mergedHabits = [];
+          const allIds = new Set([...cloud.map(h => h.id), ...local.map(h => h.id)]);
+          
+          allIds.forEach(id => {
+            const cloudH = cloud.find(h => h.id === id);
+            const localH = local.find(h => h.id === id);
+            
+            if (!cloudH) {
+              mergedHabits.push(localH);
+            } else if (!localH) {
+              mergedHabits.push(cloudH);
+            } else {
+              const mergedLog = { ...(cloudH.log || {}), ...(localH.log || {}) };
+              const mergedFreezes = { ...(cloudH.freezes || {}), ...(localH.freezes || {}) };
+              mergedHabits.push({
+                ...cloudH,
+                ...localH, // local overrides (custom styling)
+                log: mergedLog,
+                freezes: mergedFreezes
+              });
+            }
+          });
+          merged[key] = mergedHabits;
+        } else {
+          // Merge other arrays by id (local wins over cloud for same ID to keep new details)
+          const seen = new Map();
+          [...local, ...cloud].forEach(item => {
+            const itemId = item?.id || JSON.stringify(item);
+            if (!seen.has(itemId)) {
+              seen.set(itemId, item);
+            }
+          });
+          merged[key] = [...seen.values()];
+        }
       } else {
         // For non-arrays, cloud wins (most recent sync)
         merged[key] = cloud;

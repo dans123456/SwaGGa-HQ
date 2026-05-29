@@ -354,6 +354,14 @@
 }
 
 @media (max-width: 480px) {
+  .habit-card-pro {
+    padding: var(--space-4) var(--space-4); /* Snug padding to remove wide edge gaps on mobile */
+  }
+
+  .habit-pro__header {
+    gap: var(--space-3); /* Tighter gap between emoji and text */
+  }
+
   .habit-pro__stats {
     gap: var(--space-2);
   }

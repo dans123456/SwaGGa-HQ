@@ -41,12 +41,17 @@ export function getHabits() {
     habits = DEFAULT_HABITS.map((h) => ({ ...h, log: {} }));
     storage.set(STORAGE_KEY, habits);
   } else {
-    // Migration: add baseStreak if missing
+    // Migration: add baseStreak if missing and enforce correct duolingo base
     let migrated = false;
     habits.forEach(h => {
       if (h.baseStreak === undefined) {
         const def = DEFAULT_HABITS.find(d => d.id === h.id);
         h.baseStreak = def ? def.baseStreak : 0;
+        migrated = true;
+      }
+      // Force duolingo base streak to be exactly 45 (to match user's actual 46th day today)
+      if (h.id === 'duolingo' && h.baseStreak !== 45) {
+        h.baseStreak = 45;
         migrated = true;
       }
     });
@@ -332,6 +337,10 @@ export function renderHabitCard(habit, onToggle) {
   }
   toggleBtn.addEventListener('click', () => {
     toggleHabit(habit.id);
+    // Push updates to cloud immediately if signed in to prevent any lag or refresh loss
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
     if (typeof onToggle === 'function') onToggle();
   });
   actionRow.appendChild(toggleBtn);
@@ -360,6 +369,11 @@ export function renderHabitCard(habit, onToggle) {
           habits[index] = habit;
           _saveHabits(habits);
         }
+
+        // Push updates to cloud immediately if signed in
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
         
         playFreezeAnimation(card, () => {
           if (typeof onToggle === 'function') onToggle();
@@ -419,6 +433,29 @@ export function renderCalendarHeatmap(container, habitData) {
   }
 
   wrapper.appendChild(grid);
+
+  // Legend explaining the heat-levels
+  const legend = el('div', 'heatmap-legend');
+  legend.style.display = 'flex';
+  legend.style.justifyContent = 'flex-end';
+  legend.style.alignItems = 'center';
+  legend.style.gap = '6px';
+  legend.style.marginTop = 'var(--space-3)';
+  legend.style.fontSize = 'var(--text-xs)';
+  legend.style.color = 'var(--text-muted)';
+
+  legend.appendChild(el('span', '', 'Less'));
+  [0, 1, 2, 3].forEach(lvl => {
+    const box = el('div', `heatmap-cell heat-${lvl}`);
+    box.style.width = '12px';
+    box.style.height = '12px';
+    box.style.borderRadius = '2px';
+    box.style.aspectRatio = '1';
+    legend.appendChild(box);
+  });
+  legend.appendChild(el('span', '', 'More (Perfect Day ⚡)'));
+  wrapper.appendChild(legend);
+
   container.appendChild(wrapper);
 }
 
