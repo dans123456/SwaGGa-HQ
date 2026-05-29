@@ -128,11 +128,9 @@ class Router {
     // --- Show target page with enter animation -------------------------
     const target = this._routes.get(hash);
     if (target && target.container) {
-      // Render once (lazy).
-      if (!target.rendered) {
-        target.render(target.container);
-        target.rendered = true;
-      }
+      // Render target page container on every navigation to ensure all live stats, confluences, and components update in real-time
+      target.render(target.container);
+      target.rendered = true;
       target.container.style.display = 'block';
       target.container.classList.remove('page-exit');
       // Force reflow then animate in.

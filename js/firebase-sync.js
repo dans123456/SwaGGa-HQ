@@ -292,8 +292,45 @@ export async function pullFromCloud() {
           });
           merged[key] = [...seen.values()];
         }
+      } else if (key === 'streak_freeze_tokens') {
+        // Higher count of tokens wins to prevent loss of newly earned freezes
+        merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);
+      } else if (key === 'xp_data') {
+        // Merge experience points: higher total XP wins, and unique history merged
+        const localXP = local?.totalXP || 0;
+        const cloudXP = cloud?.totalXP || 0;
+        const mergedTotal = Math.max(localXP, cloudXP);
+
+        const seenHist = new Set();
+        const mergedHist = [];
+        [...(local?.history || []), ...(cloud?.history || [])].forEach(h => {
+          if (h && h.action && h.xp && h.date) {
+            const hKey = `${h.action}_${h.xp}_${h.date}`;
+            if (!seenHist.has(hKey)) {
+              seenHist.add(hKey);
+              mergedHist.push(h);
+            }
+          }
+        });
+        merged[key] = { totalXP: mergedTotal, history: mergedHist };
+      } else if (key === 'pomodoro_data') {
+        // If same date, take maximum completed blocks. Otherwise, latest date wins
+        if (cloud && local && cloud.date === local.date) {
+          merged[key] = {
+            date: cloud.date,
+            completedToday: Math.max(cloud.completedToday || 0, local.completedToday || 0)
+          };
+        } else {
+          // Compare dates
+          const cloudDate = cloud?.date ? new Date(cloud.date) : new Date(0);
+          const localDate = local?.date ? new Date(local.date) : new Date(0);
+          merged[key] = localDate >= cloudDate ? local : cloud;
+        }
+      } else if (key.startsWith('ba_progress_')) {
+        // Progress percentage - maximum level/progress wins
+        merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);
       } else {
-        // For non-arrays, cloud wins (most recent sync)
+        // For other non-arrays, cloud wins (most recent sync)
         merged[key] = cloud;
       }
     });
