@@ -1078,3 +1078,190 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Mentor Critique Simulator Styles ──────────────────────── */
+
+.trade-critique-section {
+  margin-top: var(--space-6) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-top: var(--space-5) !important;
+}
+
+.trade-critique-prompt {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+  line-height: 1.5;
+}
+
+.trade-critique-mentors {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.trade-critique-mentor-btn {
+  flex: 1;
+  min-width: 200px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.trade-critique-mentor-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.trade-critique-mentor-btn.active:nth-child(1) {
+  border-color: var(--cyan);
+  background: rgba(0, 212, 255, 0.04);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
+}
+
+.trade-critique-mentor-btn.active:nth-child(2) {
+  border-color: var(--crimson, #8e0e00);
+  background: rgba(142, 14, 0, 0.04);
+  box-shadow: 0 0 15px rgba(142, 14, 0, 0.15);
+}
+
+.trade-critique-avatar-emoji {
+  font-size: 2rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+}
+
+.trade-critique-mentor-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.trade-critique-mentor-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.trade-critique-mentor-role {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Typing loading indicator */
+.critique-typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  animation: fadeIn 0.3s ease;
+  width: 100%;
+}
+
+.critique-typing span {
+  width: 7px;
+  height: 7px;
+  background-color: var(--cyan);
+  border-radius: 50%;
+  display: inline-block;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.critique-typing span:nth-child(1) { animation-delay: -0.32s; }
+.critique-typing span:nth-child(2) { animation-delay: -0.16s; }
+
+.critique-typing-text {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Speech bubbles feedback layout */
+.critique-bubble {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-xl);
+  border: 1px solid;
+  padding: var(--space-5) var(--space-6);
+  text-align: left;
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.critique-bubble::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 30px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-left: inherit;
+  border-top: inherit;
+  transform: rotate(45deg);
+}
+
+.critique-bubble--bradGoh {
+  border-color: rgba(0, 212, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(0, 212, 255, 0.05);
+}
+
+.critique-bubble--bossAckah {
+  border-color: rgba(142, 14, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(142, 14, 0, 0.05);
+}
+
+.critique-bubble-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: var(--space-2);
+}
+
+.critique-bubble-avatar {
+  font-size: 1.4rem;
+}
+
+.critique-bubble-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.critique-bubble--bradGoh .critique-bubble-name { color: var(--cyan); }
+.critique-bubble--bossAckah .critique-bubble-name { color: #ff6b6b; }
+
+.critique-bubble-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.critique-bubble-text strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}

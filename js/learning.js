@@ -1995,6 +1995,7 @@ export function renderLearningPage(container) {
 
   const dailyTipContainer = el('div');
   const pomodoroContainer = el('div');
+  const flashcardsContainer = el('div');
   const milestonesContainer = el('div');
   const actionContainer = el('div');
   const mentorContainer = el('div');
@@ -2002,9 +2003,10 @@ export function renderLearningPage(container) {
   const curriculumContainer = el('div');
   const baCurriculumContainer = el('div');
 
-  // Order: Daily Tip → Pomodoro → Milestones → Actions → Mentors → Assignments → Curriculum
+  // Order: Daily Tip → Pomodoro → Flashcards → Milestones → Actions → Mentors → Assignments → Curriculum
   container.appendChild(dailyTipContainer);
   container.appendChild(pomodoroContainer);
+  container.appendChild(flashcardsContainer);
   container.appendChild(milestonesContainer);
   container.appendChild(actionContainer);
   container.appendChild(mentorContainer);
@@ -2015,6 +2017,7 @@ export function renderLearningPage(container) {
   function refresh() {
     renderDailyTip(dailyTipContainer);
     renderPomodoroTimer(pomodoroContainer);
+    renderFlashcards(flashcardsContainer);
     renderMilestones(milestonesContainer);
     renderActionBar(actionContainer, refresh);
     renderMentorCards(mentorContainer, refresh, curriculumContainer, baCurriculumContainer);
@@ -2458,6 +2461,176 @@ function showNotificationToast(message) {
     toast.classList.remove('freeze-toast--visible');
     setTimeout(() => toast.remove(), 300);
   }, 3500);
+}
+
+/* ================================================================== */
+/*  3D GLASSMORPHIC FLASHCARDS SYSTEM                                 */
+/* ================================================================== */
+
+const FLASHCARD_TERMS = [
+  {
+    id: 'bos',
+    concept: 'BOS',
+    title: 'Break of Structure',
+    definition: 'A continuation signal where price breaks past a previous swing high (in an uptrend) or swing low (in a downtrend), validating the trend direction.',
+    emoji: '📈'
+  },
+  {
+    id: 'choch',
+    concept: 'CHOCH',
+    title: 'Change of Character',
+    definition: 'The first signal of a potential trend reversal. It occurs when price breaks the opposite swing point (e.g., a swing low in a bullish trend).',
+    emoji: '🔄'
+  },
+  {
+    id: 'fvg',
+    concept: 'FVG',
+    title: 'Fair Value Gap',
+    definition: 'A 3-candle imbalance. Forms when candle 1\'s wick and candle 3\'s wick do not overlap, leaving a visual "void" that price tends to retrace and fill.',
+    emoji: '🧩'
+  },
+  {
+    id: 'sweep',
+    concept: 'Sweep',
+    title: 'Liquidity Sweep',
+    definition: 'A raid where price briefly breaks a key level (e.g., previous highs/lows) to trigger stop-losses and engineering liquidity, before rapidly reversing.',
+    emoji: '🧹'
+  },
+  {
+    id: 'ote',
+    concept: 'OTE',
+    title: 'Optimal Trade Entry',
+    definition: 'The high-probability Fibonacci retracement window located strictly between the 61.8% and 78.6% levels, ideal for entering high-confluence setups.',
+    emoji: '📐'
+  },
+  {
+    id: 'ob',
+    concept: 'OB',
+    title: 'Order Block',
+    definition: 'The last opposite candle before a strong impulse leg. It represents where institutions placed massive block orders, acting as high-confluence support/resistance.',
+    emoji: '🧱'
+  },
+  {
+    id: 'idm',
+    concept: 'IDM',
+    title: 'Inducement',
+    definition: 'A minor swing high or low that acts as a trap. It entices early retail traders to buy or sell, building liquidity for smart money to sweep.',
+    emoji: '🪤'
+  },
+  {
+    id: 'mindset',
+    concept: 'Mindset',
+    title: 'Trading Mindset',
+    definition: 'Boss Ackah\'s core psychology: acquiring a powerful professional skill through commitment, emotional control, and not letting the lure of money cloud the mind.',
+    emoji: '🕯️'
+  }
+];
+
+export function renderFlashcards(container) {
+  container.replaceChildren();
+
+  // Read mastered terms
+  const mastered = storage.get('mastered_terms', []);
+  const masteredCount = mastered.length;
+  const totalCount = FLASHCARD_TERMS.length;
+  const percent = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0;
+
+  const section = el('div', 'flashcards-section');
+
+  // Header & Mastery Progress bar
+  const headerRow = el('div', 'flashcards-header');
+  const title = el('h2', 'section-title', '🎴 3D Concept Flashcards');
+  headerRow.appendChild(title);
+
+  const progressContainer = el('div', 'flashcards-progress-wrap');
+  const progressLabel = el('span', 'flashcards-progress-label', `🧩 Mastery: ${masteredCount}/${totalCount} (${percent}%)`);
+  progressContainer.appendChild(progressLabel);
+
+  const barTrack = el('div', 'flashcards-progress-track');
+  const barFill = el('div', 'flashcards-progress-fill');
+  barFill.style.width = `${percent}%`;
+  barTrack.appendChild(barFill);
+  progressContainer.appendChild(barTrack);
+  headerRow.appendChild(progressContainer);
+  
+  section.appendChild(headerRow);
+
+  // Cards Grid
+  const grid = el('div', 'flashcards-grid');
+  
+  FLASHCARD_TERMS.forEach(item => {
+    const isMastered = mastered.includes(item.id);
+    
+    // Outer Perspective container
+    const cardWrap = el('div', 'flashcard-container');
+    
+    // Card itself
+    const card = el('div', 'flashcard-card');
+    
+    // Inner wrapper
+    const cardInner = el('div', 'flashcard-inner');
+    
+    // FRONT Side
+    const front = el('div', 'flashcard-front');
+    front.appendChild(el('span', 'flashcard-front__emoji', item.emoji));
+    front.appendChild(el('h3', 'flashcard-front__concept', item.concept));
+    front.appendChild(el('span', 'flashcard-front__title', item.title));
+    front.appendChild(el('span', 'flashcard-front__hint', '👇 Click to Flip'));
+    
+    // BACK Side
+    const back = el('div', 'flashcard-back');
+    back.appendChild(el('h4', 'flashcard-back__title', item.title));
+    back.appendChild(el('p', 'flashcard-back__def', item.definition));
+    
+    // Mastered Checkbox Button (prevents flip bubble)
+    const masterBtn = el('button', `btn btn-sm flashcard-back__btn${isMastered ? ' active' : ''}`);
+    masterBtn.textContent = isMastered ? '✅ Mastered!' : '🧩 Mark Mastered';
+    masterBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // prevent card flip
+      
+      let currentMastered = storage.get('mastered_terms', []);
+      if (currentMastered.includes(item.id)) {
+        currentMastered = currentMastered.filter(id => id !== item.id);
+        masterBtn.textContent = '🧩 Mark Mastered';
+        masterBtn.classList.remove('active');
+      } else {
+        currentMastered.push(item.id);
+        masterBtn.textContent = '✅ Mastered!';
+        masterBtn.classList.add('active');
+        
+        // Show notification toast
+        showNotificationToast(`🧩 Mastered term: ${item.concept}! Keep it up! ⚡`);
+      }
+      
+      storage.set('mastered_terms', currentMastered);
+      
+      // Update sync immediately
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      });
+      
+      // Re-render flashcard progress bar
+      const updatedPercent = Math.round((currentMastered.length / totalCount) * 100);
+      progressLabel.textContent = `🧩 Mastery: ${currentMastered.length}/${totalCount} (${updatedPercent}%)`;
+      barFill.style.width = `${updatedPercent}%`;
+    });
+    back.appendChild(masterBtn);
+    
+    cardInner.appendChild(front);
+    cardInner.appendChild(back);
+    card.appendChild(cardInner);
+    
+    // Click card to flip
+    card.addEventListener('click', () => {
+      card.classList.toggle('flipped');
+    });
+    
+    cardWrap.appendChild(card);
+    grid.appendChild(cardWrap);
+  });
+  
+  section.appendChild(grid);
+  container.appendChild(section);
 }
 
 /* ================================================================== */

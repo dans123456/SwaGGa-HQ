@@ -151,6 +151,7 @@ const SYNC_KEYS = [
   'xp_data',
   'quiz_scores',
   'pomodoro_data',
+  'mastered_terms',
 ];
 
 const NAMESPACE = 'swagga';

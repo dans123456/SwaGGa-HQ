@@ -573,13 +573,105 @@ function openTradeDetail(trade) {
     body.appendChild(confSection);
   }
 
-  // Notes
   if (trade.notes) {
     const notesSection = el('div', 'trade-modal__notes');
     notesSection.appendChild(el('div', 'trade-modal__notes-title', 'Notes'));
     notesSection.appendChild(el('div', 'trade-modal__notes-body', trade.notes));
     body.appendChild(notesSection);
   }
+
+  // ── Mentor Critique Simulator ─────────────────────────────
+  const critiqueSection = el('div', 'trade-modal__notes trade-critique-section');
+  critiqueSection.appendChild(el('div', 'trade-modal__notes-title', '💬 Mentor Critique Simulator'));
+
+  const promptText = el('p', 'trade-critique-prompt');
+  promptText.textContent = 'Select a mentor to analyze your trade confluences, session timing, and execution psychology:';
+  critiqueSection.appendChild(promptText);
+
+  const mentorsRow = el('div', 'trade-critique-mentors');
+
+  // Brad Goh selector card
+  const bgCard = el('div', 'trade-critique-mentor-btn');
+  const bgAvatar = el('span', 'trade-critique-avatar-emoji', '🧠');
+  bgCard.appendChild(bgAvatar);
+  const bgInfo = el('div', 'trade-critique-mentor-info');
+  bgInfo.appendChild(el('span', 'trade-critique-mentor-name', 'Brad Goh'));
+  bgInfo.appendChild(el('span', 'trade-critique-mentor-role', 'ICT / SMC Educator'));
+  bgCard.appendChild(bgInfo);
+  mentorsRow.appendChild(bgCard);
+
+  // Boss Ackah selector card
+  const baCard = el('div', 'trade-critique-mentor-btn');
+  const baAvatar = el('span', 'trade-critique-avatar-emoji', '👑');
+  baCard.appendChild(baAvatar);
+  const baInfo = el('div', 'trade-critique-mentor-info');
+  baInfo.appendChild(el('span', 'trade-critique-mentor-name', 'Boss Ackah'));
+  baInfo.appendChild(el('span', 'trade-critique-mentor-role', 'Mindset Mentor'));
+  baCard.appendChild(baInfo);
+  mentorsRow.appendChild(baCard);
+
+  critiqueSection.appendChild(mentorsRow);
+
+  // Bubble / Response Container
+  const bubbleContainer = el('div', 'trade-critique-result');
+  critiqueSection.appendChild(bubbleContainer);
+
+  const handleSelectMentor = (mentorKey, activeBtn, inactiveBtn) => {
+    activeBtn.classList.add('active');
+    inactiveBtn.classList.remove('active');
+    
+    bubbleContainer.replaceChildren();
+    
+    // Show typing loading indicator
+    const typing = el('div', 'critique-typing');
+    const dot1 = el('span');
+    const dot2 = el('span');
+    const dot3 = el('span');
+    typing.appendChild(dot1);
+    typing.appendChild(dot2);
+    typing.appendChild(dot3);
+    const label = el('span', 'critique-typing-text', `${mentorKey === 'bradGoh' ? 'Brad' : 'Boss Ackah'} is analyzing trade parameters...`);
+    typing.appendChild(label);
+    bubbleContainer.appendChild(typing);
+    
+    // Delay feedback by 1.2s to simulate deep thinking
+    setTimeout(() => {
+      bubbleContainer.replaceChildren();
+      
+      const critiqueText = generateMentorCritique(mentorKey, trade);
+      
+      const bubble = el('div', `critique-bubble critique-bubble--${mentorKey}`);
+      
+      const headerObj = el('div', 'critique-bubble-header');
+      const emoji = el('span', 'critique-bubble-avatar', mentorKey === 'bradGoh' ? '🧠' : '👑');
+      headerObj.appendChild(emoji);
+      const name = el('span', 'critique-bubble-name', mentorKey === 'bradGoh' ? 'Brad Goh' : 'Boss Ackah');
+      headerObj.appendChild(name);
+      bubble.appendChild(headerObj);
+      
+      const textNode = el('p', 'critique-bubble-text');
+      const parts = critiqueText.split('**');
+      parts.forEach((part, i) => {
+        if (i % 2 === 1) {
+          const bold = document.createElement('strong');
+          bold.textContent = part;
+          textNode.appendChild(bold);
+        } else {
+          textNode.appendChild(document.createTextNode(part));
+        }
+      });
+      bubble.appendChild(textNode);
+      bubbleContainer.appendChild(bubble);
+      
+      // Auto scroll
+      bubble.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 1200);
+  };
+
+  bgCard.addEventListener('click', () => handleSelectMentor('bradGoh', bgCard, baCard));
+  baCard.addEventListener('click', () => handleSelectMentor('bossAckah', baCard, bgCard));
+
+  body.appendChild(critiqueSection);
 
   modal.appendChild(body);
   overlay.appendChild(modal);
@@ -595,6 +687,109 @@ function openTradeDetail(trade) {
       setTimeout(() => overlay.remove(), 200);
     }
   });
+}
+
+/**
+ * Generate customized trade critique in the mentor's specific tone.
+ */
+function generateMentorCritique(mentorKey, trade) {
+  const isWin = trade.outcome === 'win';
+  const asset = trade.asset || 'this pair';
+  const dir = (trade.direction || 'buy').toUpperCase();
+  const confluences = Array.isArray(trade.confluences) ? trade.confluences : [];
+  
+  // Helper checks
+  const hasStructure = confluences.some(c => c.includes('Market Structure') || c.includes('BOS') || c.includes('CHOCH'));
+  const hasKillzone = confluences.some(c => c.includes('Killzones') || c.includes('Timing'));
+  const hasFvg = confluences.some(c => c.includes('Fair Value Gaps') || c.includes('FVG'));
+  const hasOb = confluences.some(c => c.includes('Supply/Demand') || c.includes('Order Block'));
+  const hasLiquidity = confluences.some(c => c.includes('Liquidity') || c.includes('Sweep') || c.includes('Inducements'));
+  
+  if (mentorKey === 'bradGoh') {
+    if (isWin) {
+      let text = `Let's go, SwaGGa! 🚀 That was an absolutely beautiful **${dir}** trade execution on **${asset}**! `;
+      
+      if (hasKillzone) {
+        text += `I love that you respected the **ICT Killzone Timing**. Trading high volume windows is how we get rapid expansions and avoid consolidations! ⏱️ `;
+      } else {
+        text += `You got the win here, but be careful with timing, executing in low-volume sessions can sometimes draw down. `;
+      }
+      
+      if (hasStructure && hasOb) {
+        text += `Aligning with the swing structure and entering off that pristine **Supply/Demand zone** was textbook Smart Money. That's real professional-grade stuff! 📈 `;
+      }
+      
+      if (hasFvg) {
+        text += `Entering as the price filled that **Fair Value Gap (FVG)** was clean entry refinement. Imbalance fills are extremely consistent. `;
+      }
+      
+      text += `This is exactly how we print money professionally, my friend! Keep this discipline up, log your wins, and let's keep winning! 🧠`;
+      return text;
+    } else {
+      let text = `Hey SwaGGa, don't sweat the loss at all! A loss is just data and tuition for the market. Let's break down this **${dir}** on **${asset}** to learn from it: `;
+      
+      if (trade.mistake && trade.mistake !== 'none') {
+        const mistakeStr = trade.mistake.replace(/_/g, ' ');
+        text += `You logged a psychology leak: **"${mistakeStr}"**. Emotional triggers are the number one account killer. Re-read **Ep 4 on Trading Psychology** and get your head back in the game! 🧠 `;
+      }
+      
+      if (!hasKillzone) {
+        text += `🚨 **Key Issue:** I notice you didn't tag *ICT Killzones Timing*. Executing outside session windows gets you chopped up in retail traps! London (2-5 AM) and NY (7-10 AM) only! `;
+      }
+      
+      if (!hasStructure) {
+        text += `Always verify the swing structure bias. Did you have a clear **BOS or CHOCH** on your execution timeframe? Trading counter-trend is highly risky. `;
+      } else if (!hasOb) {
+        text += `You had the structure, but did you wait for price to mitigate a high-probability **Order Block or Supply/Demand zone**? Placing limit orders in no-mans-land is a trap. `;
+      }
+      
+      if (hasLiquidity) {
+        text += `It's good that you looked for a liquidity sweep, but ensure it wasn't an early inducement. `;
+      } else {
+        text += `Try to search for **Liquidity Sweeps [Ep 13]** next time. Let smart money sweep the retail stops first, then enter on the displacement. `;
+      }
+      
+      text += `Go back, watch **Ep 5 (Market Structure)** or **Ep 12 (Killzones)**, review what went wrong, and let's conquer the next trade! ⚡`;
+      return text;
+    }
+  } else if (mentorKey === 'bossAckah') {
+    const mistakeName = trade.mistake && trade.mistake !== 'none' ? trade.mistake.replace(/_/g, ' ') : '';
+    
+    if (isWin) {
+      let text = `A profitable outcome on **${asset}**, yes, but let us look closer. `;
+      
+      if (trade.setupQuality === 'A+' || confluences.length >= 5) {
+        text += `Your confluences were highly structured, and you exercised patience in waiting for an **A+ trade quality** setup. This tells me you are developing real, professional skills. `;
+      } else {
+        text += `You won this trade, but with only **${confluences.length}** confluences tagged, was this a disciplined execution or did you gamble and get lucky? Be extremely honest with yourself. `;
+      }
+      
+      if (mistakeName) {
+        text += `Even though you won, you logged a mistake: **"${mistakeName}"**. A win with poor discipline is a hidden danger because it feeds bad habits. `;
+      } else {
+        text += `No psychology mistakes logged. Excellent. The profit is simply a byproduct of your focus and emotional control. `;
+      }
+      
+      text += `Remain humble, SwaGGa. Do not let this win make you overconfident or cloud your mind. The money is in the knowledge. 👑`;
+      return text;
+    } else {
+      let text = `This loss on **${asset}** is a powerful, necessary mirror for your mind, SwaGGa. `;
+      
+      if (trade.mistake && trade.mistake !== 'none') {
+        text += `You logged a psychology leak: **"${mistakeName}"**. This is exactly the emotional cloud I warned you about in our mindset sessions! Greed, FOMO, and revenge trading are mechanisms that cloud the mind and lead to ruin. `;
+      } else {
+        text += `You logged no psychological mistakes, which means this was simply a statistical loss. That is acceptable; losses are expenses of doing business if your risk management is protected. `;
+      }
+      
+      if (!hasStructure) {
+        text += `You entered this trade without clear structural confluences. Trading without structure is not business — it is a gimmick, an emotional impulse. `;
+      }
+      
+      text += `This is a professional skills acquisition course. Commitment and focus are your shields. Take a deep breath, close your terminal, listen to the **Psychology Audio (Trading for a Living)**, and regain your mental center. 🕯️`;
+      return text;
+    }
+  }
+  return '';
 }
 
 /* ---------- Trade History Table ------------------------------------ */
