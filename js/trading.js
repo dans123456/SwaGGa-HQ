@@ -286,9 +286,6 @@ export function renderTradeForm(container, onSaved) {
     { name: 'entry', label: 'Entry Price', step: 'any', required: true },
     { name: 'stop', label: 'Stop Loss', step: 'any', required: true },
     { name: 'exit', label: 'Exit Price', step: 'any', required: true },
-    { name: 'size', label: 'Position Size', step: 'any', required: true },
-    { name: 'fees', label: 'Fees', step: 'any', required: false },
-    { name: 'slippage', label: 'Slippage', step: 'any', required: false },
   ];
   numericFields.forEach(({ name, label, step, required }) => {
     const input = document.createElement('input');
@@ -419,9 +416,9 @@ export function renderTradeForm(container, onSaved) {
       entry: Number(fd.get('entry')),
       stop: Number(fd.get('stop')),
       exit: Number(fd.get('exit')),
-      size: Number(fd.get('size')),
-      fees: Number(fd.get('fees')) || 0,
-      slippage: Number(fd.get('slippage')) || 0,
+      size: 1,
+      fees: 0,
+      slippage: 0,
       date: fd.get('date') || new Date().toISOString().slice(0, 10),
       timeframe: fd.get('timeframe'),
       session: fd.get('session'),
@@ -431,7 +428,7 @@ export function renderTradeForm(container, onSaved) {
       notes: sanitizeText(fd.get('notes') || '', 2000),
     };
 
-    if (!tradeData.asset || !tradeData.entry || !tradeData.exit || !tradeData.size) {
+    if (!tradeData.asset || !tradeData.entry || !tradeData.exit) {
       // Simple validation — highlight first empty required field.
       const first = form.querySelector(':invalid');
       if (first) first.focus();
@@ -454,10 +451,10 @@ function exportToCSV() {
   const trades = getTrades();
   if (!trades.length) return;
 
-  const headers = ['Date','Asset','Direction','Entry','Exit','Stop','Size','Fees','Slippage','P&L','R:R','Outcome','Session','Timeframe','Confluences','Notes'];
+  const headers = ['Date','Asset','Direction','Entry','Exit','Stop','P&L','R:R','Outcome','Session','Timeframe','Confluences','Notes'];
   const rows = trades.map(t => [
-    t.date, t.asset, t.direction, t.entry, t.exit, t.stop, t.size,
-    t.fees, t.slippage, t.pnl, t.rr, t.outcome, t.session || '',
+    t.date, t.asset, t.direction, t.entry, t.exit, t.stop,
+    t.pnl, t.rr, t.outcome, t.session || '',
     t.timeframe || '', (t.confluences || []).join('; '),
     (t.notes || '').replace(/[\n\r,]/g, ' ')
   ]);
@@ -535,9 +532,6 @@ function openTradeDetail(trade) {
     { label: 'Entry Price', value: String(trade.entry) },
     { label: 'Exit Price', value: String(trade.exit) },
     { label: 'Stop Loss', value: String(trade.stop || '—') },
-    { label: 'Position Size', value: String(trade.size) },
-    { label: 'Fees', value: formatCurrency(Number(trade.fees) || 0) },
-    { label: 'Slippage', value: formatCurrency(Number(trade.slippage) || 0) },
     { label: 'P&L', value: formatCurrency(pnlVal), cls: pnlVal >= 0 ? 'pnl-positive' : 'pnl-negative' },
     { label: 'Risk:Reward', value: `${trade.rr}R` },
     { label: 'Outcome', value: trade.outcome ? trade.outcome.charAt(0).toUpperCase() + trade.outcome.slice(1) : '—' },
@@ -635,7 +629,7 @@ export function renderTradeHistory(container, onRefresh) {
   const table = el('table', 'trade-table');
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  const headers = ['Date', 'Asset', 'Dir', 'Entry', 'Exit', 'Size', 'P&L', 'R:R', 'Outcome', 'Setup', ''];
+  const headers = ['Date', 'Asset', 'Dir', 'Entry', 'Exit', 'P&L', 'R:R', 'Outcome', 'Setup', ''];
   headers.forEach((h) => {
     const th = el('th', '', h);
     headerRow.appendChild(th);
@@ -670,7 +664,6 @@ export function renderTradeHistory(container, onRefresh) {
       t.direction,
       String(t.entry),
       String(t.exit),
-      String(t.size),
       formatCurrency(t.pnl),
       `${t.rr}R`,
       t.outcome,
@@ -680,10 +673,10 @@ export function renderTradeHistory(container, onRefresh) {
     cells.forEach((val, idx) => {
       const td = el('td');
       // Color P&L column.
-      if (idx === 6) {
+      if (idx === 5) {
         td.textContent = val;
         td.classList.add(Number(t.pnl) >= 0 ? 'pnl-positive' : 'pnl-negative');
-      } else if (idx === 9) {
+      } else if (idx === 8) {
         const badge = el('span', `setup-${val.toLowerCase().replace('+', 'plus')}`, val);
         td.appendChild(badge);
       } else {
