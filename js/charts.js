@@ -276,3 +276,71 @@ export function createStreakChart(canvasId, streakData) {
     },
   });
 }
+
+/**
+ * Create a bar chart showing win rate against confluence count.
+ * @param {string} canvasId
+ * @param {Array<object>} trades
+ * @returns {Chart|null}
+ */
+export function createConfluenceWinRateChart(canvasId, trades) {
+  const ctx = getCtx(canvasId);
+  if (!ctx) return null;
+
+  const buckets = {
+    'Low (0-2)': { wins: 0, total: 0 },
+    'Med (3-4)': { wins: 0, total: 0 },
+    'High (5+)': { wins: 0, total: 0 }
+  };
+
+  trades.forEach(t => {
+    const count = Array.isArray(t.confluences) ? t.confluences.length : 0;
+    const isWin = t.outcome === 'win' || (Number(t.pnl) > 0);
+    
+    let bucketKey = 'Low (0-2)';
+    if (count >= 5) bucketKey = 'High (5+)';
+    else if (count >= 3) bucketKey = 'Med (3-4)';
+    
+    buckets[bucketKey].total++;
+    if (isWin) buckets[bucketKey].wins++;
+  });
+
+  const labels = Object.keys(buckets);
+  const winRates = labels.map(label => {
+    const b = buckets[label];
+    return b.total > 0 ? Math.round((b.wins / b.total) * 100) : 0;
+  });
+
+  return createTrackedChart(canvasId, ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Win Rate (%)',
+          data: winRates,
+          backgroundColor: [COLORS.red, COLORS.purple, COLORS.green],
+          borderRadius: 6,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: darkPluginOptions('Win Rate vs Confluences'),
+      scales: {
+        ...darkScaleOptions(),
+        y: {
+          ...darkScaleOptions().y,
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            ...darkScaleOptions().y.ticks,
+            callback: value => value + '%'
+          }
+        }
+      }
+    }
+  });
+}
+

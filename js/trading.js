@@ -42,16 +42,14 @@ export const ASSETS = {
 
 /** Confluence / edge factors that can be tagged on a trade. */
 export const CONFLUENCE_OPTIONS = [
-  'Market Structure (BOS/CHOCH)',
-  'Order Block',
-  'Fair Value Gap',
-  'Liquidity Sweep',
-  'Supply/Demand Zone',
-  'Key Level',
-  'Fibonacci',
-  'Session Timing',
-  'HTF Alignment',
-  'News/Fundamentals',
+  'Market Structure (BOS/CHOCH) [Ep 5]',
+  'Candlestick Confirmation [Ep 6]',
+  'Supply/Demand Zone [Ep 7]',
+  'Premium / Discount (Fib OTE) [Ep 8]',
+  'Fair Value Gaps (FVG) [Ep 9]',
+  'Top Down Analysis (HTF Bias) [Ep 11]',
+  'ICT Killzones Timing [Ep 12]',
+  'Liquidity Sweeps / Inducements [Ep 13]',
 ];
 
 const STORAGE_KEY = 'trades';
@@ -110,9 +108,16 @@ export function getTrades() {
  */
 export function saveTrade(tradeData) {
   const trades = getTrades();
+  const confCount = Array.isArray(tradeData.confluences) ? tradeData.confluences.length : 0;
+  let setupQuality = 'C';
+  if (confCount >= 5) setupQuality = 'A+';
+  else if (confCount === 4) setupQuality = 'A';
+  else if (confCount === 3) setupQuality = 'B';
+
   const trade = {
     id: generateId(),
     ...tradeData,
+    setupQuality,
     pnl: calculatePnL(
       tradeData.entry,
       tradeData.exit,
@@ -440,11 +445,26 @@ function openTradeDetail(trade) {
   const body = el('div', 'trade-modal__body');
   const grid = el('div', 'trade-modal__detail-grid');
 
+  const confCount = Array.isArray(trade.confluences) ? trade.confluences.length : 0;
+  let dynamicQuality = trade.setupQuality;
+  if (!dynamicQuality) {
+    if (confCount >= 5) dynamicQuality = 'A+';
+    else if (confCount === 4) dynamicQuality = 'A';
+    else if (confCount === 3) dynamicQuality = 'B';
+    else dynamicQuality = 'C';
+  }
+
+  let qualityCls = 'setup-c';
+  if (dynamicQuality === 'A+') qualityCls = 'setup-aplus';
+  else if (dynamicQuality === 'A') qualityCls = 'setup-a';
+  else if (dynamicQuality === 'B') qualityCls = 'setup-b';
+
   const detailPairs = [
     { label: 'Date', value: formatDate(trade.date) },
     { label: 'Direction', value: trade.direction ? trade.direction.toUpperCase() : '—' },
     { label: 'Session', value: trade.session || '—' },
     { label: 'Timeframe', value: trade.timeframe || '—' },
+    { label: 'Setup Quality', value: dynamicQuality === 'A+' ? 'A+ Setup ⚡' : `${dynamicQuality} Setup`, cls: qualityCls },
     { label: 'Entry Price', value: String(trade.entry) },
     { label: 'Exit Price', value: String(trade.exit) },
     { label: 'Stop Loss', value: String(trade.stop || '—') },
@@ -539,7 +559,7 @@ export function renderTradeHistory(container, onRefresh) {
   const table = el('table', 'trade-table');
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  const headers = ['Date', 'Asset', 'Dir', 'Entry', 'Exit', 'Size', 'P&L', 'R:R', 'Outcome', ''];
+  const headers = ['Date', 'Asset', 'Dir', 'Entry', 'Exit', 'Size', 'P&L', 'R:R', 'Outcome', 'Setup', ''];
   headers.forEach((h) => {
     const th = el('th', '', h);
     headerRow.appendChild(th);
@@ -559,6 +579,15 @@ export function renderTradeHistory(container, onRefresh) {
       openTradeDetail(t);
     });
 
+    const confCount = Array.isArray(t.confluences) ? t.confluences.length : 0;
+    let dynamicQuality = t.setupQuality;
+    if (!dynamicQuality) {
+      if (confCount >= 5) dynamicQuality = 'A+';
+      else if (confCount === 4) dynamicQuality = 'A';
+      else if (confCount === 3) dynamicQuality = 'B';
+      else dynamicQuality = 'C';
+    }
+
     const cells = [
       formatDate(t.date),
       t.asset,
@@ -569,14 +598,20 @@ export function renderTradeHistory(container, onRefresh) {
       formatCurrency(t.pnl),
       `${t.rr}R`,
       t.outcome,
+      dynamicQuality,
     ];
 
     cells.forEach((val, idx) => {
       const td = el('td');
-      td.textContent = val;
       // Color P&L column.
       if (idx === 6) {
+        td.textContent = val;
         td.classList.add(Number(t.pnl) >= 0 ? 'pnl-positive' : 'pnl-negative');
+      } else if (idx === 9) {
+        const badge = el('span', `setup-${val.toLowerCase().replace('+', 'plus')}`, val);
+        td.appendChild(badge);
+      } else {
+        td.textContent = val;
       }
       row.appendChild(td);
     });
@@ -652,13 +687,15 @@ function renderAnalytics(container) {
   grid.appendChild(makeCanvasCard('Equity Curve', 'chart-equity'));
   grid.appendChild(makeCanvasCard('Win / Loss', 'chart-winloss'));
   grid.appendChild(makeCanvasCard('Daily P&L', 'chart-daily'));
+  grid.appendChild(makeCanvasCard('Win Rate vs Confluences', 'chart-confluence'));
   container.appendChild(grid);
 
   // Lazy-import charts module so Chart.js can load via CDN first.
-  import('./charts.js').then(({ createEquityCurve, createWinLossChart, createDailyPnLChart }) => {
+  import('./charts.js').then(({ createEquityCurve, createWinLossChart, createDailyPnLChart, createConfluenceWinRateChart }) => {
     createEquityCurve('chart-equity', trades);
     createWinLossChart('chart-winloss', trades);
     createDailyPnLChart('chart-daily', trades);
+    createConfluenceWinRateChart('chart-confluence', trades);
   }).catch((err) => {
     console.error('Failed to load chart module:', err.message);
   });
