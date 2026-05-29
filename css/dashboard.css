@@ -1440,3 +1440,499 @@
   text-decoration: line-through;
 }
 
+
+/* ============================================================
+   GAMIFICATION — XP Bar (embedded in hero)
+   ============================================================ */
+
+.xp-hero-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.xp-hero-bar__rank {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.xp-hero-bar__track {
+  width: 120px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.xp-hero-bar__fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--cyan), var(--neon-green));
+  transition: width 0.6s ease;
+  min-width: 2px;
+}
+
+.xp-hero-bar__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.xp-hero-bar__next {
+  font-size: var(--text-xs);
+  color: var(--purple);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .xp-hero-bar {
+    max-width: 100%;
+    gap: var(--space-2);
+  }
+  .xp-hero-bar__track {
+    width: 80px;
+  }
+}
+
+
+/* ============================================================
+   GAMIFICATION — Achievement Badges (compact panel grid)
+   ============================================================ */
+
+.achieve-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.achieve-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  text-align: center;
+  opacity: 0.35;
+  transition: all var(--transition-base);
+  cursor: default;
+}
+
+.achieve-badge--unlocked {
+  opacity: 1;
+  background: rgba(0, 212, 255, 0.06);
+  border-color: rgba(0, 212, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.1);
+}
+
+.achieve-badge--unlocked:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.achieve-badge__emoji {
+  font-size: 1.4rem;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.achieve-badge__name {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.achieve-badge--unlocked .achieve-badge__name {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 600px) {
+  .achieve-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+
+/* ============================================================
+   GAMIFICATION — Weekly Recap Modal
+   ============================================================ */
+
+.recap-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  padding: var(--space-4);
+}
+
+.recap-overlay--visible {
+  opacity: 1;
+}
+
+.recap-modal {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background: rgba(18, 18, 26, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl);
+  padding: 0 var(--space-6) var(--space-6);
+  box-shadow: var(--shadow-xl);
+  animation: fadeInUp 0.4s ease both;
+  overflow: hidden;
+}
+
+.recap-glow {
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--neon-green));
+  margin-bottom: var(--space-5);
+}
+
+.recap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.recap-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.recap-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.recap-close:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.recap-range {
+  font-size: var(--text-sm);
+  color: var(--cyan);
+  font-weight: 600;
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+
+.recap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.recap-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.recap-stat__icon {
+  font-size: 1.3rem;
+  margin-bottom: 4px;
+}
+
+.recap-stat__value {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.recap-stat__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.recap-footer {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding: var(--space-3);
+  background: rgba(0, 212, 255, 0.04);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 212, 255, 0.08);
+}
+
+@media (max-width: 480px) {
+  .recap-modal {
+    padding: 0 var(--space-4) var(--space-4);
+  }
+  .recap-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+}
+
+/* ============================================================
+   GAMIFICATION Redesign — Balanced Layout
+   ============================================================ */
+
+/* ── Left Column Layout ────────────────────────────────────── */
+.dashboard-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ── Rank & Level Card ─────────────────────────────────────── */
+.rank-panel {
+  background: var(--bg-glass);
+  border: 1px solid rgba(0, 212, 255, 0.15) !important;
+  box-shadow: 0 4px 24px rgba(0, 212, 255, 0.05), inset 0 0 20px rgba(0, 212, 255, 0.02) !important;
+  transition: all var(--transition-base);
+}
+
+.rank-panel:hover {
+  border-color: rgba(0, 212, 255, 0.3) !important;
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.15), inset 0 0 20px rgba(0, 212, 255, 0.05) !important;
+}
+
+.rank-card-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.rank-card-emoji {
+  font-size: 2.2rem;
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  animation: pulseDot 3s ease-in-out infinite;
+}
+
+.rank-card-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-card-title {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff 0%, var(--cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.01em;
+}
+
+.rank-card-level {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.rank-xp-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.rank-xp-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--cyan) 0%, var(--neon-green) 100%);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  min-width: 2px;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.35);
+}
+
+.rank-xp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.rank-xp-next {
+  color: var(--purple);
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.2);
+}
+
+
+/* ── Real-Time XP Toast Notifications ─────────────────────── */
+.xp-toast-container {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.xp-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.75rem 1.25rem;
+  background: rgba(13, 11, 15, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(57, 255, 20, 0.1);
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  pointer-events: auto;
+}
+
+.xp-toast--visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.xp-toast__icon {
+  font-size: 1.2rem;
+  color: var(--neon-green);
+  animation: fireFlicker 1.5s ease-in-out infinite;
+}
+
+.xp-toast__text {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+
+/* ── Sleek Level Up Overlay & Modal ───────────────────────── */
+.level-up-overlay {
+  background: rgba(0, 0, 0, 0.85) !important;
+}
+
+.level-up-modal {
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.8), 0 0 50px rgba(168, 85, 247, 0.25) !important;
+  animation: levelUpScaleIn 0.5s cubic-bezier(0.34, 1.7, 0.64, 1) both;
+}
+
+@keyframes levelUpScaleIn {
+  0% { transform: scale(0.6) rotate(-5deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.level-up-emoji {
+  font-size: 4.5rem !important;
+  margin-bottom: var(--space-4) !important;
+  animation: levelUpBounce 2.5s ease-in-out infinite;
+  display: inline-block !important;
+  filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.4));
+}
+
+@keyframes levelUpBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-12px) scale(1.08); }
+}
+
+.level-up-title {
+  font-size: 3rem !important;
+  font-weight: 900 !important;
+  background: linear-gradient(135deg, #ffffff 0%, var(--purple) 50%, var(--cyan) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  letter-spacing: 0.05em !important;
+  text-shadow: 0 0 30px rgba(168, 85, 247, 0.1) !important;
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+.level-up-subtitle {
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+  letter-spacing: -0.01em;
+}
+
+.level-up-btn {
+  background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dim) 100%) !important;
+  border: 1px solid rgba(168, 85, 247, 0.4) !important;
+}
+
+.level-up-btn:hover {
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.6) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Adjustments for responsive grids */
+@media (max-width: 1024px) {
+  .dashboard-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

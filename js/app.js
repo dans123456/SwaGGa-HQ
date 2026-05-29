@@ -14,6 +14,7 @@ import { getTimeAgo, formatCurrency } from './utils.js';
 import storage from './storage.js';
 import { checkAutoAssignment } from './notifications.js';
 import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser } from './firebase-sync.js';
+import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from './xp.js';
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -315,12 +316,23 @@ function renderDashboard(container) {
     btn.addEventListener('click', () => router.navigate(route));
     actions.appendChild(btn);
   });
+
+  // Weekly Recap quick action
+  const recapBtn = el('button', 'quick-action');
+  recapBtn.appendChild(el('span', 'quick-action__icon', '📊'));
+  recapBtn.appendChild(document.createTextNode(' Weekly Recap'));
+  recapBtn.addEventListener('click', () => renderWeeklyRecap());
+  actions.appendChild(recapBtn);
+
   container.appendChild(actions);
 
-  /* ---- Two-column bottom: Activity Feed + Overview Panels ---- */
+  /* ---- Two-column bottom: balanced Left Column vs. Right Column ---- */
   const bottomGrid = el('div', 'dashboard-bottom-grid');
 
-  /* -- Recent Activity Feed -- */
+  /* -- Left Column: Activity Feed + Achievements -- */
+  const leftCol = el('div', 'dashboard-left-col stagger-children');
+
+  // Recent Activity Feed
   const activitySection = el('div', 'dashboard-section');
   const actHeader = el('div', 'dashboard-section__header');
   actHeader.appendChild(el('h2', 'dashboard-section__title', 'Recent Activity'));
@@ -356,79 +368,92 @@ function renderDashboard(container) {
     });
   }
   activitySection.appendChild(actList);
-  bottomGrid.appendChild(activitySection);
+  leftCol.appendChild(activitySection);
 
-  /* -- Overview Panels Column -- */
-  const panelsCol = el('div', 'dashboard-panels-col');
+  // Trophy Room (Achievements)
+  const achievementsSection = el('div', 'dashboard-section achievements-section');
+  achievementsSection.appendChild(el('h2', 'dashboard-section__title', '🏆 Trophy Room'));
+  renderAchievementBadges(achievementsSection, trades, tradeStats, lessons, habits);
+  leftCol.appendChild(achievementsSection);
 
-  // Trading Overview
-  const tradingPanel = el('div', 'overview-panel');
-  tradingPanel.appendChild(el('h3', 'overview-panel__title', '📊 Trading Overview'));
+  bottomGrid.appendChild(leftCol);
 
-  if (trades.length > 0) {
-    const pnlValues = trades.map(t => Number(t.pnl) || 0);
-    const bestTrade = Math.max(...pnlValues);
-    const worstTrade = Math.min(...pnlValues);
+  /* -- Right Column: Rank, Clocks, combined stats overview -- */
+  const panelsCol = el('div', 'dashboard-panels-col stagger-children');
 
-    const tGrid = el('div', 'overview-stats-grid');
-    const tItems = [
-      { label: 'Win Rate', value: `${tradeStats.winRate}%` },
-      { label: 'Total P&L', value: formatCurrency(tradeStats.totalPnL) },
-      { label: 'Best Trade', value: formatCurrency(bestTrade) },
-      { label: 'Worst Trade', value: formatCurrency(worstTrade) },
-    ];
-    tItems.forEach(({ label, value }) => {
-      const item = el('div', 'overview-stat');
-      item.appendChild(el('span', 'overview-stat__label', label));
-      item.appendChild(el('span', 'overview-stat__value', value));
-      tGrid.appendChild(item);
-    });
-    tradingPanel.appendChild(tGrid);
-  } else {
-    tradingPanel.appendChild(el('p', 'empty-hint', 'No trades logged yet'));
+  // 1. Rank & Level Progression Card
+  const rankPanel = el('div', 'overview-panel rank-panel');
+  rankPanel.appendChild(el('h3', 'overview-panel__title', '🎖️ Rank & Progression'));
+  
+  const lvl = getLevel();
+  const prog = getLevelProgress();
+  const xpData = getXPData();
+
+  const rankRow = el('div', 'rank-card-row');
+  const rankEmoji = el('span', 'rank-card-emoji', lvl.emoji);
+  rankRow.appendChild(rankEmoji);
+
+  const rankMeta = el('div', 'rank-card-meta');
+  rankMeta.appendChild(el('span', 'rank-card-title', lvl.title));
+  rankMeta.appendChild(el('span', 'rank-card-level', `Level ${lvl.level}`));
+  rankRow.appendChild(rankMeta);
+  rankPanel.appendChild(rankRow);
+
+  const rankXpTrack = el('div', 'rank-xp-track');
+  const rankXpFill = el('div', 'rank-xp-fill');
+  rankXpFill.style.width = `${Math.round(prog.progress * 100)}%`;
+  rankXpTrack.appendChild(rankXpFill);
+  rankPanel.appendChild(rankXpTrack);
+
+  const rankXpFooter = el('div', 'rank-xp-footer');
+  rankXpFooter.appendChild(el('span', 'rank-xp-text', prog.progress >= 1 ? `${xpData.totalXP} XP (MAX)` : `${xpData.totalXP} / ${prog.next} XP`));
+  if (prog.progress < 1) {
+    rankXpFooter.appendChild(el('span', 'rank-xp-next', `Next: ${prog.nextEmoji} ${prog.nextTitle}`));
   }
-  panelsCol.appendChild(tradingPanel);
+  rankPanel.appendChild(rankXpFooter);
+  panelsCol.appendChild(rankPanel);
 
-  // Learning Progress
-  const learnPanel = el('div', 'overview-panel');
-  learnPanel.appendChild(el('h3', 'overview-panel__title', '📚 Learning Progress'));
+  // 2. Combined Performance Overview
+  const overviewPanel = el('div', 'overview-panel');
+  overviewPanel.appendChild(el('h3', 'overview-panel__title', '📈 Performance & Curriculum'));
 
+  const tGrid = el('div', 'overview-stats-grid');
+  const pnlValues = trades.map(t => Number(t.pnl) || 0);
+  const bestTrade = trades.length > 0 ? Math.max(...pnlValues) : 0;
   const conceptSet = new Set();
   lessons.forEach(l => {
     if (l.concepts) l.concepts.forEach(c => conceptSet.add(c));
   });
 
-  const lGrid = el('div', 'overview-stats-grid');
-  const lItems = [
-    { label: 'Lessons', value: `${lessons.length}/33` },
+  const oItems = [
+    { label: 'Win Rate', value: `${tradeStats.winRate}%` },
+    { label: 'Total P&L', value: formatCurrency(tradeStats.totalPnL) },
+    { label: 'Best Trade', value: formatCurrency(bestTrade) },
+    { label: 'Lessons', value: `${lessons.length} / 33` },
     { label: 'Concepts', value: String(conceptSet.size) },
-    { label: 'Assignments', value: `${completedAssignments}/${assignments.length}` },
-    { label: 'Progress', value: `${Math.round((lessons.length / 33) * 100)}%` },
+    { label: 'Assignments', value: `${completedAssignments} / ${assignments.length}` },
   ];
-  lItems.forEach(({ label, value }) => {
+
+  oItems.forEach(({ label, value }) => {
     const item = el('div', 'overview-stat');
     item.appendChild(el('span', 'overview-stat__label', label));
     item.appendChild(el('span', 'overview-stat__value', value));
-    lGrid.appendChild(item);
+    tGrid.appendChild(item);
   });
-  learnPanel.appendChild(lGrid);
+  overviewPanel.appendChild(tGrid);
 
-  // Progress bar
-  const progBar = el('div', 'overview-progress-bar');
-  const progFill = el('div', 'overview-progress-fill');
-  progFill.style.width = `${Math.round((lessons.length / 33) * 100)}%`;
-  progBar.appendChild(progFill);
-  learnPanel.appendChild(progBar);
+  const oProgBar = el('div', 'overview-progress-bar');
+  const oProgFill = el('div', 'overview-progress-fill');
+  oProgFill.style.width = `${Math.round((lessons.length / 33) * 100)}%`;
+  oProgBar.appendChild(oProgFill);
+  overviewPanel.appendChild(oProgBar);
+  panelsCol.appendChild(overviewPanel);
 
-  panelsCol.appendChild(learnPanel);
-
-  // ---- ICT Killzones widget ----
+  // 3. ICT Killzones widget
   const killzonesPanel = el('div', 'overview-panel killzones-panel');
   killzonesPanel.appendChild(el('h3', 'overview-panel__title', '⚡ ICT Killzones & Session Prep'));
 
-  // Clock row
   const clockRow = el('div', 'kz-clocks');
-  
   const nyClock = el('div', 'kz-clock');
   nyClock.appendChild(el('span', 'kz-clock__label', 'New York Time'));
   const nyClockTime = el('span', 'kz-clock__value kz-clock__value--ny', '00:00:00');
@@ -443,14 +468,11 @@ function renderDashboard(container) {
   clockRow.appendChild(localClock);
   killzonesPanel.appendChild(clockRow);
 
-  // Sessions list
   const sessionsList = el('div', 'kz-sessions');
   killzonesPanel.appendChild(sessionsList);
 
-  // Active checklist container
   const checklistContainer = el('div', 'kz-checklist-container');
   killzonesPanel.appendChild(checklistContainer);
-
   panelsCol.appendChild(killzonesPanel);
 
   let lastActiveSession = null;
@@ -538,6 +560,46 @@ function renderDashboard(container) {
     grid.appendChild(card);
   });
   container.appendChild(grid);
+
+  /* ---- Auto-show Weekly Recap on Sunday ---- */
+  const dayOfWeek = new Date().getDay();
+  if (dayOfWeek === 0) {
+    const today = new Date().toISOString().slice(0, 10);
+    const lastShown = storage.get('weekly_recap_shown', '');
+    if (lastShown !== today) {
+      setTimeout(() => renderWeeklyRecap(), 1500);
+    }
+  }
+}
+
+  /* ---- Quick-link cards ---- */
+  const grid = el('div', 'dashboard-grid');
+  const cards = [
+    { icon: '📊', title: 'Trading Journal', desc: 'Log trades, track P&L, and analyse your performance.', route: '#trading' },
+    { icon: '📚', title: 'Learning Hub', desc: 'Follow the Brad Goh curriculum and complete assignments.', route: '#learning' },
+    { icon: '🔥', title: 'Streaks', desc: 'Build habits and maintain daily streaks.', route: '#streaks' },
+  ];
+
+  cards.forEach(({ icon, title, desc, route }) => {
+    const card = el('div', 'dash-card');
+    card.appendChild(el('span', 'dash-card-icon', icon));
+    card.appendChild(el('h3', 'dash-card-title', title));
+    card.appendChild(el('p', 'dash-card-desc', desc));
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => router.navigate(route));
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+
+  /* ---- Auto-show Weekly Recap on Sunday ---- */
+  const dayOfWeek = new Date().getDay();
+  if (dayOfWeek === 0) {
+    const today = new Date().toISOString().slice(0, 10);
+    const lastShown = storage.get('weekly_recap_shown', '');
+    if (lastShown !== today) {
+      setTimeout(() => renderWeeklyRecap(), 1500);
+    }
+  }
 }
 
 /** Build a sorted list of recent activity items from all modules. */
@@ -597,6 +659,332 @@ function getGreeting() {
   if (hour < 12) return 'Good Morning';
   if (hour < 17) return 'Good Afternoon';
   return 'Good Evening';
+}
+
+/* ================================================================ */
+/*  ACHIEVEMENT BADGES / TROPHIES                                     */
+/* ================================================================ */
+
+const ACHIEVEMENTS = [
+  { id: 'first-trade',   emoji: '🏆', name: 'First Trade',     desc: 'Log your first trade',                check: () => getTrades().length >= 1 },
+  { id: '10-trades',     emoji: '💯', name: '10 Trades Club',  desc: 'Log 10 trades',                       check: () => getTrades().length >= 10 },
+  { id: 'sharpshooter',  emoji: '🎯', name: 'Sharpshooter',    desc: '60%+ win rate (min 5 trades)',         check: () => { const t = getTrades(); return t.length >= 5 && calculateStats(t).winRate >= 60; } },
+  { id: 'first-profit',  emoji: '💰', name: 'First Profit',    desc: 'First trade with positive P&L',       check: () => getTrades().some(t => Number(t.pnl) > 0) },
+  { id: '100-club',      emoji: '💵', name: '$100 Club',       desc: 'Accumulate $100+ total P&L',          check: () => calculateStats(getTrades()).totalPnL >= 100 },
+  { id: 'scholar',       emoji: '📚', name: 'Scholar',         desc: 'Complete 10 lessons',                  check: () => getLessons().length >= 10 },
+  { id: 'graduate',      emoji: '🎓', name: 'Graduate',        desc: 'Complete all 33 lessons',              check: () => getLessons().length >= 33 },
+  { id: '7-day-warrior', emoji: '🔥', name: '7-Day Warrior',   desc: '7-day streak on any habit',            check: () => getHabits().some(h => calculateStreak(h.id) >= 7) },
+  { id: '30-day-legend', emoji: '🔥', name: '30-Day Legend',   desc: '30-day streak on any habit',           check: () => getHabits().some(h => calculateStreak(h.id) >= 30) },
+  { id: 'perfect-week',  emoji: '⭐', name: 'Perfect Week',    desc: 'All habits done 7 straight days',      check: () => {
+    const habits = getHabits();
+    if (!habits.length) return false;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (!habits.every(h => h.log && h.log[key])) return false;
+    }
+    return true;
+  }},
+  { id: 'rising-star',   emoji: '🏅', name: 'Rising Star',     desc: 'Reach Level 5 (Lieutenant)',           check: () => getLevel().level >= 5 },
+  { id: 'the-legend',    emoji: '👑', name: 'The Legend',       desc: 'Reach Level 10 (Legend)',              check: () => getLevel().level >= 10 },
+];
+
+function renderAchievementBadges(container, trades, tradeStats, lessons, habits) {
+  const grid = el('div', 'achieve-grid');
+
+  ACHIEVEMENTS.forEach(a => {
+    const unlocked = a.check();
+    const badge = el('div', `achieve-badge${unlocked ? ' achieve-badge--unlocked' : ''}`);
+    badge.appendChild(el('span', 'achieve-badge__emoji', unlocked ? a.emoji : '🔒'));
+    badge.appendChild(el('span', 'achieve-badge__name', a.name));
+    badge.setAttribute('title', a.desc);
+    grid.appendChild(badge);
+  });
+
+  container.appendChild(grid);
+}
+
+/* ================================================================ */
+/*  WEEKLY RECAP REPORT                                               */
+/* ================================================================ */
+
+function renderWeeklyRecap() {
+  // Calculate Monday–Sunday range for the current week
+  const now = new Date();
+  const dayIdx = now.getDay(); // 0=Sun, 1=Mon...
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((dayIdx + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const fmtShort = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const weekRange = `${fmtShort(monday)} – ${fmtShort(sunday)}, ${sunday.getFullYear()}`;
+
+  // Build date keys for the week
+  const weekKeys = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    weekKeys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+  }
+
+  // Trades this week
+  const allTrades = getTrades();
+  const weekTrades = allTrades.filter(t => {
+    const td = (t.date || t.createdAt || '').slice(0, 10);
+    return weekKeys.includes(td);
+  });
+  const weekStats = calculateStats(weekTrades);
+
+  // Lessons this week
+  const allLessons = getLessons();
+  const weekLessons = allLessons.filter(l => {
+    const ld = (l.createdAt || l.date || '').slice(0, 10);
+    return weekKeys.includes(ld);
+  });
+
+  // Habits this week (total check-ins)
+  const habits = getHabits();
+  let totalCheckins = 0;
+  habits.forEach(h => {
+    weekKeys.forEach(key => {
+      if (h.log && h.log[key]) totalCheckins++;
+    });
+  });
+
+  // XP earned this week
+  const xpData = getXPData();
+  let weekXP = 0;
+  (xpData.history || []).forEach(entry => {
+    const ed = (entry.date || '').slice(0, 10);
+    if (weekKeys.includes(ed)) weekXP += entry.xp;
+  });
+
+  // Best day — day with most activity
+  let bestDay = weekKeys[0];
+  let bestDayScore = 0;
+  weekKeys.forEach(key => {
+    let score = 0;
+    score += allTrades.filter(t => (t.date || t.createdAt || '').slice(0, 10) === key).length * 2;
+    score += allLessons.filter(l => (l.createdAt || l.date || '').slice(0, 10) === key).length * 2;
+    habits.forEach(h => { if (h.log && h.log[key]) score++; });
+    if (score > bestDayScore) { bestDayScore = score; bestDay = key; }
+  });
+  const bestDayName = new Date(bestDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+
+  // Current level
+  const lvl = getLevel();
+
+  // Mark as shown
+  storage.set('weekly_recap_shown', now.toISOString().slice(0, 10));
+
+  // Build modal overlay
+  const overlay = el('div', 'recap-overlay');
+  const modal = el('div', 'recap-modal');
+
+  // Glow bar
+  const glow = el('div', 'recap-glow');
+  modal.appendChild(glow);
+
+  // Header
+  const header = el('div', 'recap-header');
+  header.appendChild(el('h2', 'recap-title', '📊 Weekly Recap'));
+  const closeBtn = el('button', 'recap-close', '✕');
+  closeBtn.addEventListener('click', () => {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 250);
+  });
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  modal.appendChild(el('p', 'recap-range', weekRange));
+
+  // Stats grid
+  const grid = el('div', 'recap-grid');
+  const recapItems = [
+    { icon: '📊', label: 'Trades', value: String(weekStats.totalTrades) },
+    { icon: '🎯', label: 'Win Rate', value: `${weekStats.winRate}%` },
+    { icon: '💰', label: 'P&L', value: formatCurrency(weekStats.totalPnL) },
+    { icon: '📚', label: 'Lessons', value: String(weekLessons.length) },
+    { icon: '🔥', label: 'Habit Check-ins', value: String(totalCheckins) },
+    { icon: '⚡', label: 'XP Earned', value: `+${weekXP}` },
+    { icon: '🏆', label: 'Best Day', value: bestDayName },
+    { icon: lvl.emoji, label: 'Current Rank', value: lvl.title },
+  ];
+
+  recapItems.forEach(({ icon, label, value }) => {
+    const item = el('div', 'recap-stat');
+    item.appendChild(el('span', 'recap-stat__icon', icon));
+    item.appendChild(el('span', 'recap-stat__value', value));
+    item.appendChild(el('span', 'recap-stat__label', label));
+    grid.appendChild(item);
+  });
+
+  modal.appendChild(grid);
+
+  // Motivational footer
+  let message = 'Keep pushing — consistency is the key to becoming a legend! 💪';
+  if (weekStats.totalTrades >= 5 && weekStats.winRate >= 60) message = 'Great trading week! Your edge is showing! 🔥';
+  else if (weekXP >= 200) message = 'Massive XP gains! You\'re leveling up fast! ⚡';
+  else if (totalCheckins >= 14) message = 'Habit machine! Your streaks are on fire! 🔥';
+  modal.appendChild(el('p', 'recap-footer', message));
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('recap-overlay--visible'));
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 250);
+    }
+  });
+}
+
+/* ================================================================ */
+/*  XP REAL-TIME DYNAMIC UI HELPERS                                  */
+/* ================================================================ */
+
+function updateSidebarXP(container) {
+  container.replaceChildren();
+
+  const lvl = getLevel();
+  const prog = getLevelProgress();
+  const xpData = getXPData();
+
+  // Rank Row
+  const rankRow = el('div', 'sidebar-xp__rank-row');
+  
+  const rankEmoji = el('span', 'sidebar-xp__emoji', lvl.emoji);
+  rankRow.appendChild(rankEmoji);
+
+  const titleWrap = el('div', 'sidebar-xp__title-wrap');
+  titleWrap.appendChild(el('span', 'sidebar-xp__title', lvl.title));
+  titleWrap.appendChild(el('span', 'sidebar-xp__level-text', `Level ${lvl.level}`));
+  rankRow.appendChild(titleWrap);
+  
+  container.appendChild(rankRow);
+
+  // Progress Bar Track
+  const progressTrack = el('div', 'sidebar-xp__progress');
+  const progressFill = el('div', 'sidebar-xp__fill');
+  progressFill.style.width = `${Math.round(prog.progress * 100)}%`;
+  progressTrack.appendChild(progressFill);
+  container.appendChild(progressTrack);
+
+  // Footer text
+  const footer = el('div', 'sidebar-xp__footer');
+  footer.appendChild(el('span', 'sidebar-xp__text', prog.progress >= 1 ? `${xpData.totalXP} XP (MAX)` : `${xpData.totalXP} / ${prog.next} XP`));
+  if (prog.progress < 1) {
+    footer.appendChild(el('span', 'sidebar-xp__next', `${prog.nextEmoji} ${prog.nextTitle}`));
+  }
+  container.appendChild(footer);
+}
+
+function updateDashboardRank() {
+  const rankPanel = document.querySelector('.rank-panel');
+  if (rankPanel) {
+    const lvl = getLevel();
+    const prog = getLevelProgress();
+    const xpData = getXPData();
+
+    const emojiEl = rankPanel.querySelector('.rank-card-emoji');
+    if (emojiEl) emojiEl.textContent = lvl.emoji;
+
+    const titleEl = rankPanel.querySelector('.rank-card-title');
+    if (titleEl) titleEl.textContent = lvl.title;
+
+    const lvlEl = rankPanel.querySelector('.rank-card-level');
+    if (lvlEl) lvlEl.textContent = `Level ${lvl.level}`;
+
+    const fillEl = rankPanel.querySelector('.rank-xp-fill');
+    if (fillEl) fillEl.style.width = `${Math.round(prog.progress * 100)}%`;
+
+    const textEl = rankPanel.querySelector('.rank-xp-text');
+    if (textEl) textEl.textContent = prog.progress >= 1 ? `${xpData.totalXP} XP (MAX)` : `${xpData.totalXP} / ${prog.next} XP`;
+
+    const nextEl = rankPanel.querySelector('.rank-xp-next');
+    if (nextEl) {
+      if (prog.progress >= 1) {
+        nextEl.remove();
+      } else {
+        nextEl.textContent = `Next: ${prog.nextEmoji} ${prog.nextTitle}`;
+      }
+    } else if (prog.progress < 1) {
+      const footer = rankPanel.querySelector('.rank-xp-footer');
+      if (footer) {
+        footer.appendChild(el('span', 'rank-xp-next', `Next: ${prog.nextEmoji} ${prog.nextTitle}`));
+      }
+    }
+  }
+}
+
+function showXPToast(amount, action) {
+  const toastContainer = document.querySelector('.xp-toast-container') || (() => {
+    const tc = el('div', 'xp-toast-container');
+    document.body.appendChild(tc);
+    return tc;
+  })();
+
+  const toast = el('div', 'xp-toast');
+  
+  const labels = {
+    habit: 'Completed Habit',
+    trade: 'Logged Trade',
+    lesson: 'Finished Lesson',
+    assignment: 'Completed Assignment',
+    quiz: 'Finished Quiz',
+    perfectDay: 'Perfect Day Streak!'
+  };
+  const label = labels[action] || action;
+
+  toast.appendChild(el('span', 'xp-toast__icon', '⚡'));
+  toast.appendChild(el('span', 'xp-toast__text', `+${amount} XP (${label})`));
+  
+  toastContainer.appendChild(toast);
+
+  // Trigger slide in
+  setTimeout(() => toast.classList.add('xp-toast--visible'), 10);
+
+  // Auto-remove
+  setTimeout(() => {
+    toast.classList.remove('xp-toast--visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+function showLevelUpModal(oldLvl, newLvl) {
+  const overlay = el('div', 'welcome-modal-overlay level-up-overlay');
+  const modal = el('div', 'welcome-modal level-up-modal');
+
+  const glow = el('div', 'welcome-glow-bar');
+  glow.style.background = 'linear-gradient(90deg, var(--cyan), var(--purple), var(--neon-green))';
+  modal.appendChild(glow);
+
+  modal.appendChild(el('span', 'welcome-modal__emoji level-up-emoji', newLvl.emoji));
+  
+  const title = el('h2', 'welcome-modal__title level-up-title', 'LEVEL UP!');
+  modal.appendChild(title);
+
+  const subtitle = el('h3', 'level-up-subtitle');
+  subtitle.textContent = `You promoted from ${oldLvl.title} to ${newLvl.title}!`;
+  modal.appendChild(subtitle);
+
+  const text = el('p', 'welcome-modal__text');
+  text.textContent = `Congratulations, SwaGGa! Your discipline, consistent habits, and trading mastery are paying off. Continue leading the charge! ⚡`;
+  modal.appendChild(text);
+
+  const btn = el('button', 'welcome-modal__btn level-up-btn', 'Acknowledge ⚔️');
+  btn.addEventListener('click', () => {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 300);
+  });
+  modal.appendChild(btn);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 /* ================================================================ */
@@ -722,6 +1110,11 @@ function buildAppShell() {
       signOutBtn.style.display = 'none';
     }
   });
+
+  // ---- Sidebar XP & Level widget ----
+  const sidebarXP = el('div', 'sidebar-xp');
+  sidebar.appendChild(sidebarXP);
+  updateSidebarXP(sidebarXP);
 
   sidebar.appendChild(syncSection);
 
@@ -864,6 +1257,33 @@ async function launchApp() {
   router.registerRoute('#chart', renderChartPage);
   router.registerRoute('#learning', renderLearningPage);
   router.registerRoute('#streaks', renderStreaksPage);
+
+  // Real-time XP & Level progression reactive updater
+  window.addEventListener('xp-change', (e) => {
+    const { amount, action, leveledUp, oldLevel, newLevel } = e.detail;
+    
+    // 1. Show dynamic floating toast notification
+    showXPToast(amount, action);
+    
+    // 2. Update sidebar XP widget
+    const sidebarXP = document.querySelector('.sidebar-xp');
+    if (sidebarXP) {
+      updateSidebarXP(sidebarXP);
+    }
+    
+    // 3. Update dashboard Rank panel if active
+    const pageDashboard = document.getElementById('page-dashboard');
+    if (pageDashboard && pageDashboard.style.display !== 'none') {
+      updateDashboardRank();
+    }
+    
+    // 4. Show gorgeous modal on rank promotion!
+    if (leveledUp) {
+      setTimeout(() => {
+        showLevelUpModal(oldLevel, newLevel);
+      }, 500);
+    }
+  });
 
   router.init();
   showWelcomePopup();

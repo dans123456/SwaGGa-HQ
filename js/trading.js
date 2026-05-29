@@ -20,6 +20,7 @@ import {
   calculateWinRate,
   sanitizeText,
 } from './utils.js';
+import { addXP } from './xp.js';
 
 /* ================================================================== */
 /*  CONSTANTS                                                         */
@@ -436,6 +437,7 @@ export function renderTradeForm(container, onSaved) {
     }
 
     saveTrade(tradeData);
+    addXP('trade', 25);
     form.reset();
     mistakeGroup.style.display = 'none'; // reset visibility
     dateInput.valueAsDate = new Date();

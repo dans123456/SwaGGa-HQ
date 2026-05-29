@@ -9,6 +9,7 @@
 
 import storage from './storage.js';
 import { generateId, formatDate, sanitizeText } from './utils.js';
+import { addXP } from './xp.js';
 
 /* ================================================================== */
 /*  CONSTANTS                                                         */
@@ -1203,6 +1204,7 @@ function openLogLessonPopup(onSaved) {
       rating: Number(fd.get('rating')) || 3,
       notesImage: notesImageBase64
     });
+    addXP('lesson', 30);
 
     close();
     if (typeof onSaved === 'function') onSaved();
@@ -1338,6 +1340,14 @@ function openQuizPopup() {
     const totalScore = mcqScore + openScore;
     const maxScore = mcqTotal + openTotal;
     const percentage = Math.round((totalScore / maxScore) * 100);
+
+    // Award XP for taking a quiz
+    addXP('quiz', 15);
+
+    // Save quiz score for achievements tracking
+    const quizScores = storage.get('quiz_scores', []);
+    quizScores.push(percentage);
+    storage.set('quiz_scores', quizScores);
     
     if (percentage === 100) {
       const currentTokens = storage.get('streak_freeze_tokens', 0);
@@ -1493,6 +1503,7 @@ function renderAssignments(container, onRefresh) {
           target.completed = !target.completed;
           
           if (!wasCompleted && target.completed) {
+            addXP('assignment', 40);
             const currentTokens = storage.get('streak_freeze_tokens', 0);
             if (currentTokens < 3) {
               storage.set('streak_freeze_tokens', currentTokens + 1);

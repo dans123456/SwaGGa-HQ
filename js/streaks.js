@@ -12,6 +12,7 @@
 
 import storage from './storage.js';
 import { generateId, sanitizeText } from './utils.js';
+import { addXP } from './xp.js';
 
 /* ================================================================== */
 /*  CONSTANTS                                                         */
@@ -345,7 +346,18 @@ export function renderHabitCard(habit, onToggle) {
     toggleBtn.style.color = '#0a0a0f';
   }
   toggleBtn.addEventListener('click', () => {
+    const wasDone = done;
     toggleHabit(habit.id);
+    // Award XP when marking a habit as done (not when un-marking)
+    if (!wasDone) {
+      addXP('habit', 10);
+      // Check for perfect day bonus (all habits done)
+      const today = localDateKey();
+      const allHabits = getHabits();
+      if (allHabits.length > 0 && allHabits.every(h => h.log[today])) {
+        addXP('perfectDay', 50);
+      }
+    }
     // Push updates to cloud immediately if signed in to prevent any lag or refresh loss
     import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
       if (getCurrentUser()) pushToCloud();
