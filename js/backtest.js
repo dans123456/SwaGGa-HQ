@@ -554,16 +554,17 @@ function drawChart() {
   minPrice -= priceRange * 0.08;
 
   // Render Horizontal Gridlines & Price Scales
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.lineWidth = 1;
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.font = '10px Outfit, sans-serif';
   ctx.textAlign = 'right';
 
   const gridLineCount = 5;
   for (let i = 0; i <= gridLineCount; i++) {
     const yVal = maxPrice - (i * (maxPrice - minPrice)) / gridLineCount;
-    const y = paddingTop + (i * (h - paddingTop - paddingBottom)) / gridLineCount;
+    // Align grid line coordinates exactly on .5 for pixel sharpness
+    const y = Math.floor(paddingTop + (i * (h - paddingTop - paddingBottom)) / gridLineCount) + 0.5;
     
     // Draw gridline
     ctx.beginPath();
@@ -572,13 +573,21 @@ function drawChart() {
     ctx.stroke();
 
     // Draw Price label
-    ctx.fillText(yVal.toFixed(2), paddingX - 6, y + 3);
+    ctx.fillText(yVal.toFixed(2), paddingX - 8, y + 3);
   }
 
   // Render Candlesticks
   const chartWidth = w - paddingX * 2;
   const candleWidth = chartWidth / state.visibleCount;
-  const bodyPadding = Math.max(2, candleWidth * 0.15);
+  
+  // Human developer spacing: keep a clean, balanced gap between bodies
+  const bodyPadding = Math.min(6, Math.max(1.5, candleWidth * 0.12));
+
+  // Premium TradingView Palette
+  const bullBody = 'rgba(8, 153, 129, 0.35)'; // semi-trans translucent green body fill
+  const bullBorder = '#089981';                // crisp TradingView Emerald Green
+  const bearBody = 'rgba(242, 54, 69, 0.35)';  // semi-trans translucent red body fill
+  const bearBorder = '#f23645';                // crisp TradingView Crimson Red
 
   visibleCandles.forEach((c, idx) => {
     const x = paddingX + idx * candleWidth;
@@ -594,41 +603,50 @@ function drawChart() {
     const yLow = scaleY(c.low);
 
     const isBullish = c.close >= c.open;
-    const themeColor = isBullish ? '#10b981' : '#ef4444'; // green or red
+    const bodyColor = isBullish ? bullBody : bearBody;
+    const borderColor = isBullish ? bullBorder : bearBorder;
 
-    // Draw Wick line
-    ctx.strokeStyle = themeColor;
-    ctx.lineWidth = Math.max(1, candleWidth * 0.06);
+    // Center wick exactly on the 0.5px boundary for ultra-crisp 1.5px lines
+    const wickX = Math.floor(x + candleWidth / 2) + 0.5;
+
+    // 1. Draw thin, high-fidelity Wick
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(x + candleWidth / 2, yHigh);
-    ctx.lineTo(x + candleWidth / 2, yLow);
+    ctx.moveTo(wickX, Math.floor(yHigh));
+    ctx.lineTo(wickX, Math.floor(yLow));
     ctx.stroke();
 
-    // Draw Candle body
-    ctx.fillStyle = themeColor;
-    const bodyHeight = Math.max(1.5, Math.abs(yClose - yOpen));
-    ctx.fillRect(
-      x + bodyPadding,
-      Math.min(yOpen, yClose),
-      candleWidth - bodyPadding * 2,
-      bodyHeight
-    );
+    // 2. Draw Candlestick body with 1px border
+    const rectX = Math.floor(x + bodyPadding);
+    const rectY = Math.floor(Math.min(yOpen, yClose));
+    const rectW = Math.floor(candleWidth - bodyPadding * 2);
+    const rectH = Math.max(2, Math.floor(Math.abs(yClose - yOpen)));
+
+    // Fill body
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(rectX, rectY, rectW, rectH);
+
+    // Stroke body outline
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rectX + 0.5, rectY + 0.5, rectW - 1, rectH - 1);
 
     // Highlight hovered candle
     if (idx === state.hoveredCandleIdx) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.fillRect(x, paddingTop, candleWidth, h - paddingTop - paddingBottom);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.fillRect(Math.floor(x), paddingTop, Math.floor(candleWidth), h - paddingTop - paddingBottom);
     }
   });
 
   // Render Hover tooltip info
   if (state.hoveredCandleIdx >= 0 && state.hoveredCandleIdx < visibleCandles.length) {
     const c = visibleCandles[state.hoveredCandleIdx];
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
     ctx.font = '11px Outfit, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(
-      `O: ${c.open.toFixed(2)}  H: ${c.high.toFixed(2)}  L: ${c.low.toFixed(2)}  C: ${c.close.toFixed(2)}`,
+      `O: ${c.open.toFixed(2)}   H: ${c.high.toFixed(2)}   L: ${c.low.toFixed(2)}   C: ${c.close.toFixed(2)}`,
       paddingX,
       20
     );
@@ -642,7 +660,7 @@ function drawChart() {
     };
 
     const drawDashedLine = (price, color, label) => {
-      const y = scaleY(price);
+      const y = Math.floor(scaleY(price)) + 0.5;
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 4]);
@@ -655,18 +673,18 @@ function drawChart() {
 
       // Label badge background
       ctx.fillStyle = color;
-      ctx.fillRect(w - paddingX - 60, y - 9, 60, 16);
+      ctx.fillRect(w - paddingX - 65, y - 8, 65, 16);
       
       // Label text
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 9px Outfit, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(label, w - paddingX - 30, y + 2);
+      ctx.fillText(label, w - paddingX - 32, y + 3);
     };
 
     drawDashedLine(t.entry, '#facc15', 'ENTRY');
-    if (t.stop) drawDashedLine(t.stop, '#ef4444', `SL: ${t.stop}`);
-    if (t.target) drawDashedLine(t.target, '#10b981', `TP: ${t.target}`);
+    if (t.stop) drawDashedLine(t.stop, '#f23645', `SL: ${t.stop}`);
+    if (t.target) drawDashedLine(t.target, '#089981', `TP: ${t.target}`);
   }
 }
 
