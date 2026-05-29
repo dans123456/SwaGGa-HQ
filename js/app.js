@@ -1,8 +1,6 @@
-/**
- * SwaGGa HQ — Main Application Controller
- * Builds shell DOM, welcome popup, mobile menu, dashboard with live stats.
- * SECURITY: All DOM via createElement + textContent. No innerHTML.
- */
+// SwaGGa HQ — Main Application Controller
+// Orchestrates navigation, welcome popups, live stats calculations, and dashboard layout.
+// Strictly uses createElement + textContent for ultimate visual performance and security.
 
 import router from './router.js';
 import { renderTradingPage } from './trading.js';
@@ -18,6 +16,7 @@ import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from '
 import { renderCalendarPage } from './calendar.js';
 import { playSynthSound } from './audio.js';
 
+// Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
   if (cls) node.className = cls;
@@ -36,12 +35,10 @@ const NAV_ITEMS = [
 
 let _killzonesInterval = null;
 
-/* ================================================================ */
-/*  WELCOME POPUP                                                    */
-/* ================================================================ */
+// --- Welcome Popup ---
 
 function showWelcomePopup() {
-  // Show once per browser session (not once ever)
+  // Only greet once per session so they don't get annoyed on refresh
   if (sessionStorage.getItem('swagga_greeted')) return;
   sessionStorage.setItem('swagga_greeted', '1');
 
@@ -114,9 +111,7 @@ function showWelcomePopup() {
   document.body.appendChild(overlay);
 }
 
-/* ================================================================ */
-/*  ICT KILLZONES HELPERS & CONSTANTS                                */
-/* ================================================================ */
+// --- ICT Killzones Helpers & Constants ---
 
 const SESSIONS = [
   { name: 'Asian', start: 20, end: 24, label: 'Asian Killzone', nyRange: '8:00 PM - 12:00 AM' },
@@ -254,9 +249,7 @@ function renderChecklist(container, sessionKey) {
   container.appendChild(listEl);
 }
 
-/* ================================================================ */
-/*  DASHBOARD                                                        */
-/* ================================================================ */
+// --- Dashboard ---
 
 function renderDashboard(container) {
   container.replaceChildren();
@@ -637,7 +630,6 @@ function renderDashboard(container) {
   }
 }
 
-/** Build a sorted list of recent activity items from all modules. */
 function buildActivityItems(trades, lessons, habits) {
   const items = [];
 
@@ -696,9 +688,7 @@ function getGreeting() {
   return 'Good Evening';
 }
 
-/* ================================================================ */
-/*  ACHIEVEMENT BADGES / TROPHIES                                     */
-/* ================================================================ */
+// --- Achievement Badges / Trophies ---
 
 const ACHIEVEMENTS = [
   { id: 'first-trade',   emoji: '🏆', name: 'First Trade',     desc: 'Log your first trade',                check: () => getTrades().length >= 1 },
@@ -960,9 +950,7 @@ function openAchievementDetail(a) {
   document.body.appendChild(overlay);
 }
 
-/* ================================================================ */
-/*  WEEKLY RECAP REPORT                                               */
-/* ================================================================ */
+// --- Weekly Recap Report ---
 
 function renderWeeklyRecap() {
   // Calculate Monday–Sunday range for the current week
@@ -1098,9 +1086,7 @@ function renderWeeklyRecap() {
   });
 }
 
-/* ================================================================ */
-/*  XP REAL-TIME DYNAMIC UI HELPERS                                  */
-/* ================================================================ */
+// --- Xp Real-time Dynamic Ui Helpers ---
 
 function updateSidebarXP(container) {
   container.replaceChildren();
@@ -1242,9 +1228,7 @@ function showLevelUpModal(oldLvl, newLvl) {
   document.body.appendChild(overlay);
 }
 
-/* ================================================================ */
-/*  BUILD APP SHELL                                                  */
-/* ================================================================ */
+// --- Build App Shell ---
 
 function buildAppShell() {
   const app = document.getElementById('app');
@@ -1488,9 +1472,7 @@ function buildAppShell() {
   overlay.addEventListener('click', closeMobileMenu);
 }
 
-/* ================================================================ */
-/*  LOGIN SCREEN                                                      */
-/* ================================================================ */
+// --- Login Screen ---
 
 function showLoginScreen() {
   const appRoot = document.getElementById('app');
@@ -1573,9 +1555,7 @@ function showLoginScreen() {
   appRoot.appendChild(screen);
 }
 
-/* ================================================================ */
-/*  APP LAUNCH (after login or skip)                                  */
-/* ================================================================ */
+// --- App Launch (after Login Or Skip) ---
 
 let _appLaunched = false;
 
@@ -1633,9 +1613,7 @@ async function launchApp() {
   }, 30000);
 }
 
-/* ================================================================ */
-/*  INIT                                                             */
-/* ================================================================ */
+// --- Init ---
 
 function init() {
   // Initialize the saved visual theme (defaults to dark mode)
@@ -1661,9 +1639,7 @@ if (document.readyState === 'loading') {
   init();
 }
 
-/* ================================================================ */
-/*  ECONOMIC CALENDAR NEWS FEED WIDGET SUPPORT                       */
-/* ================================================================ */
+// --- Economic Calendar News Feed Widget Support ---
 
 function renderEconomicNewsWidget(container) {
   const listContainer = el('div', 'news-list-container');

@@ -1,14 +1,6 @@
-/**
- * SwaGGa HQ — Trading Journal Module
- *
- * Records, displays, and analyses trades. Every piece of user-provided text
- * is rendered via textContent; every DOM node is built with createElement.
- *
- * SECURITY:
- *  • All user input is displayed via textContent — never innerHTML.
- *  • DOM built exclusively with createElement / appendChild.
- *  • Containers cleared with replaceChildren().
- */
+// SwaGGa HQ — Trading Journal Module
+// Handles logging, table rendering, stats, and confluence analytics.
+// Keep it safe: all dynamic user data is rendered using createElement + textContent.
 
 import storage from './storage.js';
 import {
@@ -22,11 +14,9 @@ import {
 } from './utils.js';
 import { addXP } from './xp.js';
 
-/* ================================================================== */
-/*  CONSTANTS                                                         */
-/* ================================================================== */
+// --- Constants ---
 
-/** Tradeable asset catalogue grouped by category. */
+// Tradeable assets catalog grouped by category
 export const ASSETS = {
   'Forex Majors': [
     'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'NZD/USD', 'USD/CAD',
@@ -48,7 +38,7 @@ export const ASSETS = {
   ],
 };
 
-/** Confluence / edge factors that can be tagged on a trade. */
+// Confluences / edge factors tagged on trades
 export const CONFLUENCE_OPTIONS = [
   'Market Structure (BOS/CHOCH) [Ep 5]',
   'Candlestick Confirmation [Ep 6]',
@@ -62,7 +52,6 @@ export const CONFLUENCE_OPTIONS = [
 
 const STORAGE_KEY = 'trades';
 
-/** Map SwaGGa asset names → TradingView symbol identifiers */
 const TV_SYMBOL_MAP = {
   'EUR/USD': 'FX:EURUSD',
   'GBP/USD': 'FX:GBPUSD',
@@ -104,26 +93,20 @@ const TV_SYMBOL_MAP = {
   'Volatility 100 (1s)': 'DERIV:1HZ100V',
 };
 
-/** Flat list of all assets for the chart selector */
+// Flat list of all assets for the chart selector
 const ALL_ASSETS = Object.values(ASSETS).flat();
 
-/** Currently requested chart symbol (set by auto-assignment flow) */
+// Symbol chosen via auto-assignment to pre-load on Live Chart
 let _pendingChartSymbol = null;
 
-/* ================================================================== */
-/*  DATA LAYER                                                        */
-/* ================================================================== */
+// --- Data Layer ---
 
-/** @returns {Array<object>} All saved trades. */
+// Gets all trades saved in storage
 export function getTrades() {
   return storage.get(STORAGE_KEY, []);
 }
 
-/**
- * Persist a new trade.
- * @param {object} tradeData - Form values (asset, direction, entry, exit, …).
- * @returns {object} The saved trade object (with generated id & timestamp).
- */
+// Persists a new trade to local storage and updates setup quality
 export function saveTrade(tradeData) {
   const trades = getTrades();
   const confCount = Array.isArray(tradeData.confluences) ? tradeData.confluences.length : 0;
@@ -152,24 +135,15 @@ export function saveTrade(tradeData) {
   return trade;
 }
 
-/**
- * Delete a trade by id.
- * @param {string} id
- */
+// Remove a trade record
 export function deleteTrade(id) {
   const trades = getTrades().filter((t) => t.id !== id);
   storage.set(STORAGE_KEY, trades);
 }
 
-/* ================================================================== */
-/*  STATS                                                             */
-/* ================================================================== */
+// --- Stats Calculations ---
 
-/**
- * Compute aggregate statistics for a list of trades.
- * @param {Array<object>} trades
- * @returns {{totalTrades: number, winRate: number, totalPnL: number, avgRR: number}}
- */
+// Computes aggregate statistics for the dashboard/panels
 export function calculateStats(trades) {
   if (!trades.length) {
     return { totalTrades: 0, winRate: 0, totalPnL: 0, avgRR: 0 };
@@ -185,13 +159,9 @@ export function calculateStats(trades) {
   };
 }
 
-/* ================================================================== */
-/*  DOM BUILDERS — all use createElement + textContent                */
-/* ================================================================== */
+// --- DOM Builders (exclusively createElement + textContent for safety) ---
 
-/* ---------- tiny helpers ------------------------------------------ */
-
-/** Create an element with optional classes and text. */
+// Helper to quickly create elements with class and text
 function el(tag, classNames = '', text = '') {
   const node = document.createElement(tag);
   if (classNames) node.className = classNames;
@@ -199,7 +169,7 @@ function el(tag, classNames = '', text = '') {
   return node;
 }
 
-/** Create a labelled form field wrapper. */
+// Wrap forms with consistent labels and container classes
 function formGroup(labelText, inputElement) {
   const group = el('div', 'form-group');
   const label = el('label', 'form-label', labelText);
@@ -213,7 +183,7 @@ function formGroup(labelText, inputElement) {
   return group;
 }
 
-/* ---------- Stats bar --------------------------------------------- */
+// --- Stats Bar ---
 
 function renderStatsBar(container, stats) {
   container.replaceChildren();
@@ -242,11 +212,7 @@ function renderStatsBar(container, stats) {
 
 /* ---------- Trade Form -------------------------------------------- */
 
-/**
- * Build the "Log Trade" form.
- * @param {HTMLElement} container
- * @param {Function} onSaved - Callback after a trade is saved.
- */
+// Build the "Log Trade" form.
 export function renderTradeForm(container, onSaved) {
   container.replaceChildren();
   const form = el('form', 'trade-form');
@@ -689,9 +655,7 @@ function openTradeDetail(trade) {
   });
 }
 
-/**
- * Generate customized trade critique in the mentor's specific tone.
- */
+// Generate customized trade critique in the mentor's specific tone.
 function generateMentorCritique(mentorKey, trade) {
   const isWin = trade.outcome === 'win';
   const asset = trade.asset || 'this pair';
@@ -794,11 +758,7 @@ function generateMentorCritique(mentorKey, trade) {
 
 /* ---------- Trade History Table ------------------------------------ */
 
-/**
- * Build the trade history table.
- * @param {HTMLElement} container
- * @param {Function} onRefresh - Called after a delete so the page can re-render.
- */
+// Build the trade history table.
 export function renderTradeHistory(container, onRefresh) {
   container.replaceChildren();
   const trades = getTrades();
@@ -903,7 +863,6 @@ export function renderTradeHistory(container, onRefresh) {
 
 /* ---------- Tabs -------------------------------------------------- */
 
-/** Simple tab bar: Log Trade | Trade History | Analytics */
 function buildTabs(onSelect) {
   const tabs = el('div', 'tab-bar');
   const tabDefs = [
@@ -1112,7 +1071,6 @@ function buildCorrelationEngine(trades) {
   return section;
 }
 
-
 /* ---------- Analytics panel --------------------------------------- */
 
 function renderAnalytics(container) {
@@ -1291,14 +1249,9 @@ function buildRiskCalculator() {
   return section;
 }
 
-/* ================================================================== */
-/*  MAIN RENDER                                                       */
-/* ================================================================== */
+// --- Main Render Function ---
 
-/**
- * Build the full Trading page inside the given container.
- * @param {HTMLElement} container - #page-trading element.
- */
+// Entrypoint: renders the entire trading page within the container
 export function renderTradingPage(container) {
   container.replaceChildren();
 
@@ -1331,7 +1284,6 @@ export function renderTradingPage(container) {
   container.appendChild(historyPanel);
   container.appendChild(analyticsPanel);
 
-  /** Refresh callback — re-renders everything. */
   function refresh() {
     const trades = getTrades();
     const stats = calculateStats(trades);
@@ -1461,20 +1413,13 @@ function loadTVChart(container, assetName) {
   }
 }
 
-/**
- * Standalone chart page renderer — own sidebar route.
- * @param {HTMLElement} container
- */
+// Standalone chart page renderer — own sidebar route.
 export function renderChartPage(container) {
   container.replaceChildren();
   renderLiveChart(container);
 }
 
-/**
- * Navigate to the chart page with a specific symbol loaded.
- * Called by the auto-assignment system.
- * @param {string} assetName - e.g. 'EUR/USD'
- */
+// Navigate to the chart page with a specific symbol loaded.
 export function loadChartSymbol(assetName) {
   _pendingChartSymbol = assetName;
   window.location.hash = '#chart';

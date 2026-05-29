@@ -1,21 +1,9 @@
-/**
- * SwaGGa HQ — Retro Synth Sound Module
- *
- * Generates custom 8-bit retro arcade synthesizer beeps, arpeggios, and fanfares
- * purely through browser-native Web Audio API. Zero external dependencies/files.
- * Handles lazy-initialisation to bypass browser autoplay safety blocks.
- *
- * SECURITY: Standard JavaScript module, no unsafe DOM manipulations.
- */
+// retro synth sound effects (Web Audio API)
 
 import storage from './storage.js';
 
 let _audioCtx = null;
 
-/**
- * Lazily resolve the browser AudioContext to bypass user-interaction autoplay blocks.
- * @returns {AudioContext|null}
- */
 function getAudioContext() {
   if (isMuted()) return null;
   
@@ -26,7 +14,7 @@ function getAudioContext() {
     }
   }
   
-  // Resume context if suspended (common in chrome/safari)
+  // resume if suspended (chrome/safari autoplay policy)
   if (_audioCtx && _audioCtx.state === 'suspended') {
     _audioCtx.resume();
   }
@@ -34,18 +22,10 @@ function getAudioContext() {
   return _audioCtx;
 }
 
-/**
- * Checks whether audio is muted persistently.
- * @returns {boolean}
- */
 export function isMuted() {
   return storage.get('audio_muted', false);
 }
 
-/**
- * Sets the master mute state.
- * @param {boolean} muted
- */
 export function setMuted(muted) {
   storage.set('audio_muted', !!muted);
   if (muted && _audioCtx) {
@@ -55,20 +35,12 @@ export function setMuted(muted) {
   }
 }
 
-/**
- * Toggle the master mute state.
- * @returns {boolean} The new muted state.
- */
 export function toggleMute() {
   const nextState = !isMuted();
   setMuted(nextState);
   return nextState;
 }
 
-/**
- * Play a synthesizer arpeggio or beep.
- * @param {string} type — 'click', 'success', 'fail', 'fanfare'
- */
 export function playSynthSound(type) {
   if (isMuted()) return;
 
@@ -80,7 +52,7 @@ export function playSynthSound(type) {
     
     switch (type) {
       case 'click': {
-        // Short high-frequency click beep
+
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
@@ -100,7 +72,7 @@ export function playSynthSound(type) {
       }
       
       case 'success': {
-        // Ascending arpeggio C5 -> E5 -> G5
+
         const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
         notes.forEach((freq, idx) => {
           const osc = ctx.createOscillator();
@@ -122,7 +94,7 @@ export function playSynthSound(type) {
       }
       
       case 'fail': {
-        // Descending low-frequency buzz G3 -> E3
+
         const notes = [196.00, 164.81]; // G3, E3
         notes.forEach((freq, idx) => {
           const osc = ctx.createOscillator();
@@ -144,7 +116,7 @@ export function playSynthSound(type) {
       }
       
       case 'fanfare': {
-        // Sparkling triumphant chords/fanfare C5 -> G5 -> C6 -> E6 -> G6
+
         const notes = [523.25, 783.99, 1046.50, 1318.51, 1567.98]; // C5, G5, C6, E6, G6
         notes.forEach((freq, idx) => {
           const osc = ctx.createOscillator();

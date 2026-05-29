@@ -1,22 +1,4 @@
-/**
- * SwaGGa HQ — Chart.js Configuration Helpers
- *
- * NOTE: Chart.js is loaded via CDN in index.html and is available as
- * the global `Chart` object. These helpers create and return Chart
- * instances against an existing <canvas> element.
- *
- * Color palette (matching app theme):
- *   Neon Green : #39ff14
- *   Red        : #ff3b3b
- *   Purple     : #b44dff
- *   Cyan       : #00e5ff
- *   Grid       : rgba(255,255,255,0.08)
- *   Text       : #e0e0e0
- */
-
-/* ------------------------------------------------------------------ */
-/*  Shared theme                                                      */
-/* ------------------------------------------------------------------ */
+// chart.js config helpers (Chart global loaded via CDN)
 
 const COLORS = {
   green: '#39ff14',
@@ -28,7 +10,6 @@ const COLORS = {
   tooltipBg: 'rgba(30,30,30,0.95)',
 };
 
-/** Shared dark-theme defaults used across all chart types. */
 function darkScaleOptions(showX = true) {
   return {
     x: {
@@ -62,20 +43,13 @@ function darkPluginOptions(titleText = '') {
   return opts;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Helper: safely obtain a 2D context from a canvas id               */
-/* ------------------------------------------------------------------ */
+// ---
 
-/**
- * @param {string} canvasId
- * @returns {CanvasRenderingContext2D|null}
- */
-
-/** Track active chart instances so we can destroy them before re-creating */
+// track instances to destroy before re-creating
 const _chartInstances = new Map();
 
 function getCtx(canvasId) {
-  // Destroy any existing chart on this canvas first
+
   if (_chartInstances.has(canvasId)) {
     _chartInstances.get(canvasId).destroy();
     _chartInstances.delete(canvasId);
@@ -89,23 +63,15 @@ function getCtx(canvasId) {
   return canvas.getContext('2d');
 }
 
-/** Wrap Chart constructor to track instances */
 function createTrackedChart(canvasId, ctx, config) {
   const chart = new Chart(ctx, config);
   _chartInstances.set(canvasId, chart);
   return chart;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Public chart creators                                             */
-/* ------------------------------------------------------------------ */
+// ---- chart creators ----
 
-/**
- * Create a cumulative equity (P&L) line chart.
- * @param {string} canvasId
- * @param {Array<{pnl: number, date: string}>} trades - Sorted by date.
- * @returns {Chart|null}
- */
+/* cumulative equity (P&L) line chart */
 export function createEquityCurve(canvasId, trades) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
@@ -149,12 +115,6 @@ export function createEquityCurve(canvasId, trades) {
   });
 }
 
-/**
- * Create a win / loss doughnut chart.
- * @param {string} canvasId
- * @param {Array<{pnl: number}>} trades
- * @returns {Chart|null}
- */
 export function createWinLossChart(canvasId, trades) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
@@ -184,18 +144,11 @@ export function createWinLossChart(canvasId, trades) {
   });
 }
 
-/**
- * Create a daily P&L bar chart.
- * Aggregates trades by date and renders a bar per day.
- * @param {string} canvasId
- * @param {Array<{pnl: number, date: string}>} trades
- * @returns {Chart|null}
- */
+// daily P&L bar chart
 export function createDailyPnLChart(canvasId, trades) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
 
-  /** @type {Map<string, number>} */
   const byDay = new Map();
   trades.forEach((t) => {
     const key = new Date(t.date).toISOString().slice(0, 10);
@@ -231,12 +184,6 @@ export function createDailyPnLChart(canvasId, trades) {
   });
 }
 
-/**
- * Create a streak-count bar chart.
- * @param {string} canvasId
- * @param {Array<{name: string, streak: number}>} streakData
- * @returns {Chart|null}
- */
 export function createStreakChart(canvasId, streakData) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
@@ -277,12 +224,6 @@ export function createStreakChart(canvasId, streakData) {
   });
 }
 
-/**
- * Create a bar chart showing win rate against confluence count.
- * @param {string} canvasId
- * @param {Array<object>} trades
- * @returns {Chart|null}
- */
 export function createConfluenceWinRateChart(canvasId, trades) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
@@ -344,12 +285,7 @@ export function createConfluenceWinRateChart(canvasId, trades) {
   });
 }
 
-/**
- * Create a mistake tracker doughnut chart.
- * @param {string} canvasId
- * @param {Array<object>} trades
- * @returns {Chart|null}
- */
+// mistake/loss-psychology doughnut
 export function createMistakeChart(canvasId, trades) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
@@ -435,12 +371,6 @@ export function createMistakeChart(canvasId, trades) {
   });
 }
 
-/**
- * Create a horizontal bar chart showing total P&L per asset.
- * @param {string} canvasId
- * @param {Array<object>} trades
- * @returns {Chart|null}
- */
 export function createAssetPerformanceChart(canvasId, trades) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
@@ -451,7 +381,6 @@ export function createAssetPerformanceChart(canvasId, trades) {
     byAsset.set(asset, (byAsset.get(asset) || 0) + (Number(t.pnl) || 0));
   });
 
-  // Sort by P&L descending
   const sorted = [...byAsset.entries()].sort((a, b) => b[1] - a[1]);
   const labels = sorted.map(([a]) => a);
   const data = sorted.map(([, v]) => parseFloat(v.toFixed(2)));
@@ -478,17 +407,10 @@ export function createAssetPerformanceChart(canvasId, trades) {
   });
 }
 
-/**
- * Create a grouped bar chart showing win rate & trade count per session.
- * @param {string} canvasId
- * @param {Array<object>} trades
- * @returns {Chart|null}
- */
 export function createConfluenceCorrelationChart(canvasId, labels, winRates, tradeCounts) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
 
-  // Color each bar based on win rate (green for high, yellow for mid, red for low)
   const bgColors = winRates.map(wr => {
     if (wr >= 65) return 'rgba(57, 255, 20, 0.7)';
     if (wr >= 45) return 'rgba(255, 200, 0, 0.7)';

@@ -1,26 +1,16 @@
-/**
- * SwaGGa HQ — Auto-Assignment & Notification System
- *
- * Generates random practice assignments 3 times per week on randomly
- * chosen days. Shows a popup notification when the app opens on a
- * scheduled day. User can accept (saves + navigates to chart) or dismiss.
- *
- * SECURITY: All DOM via createElement + textContent. No innerHTML.
- */
+// auto-assignment & notification system
 
 import storage from './storage.js';
 import { generateId } from './utils.js';
 import { loadChartSymbol, ASSETS, CONFLUENCE_OPTIONS } from './trading.js';
 
-/* ================================================================== */
-/*  CONSTANTS                                                         */
-/* ================================================================== */
+// ---- constants ----
 
 const STORAGE_SCHEDULE = 'auto_assign_schedule';
 const STORAGE_LAST_CHECK = 'auto_assign_last_check';
 const STORAGE_ASSIGNMENTS = 'assignments';
 
-/** Assignment templates — {asset}, {timeframe}, {concept} are replaced */
+/* {asset}, {timeframe}, {concept} get replaced in these */
 const ASSIGNMENT_TEMPLATES = [
   'Identify all {concept} on {asset} ({timeframe}) and mark them on the chart.',
   'Analyse {asset} on {timeframe}. Find areas where {concept} is present and annotate.',
@@ -47,12 +37,9 @@ const CONCEPTS = [
 
 const TIMEFRAMES = ['5M', '15M', '30M', '1H', '4H', 'Daily'];
 
-/** All assets flattened for random selection */
 const ALL_ASSETS_FLAT = Object.values(ASSETS).flat();
 
-/* ================================================================== */
-/*  HELPERS                                                           */
-/* ================================================================== */
+// ---
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -78,21 +65,15 @@ function getTodayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-/* ================================================================== */
-/*  SCHEDULE ENGINE                                                   */
-/* ================================================================== */
+// schedule engine
 
-/**
- * Get or create the schedule for this week.
- * Returns an object: { weekId, days: [0..6, 0..6, 0..6] }
- * Days are 0=Sunday, 1=Monday ... 6=Saturday
- */
+// get or create this week's schedule (3 random days)
 function getWeekSchedule() {
   const weekId = getWeekId();
   let schedule = storage.get(STORAGE_SCHEDULE, null);
 
   if (!schedule || schedule.weekId !== weekId) {
-    // Generate 3 random unique days for this week
+
     const allDays = [0, 1, 2, 3, 4, 5, 6];
     const picked = [];
     while (picked.length < 3) {
@@ -107,9 +88,6 @@ function getWeekSchedule() {
   return schedule;
 }
 
-/**
- * Generate a random assignment object.
- */
 function generateAutoAssignment() {
   const asset = randomFrom(ALL_ASSETS_FLAT);
   const concept = randomFrom(CONCEPTS);
@@ -133,54 +111,41 @@ function generateAutoAssignment() {
   };
 }
 
-/* ================================================================== */
-/*  NOTIFICATION POPUP                                                */
-/* ================================================================== */
+// ---- notification popup ----
 
-/**
- * Show a slide-in notification popup with an assignment.
- * @param {object} assignment - The generated assignment.
- */
 function showAssignmentPopup(assignment) {
   const overlay = el('div', 'notif-overlay');
 
   const popup = el('div', 'notif-popup');
 
-  // Gradient top bar
   const topBar = el('div', 'notif-topbar');
   popup.appendChild(topBar);
 
-  // Header
   const header = el('div', 'notif-header');
   header.appendChild(el('span', 'notif-icon', '📝'));
   header.appendChild(el('h3', 'notif-title', 'New Assignment!'));
   popup.appendChild(header);
 
-  // Assignment text
   popup.appendChild(el('p', 'notif-text', assignment.text));
 
-  // Tags
   const tagRow = el('div', 'notif-tags');
   tagRow.appendChild(el('span', 'tag', assignment.asset));
   tagRow.appendChild(el('span', 'tag', assignment.timeframe));
   tagRow.appendChild(el('span', 'tag', assignment.concept));
   popup.appendChild(tagRow);
 
-  // Actions
   const actions = el('div', 'notif-actions');
 
   const acceptBtn = el('button', 'btn btn-primary notif-btn', '✅ Accept & Go to Chart');
   acceptBtn.addEventListener('click', () => {
-    // Save assignment to learning assignments list
+
     const all = storage.get(STORAGE_ASSIGNMENTS, []);
     all.push(assignment);
     storage.set(STORAGE_ASSIGNMENTS, all);
 
-    // Close popup
     overlay.classList.add('notif-closing');
     setTimeout(() => overlay.remove(), 300);
 
-    // Navigate to trading chart with this asset
     loadChartSymbol(assignment.asset);
   });
   actions.appendChild(acceptBtn);
@@ -196,38 +161,27 @@ function showAssignmentPopup(assignment) {
   overlay.appendChild(popup);
   document.body.appendChild(overlay);
 
-  // Animate in
   requestAnimationFrame(() => overlay.classList.add('notif-visible'));
 }
 
-/* ================================================================== */
-/*  MAIN CHECK — called on app startup                                */
-/* ================================================================== */
+// ---- main check (app startup) ----
 
-/**
- * Check if today is a scheduled assignment day.
- * If yes and we haven't shown one today, generate + show popup.
- */
 export function checkAutoAssignment() {
   const schedule = getWeekSchedule();
   const today = new Date().getDay(); // 0-6
   const todayStr = getTodayStr();
 
-  // Check if today is one of the 3 scheduled days
   if (!schedule.days.includes(today)) return;
 
-  // Check if we already fired today
   if (schedule.firedDates.includes(todayStr)) return;
 
-  // Generate and show
   const assignment = generateAutoAssignment();
 
-  // Small delay so the app has time to render first
+  // delay so app renders first
   setTimeout(() => {
     showAssignmentPopup(assignment);
   }, 1500);
 
-  // Mark today as fired
   schedule.firedDates.push(todayStr);
   storage.set(STORAGE_SCHEDULE, schedule);
 }

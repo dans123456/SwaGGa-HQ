@@ -1,24 +1,10 @@
-/**
- * SwaGGa HQ — Firebase Cloud Sync
- *
- * Handles:
- *  - Firebase initialization
- *  - Google Sign-In authentication
- *  - Firestore read/write for cloud backup
- *  - Merge logic (local ↔ cloud)
- *
- * SECURITY: Only authenticated users can read/write their own data.
- */
+// firebase cloud sync
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, inMemoryPersistence }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-
-/* ================================================================ */
-/*  FIREBASE INIT                                                    */
-/* ================================================================ */
 
 const firebaseConfig = {
   apiKey: "AIzaSyDkP_yFI1t8runQ06hSdElaHtKskT8Cbzk",
@@ -34,7 +20,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// Configure persistence safely to handle strict browser privacy settings (e.g. Firefox private browsing)
+// handle strict privacy settings (Firefox private mode, etc)
 try {
   setPersistence(auth, browserLocalPersistence)
     .catch((err) => {
@@ -45,26 +31,21 @@ try {
   console.warn('Failed to set persistence:', e);
 }
 
-/* ================================================================ */
-/*  AUTH                                                              */
-/* ================================================================ */
+// ---- auth ----
 
 let _currentUser = null;
 const _authListeners = [];
 
-/** Get current signed-in user (or null). */
 export function getCurrentUser() {
   return _currentUser;
 }
 
-/** Register a callback for auth state changes. */
 export function onAuthChange(callback) {
   _authListeners.push(callback);
-  // Fire immediately with current state
+
   callback(_currentUser);
 }
 
-/** Sign in with Google popup. */
 export async function signInWithGoogle() {
   try {
     const result = await signInWithPopup(auth, provider);
@@ -98,7 +79,6 @@ export async function signInWithGoogle() {
   }
 }
 
-/** Sign out. */
 export async function firebaseSignOut() {
   try {
     await signOut(auth);
@@ -107,13 +87,12 @@ export async function firebaseSignOut() {
   }
 }
 
-// Listen for auth state
 onAuthStateChanged(auth, (user) => {
   _currentUser = user || null;
   _authListeners.forEach(cb => cb(_currentUser));
 });
 
-// Process redirect results if any (e.g. from Firefox popup-blocked redirect fallback)
+// handle redirect results (Firefox popup-blocked fallback)
 getRedirectResult(auth)
   .then((result) => {
     if (result && result.user) {
@@ -131,11 +110,8 @@ getRedirectResult(auth)
     }
   });
 
-/* ================================================================ */
-/*  FIRESTORE SYNC                                                    */
-/* ================================================================ */
+// ---- firestore sync ----
 
-// Keys we sync to the cloud
 const SYNC_KEYS = [
   'trades',
   'lessons',
@@ -159,10 +135,6 @@ const SYNC_KEYS = [
 
 const NAMESPACE = 'swagga';
 
-/**
- * Read all synced keys from localStorage.
- * @returns {object} Map of key → value
- */
 function readLocalData() {
   const data = {};
   SYNC_KEYS.forEach(key => {
@@ -177,7 +149,7 @@ function readLocalData() {
     }
   });
 
-  // Also grab any dynamic ba_progress keys
+  // dynamic ba_progress keys
   for (let i = 0; i < localStorage.length; i++) {
     const fullKey = localStorage.key(i);
     if (fullKey && fullKey.startsWith(`${NAMESPACE}:ba_progress_`)) {
@@ -193,10 +165,6 @@ function readLocalData() {
   return data;
 }
 
-/**
- * Write cloud data into localStorage.
- * @param {object} cloudData - Map of key → value from Firestore
- */
 function writeLocalData(cloudData) {
   Object.entries(cloudData).forEach(([key, value]) => {
     const fullKey = `${NAMESPACE}:${key}`;
@@ -204,9 +172,6 @@ function writeLocalData(cloudData) {
   });
 }
 
-/**
- * Push current localStorage data to Firestore.
- */
 export async function pushToCloud() {
   if (!_currentUser) return false;
   try {
@@ -221,16 +186,13 @@ export async function pushToCloud() {
   }
 }
 
-/**
- * Pull data from Firestore into localStorage.
- * Uses "cloud wins" for arrays (merges unique items by id) and "latest wins" for simple values.
- */
+// pull from firestore — "cloud wins" for arrays (merge by id), "latest wins" for scalars
 export async function pullFromCloud() {
   if (!_currentUser) return false;
   try {
     const snap = await getDoc(doc(db, 'users', _currentUser.uid));
     if (!snap.exists()) {
-      // First time — push local data up
+
       await pushToCloud();
       return true;
     }
@@ -238,12 +200,11 @@ export async function pullFromCloud() {
     const cloudData = snap.data();
     const localData = readLocalData();
 
-    // Merge strategy: for arrays, merge by id; for objects, cloud wins
     const merged = {};
 
     const allKeys = new Set([...Object.keys(cloudData), ...Object.keys(localData)]);
     allKeys.forEach(key => {
-      if (key.startsWith('_')) return; // skip metadata keys
+      if (key.startsWith('_')) return;
 
       const cloud = cloudData[key];
       const local = localData[key];
@@ -254,7 +215,7 @@ export async function pullFromCloud() {
         merged[key] = cloud;
       } else if (Array.isArray(cloud) && Array.isArray(local)) {
         if (key === 'habits') {
-          // Custom merge for habits: merge the logs and freezes of each habit by id
+          // merge habit logs + freezes by id
           const mergedHabits = [];
           const allIds = new Set([...cloud.map(h => h.id), ...local.map(h => h.id)]);
           
@@ -278,14 +239,14 @@ export async function pullFromCloud() {
             }
           });
           merged[key] = mergedHabits;
-          // Enforce correct Duolingo base streak after merge
+
           merged[key].forEach(h => {
             if (h.id === 'duolingo' && h.baseStreak !== 44) {
               h.baseStreak = 44;
             }
           });
         } else {
-          // Merge other arrays by id (local wins over cloud for same ID to keep new details)
+          // other arrays: merge by id, local wins for dupes
           const seen = new Map();
           [...local, ...cloud].forEach(item => {
             const itemId = item?.id || JSON.stringify(item);
@@ -296,10 +257,9 @@ export async function pullFromCloud() {
           merged[key] = [...seen.values()];
         }
       } else if (key === 'streak_freeze_tokens') {
-        // Higher count of tokens wins to prevent loss of newly earned freezes
+        // higher count wins
         merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);
       } else if (key === 'xp_data') {
-        // Merge experience points: higher total XP wins, and unique history merged
         const localXP = local?.totalXP || 0;
         const cloudXP = cloud?.totalXP || 0;
         const mergedTotal = Math.max(localXP, cloudXP);
@@ -317,7 +277,6 @@ export async function pullFromCloud() {
         });
         merged[key] = { totalXP: mergedTotal, history: mergedHist };
       } else if (key === 'pomodoro_data') {
-        // If same date, take maximum completed blocks. Otherwise, latest date wins
         if (cloud && local && cloud.date === local.date) {
           merged[key] = {
             date: cloud.date,
@@ -330,10 +289,8 @@ export async function pullFromCloud() {
           merged[key] = localDate >= cloudDate ? local : cloud;
         }
       } else if (key === 'daily_grades') {
-        // Merge daily grade maps (local grade changes overwrite cloud if both exist)
         merged[key] = { ...(cloud || {}), ...(local || {}) };
       } else if (key === 'pomodoro_history') {
-        // Merge pomodoro history maps: keep all logged dates, taking max blocks completed for matching dates
         const mergedPomo = {};
         const allDates = new Set([...Object.keys(cloud || {}), ...Object.keys(local || {})]);
         allDates.forEach(d => {
@@ -341,22 +298,20 @@ export async function pullFromCloud() {
         });
         merged[key] = mergedPomo;
       } else if (key === 'notepad_text') {
-        // Longer string wins to prevent losing detailed workspace notes
+        // longer string wins
         const localLen = (local || '').length;
         const cloudLen = (cloud || '').length;
         merged[key] = localLen >= cloudLen ? local : cloud;
       } else if (key.startsWith('ba_progress_')) {
-        // Progress percentage - maximum level/progress wins
         merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);
       } else {
-        // For other non-arrays, cloud wins (most recent sync)
+        // default: cloud wins
         merged[key] = cloud;
       }
     });
 
     writeLocalData(merged);
 
-    // Push merged result back to cloud
     merged._lastSync = new Date().toISOString();
     await setDoc(doc(db, 'users', _currentUser.uid), merged, { merge: true });
 
@@ -367,10 +322,6 @@ export async function pullFromCloud() {
   }
 }
 
-/**
- * Full sync — pull then push.
- * @returns {{ success: boolean, user: object|null }}
- */
 export async function syncNow() {
   if (!_currentUser) return { success: false, user: null };
   const ok = await pullFromCloud();

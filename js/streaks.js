@@ -1,27 +1,14 @@
-/**
- * SwaGGa HQ — Streak Tracking Module (Redesigned)
- *
- * Professional habit cards with brand colors. Fire only lights
- * when ALL habits are completed for the day (perfect day).
- *
- * SECURITY:
- *  • All user input displayed via textContent — never innerHTML.
- *  • DOM built exclusively with createElement / appendChild.
- *  • Containers cleared with replaceChildren().
- */
+// SwaGGa HQ — Streak Tracking Module (Redesigned)
 
 import storage from './storage.js';
 import { generateId, sanitizeText, triggerConfetti } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 
-/* ================================================================== */
-/*  CONSTANTS                                                         */
-/* ================================================================== */
+// --- Constants ---
 
 const STORAGE_KEY = 'habits';
 
-/** Return 'YYYY-MM-DD' in LOCAL timezone (not UTC). */
 function localDateKey(d) {
   const dt = d || new Date();
   const y = dt.getFullYear();
@@ -30,22 +17,15 @@ function localDateKey(d) {
   return `${y}-${m}-${day}`;
 }
 
-/** Default habits with brand-style theming. */
 export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
   { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 },
 ];
 
-/* ================================================================== */
-/*  DATA LAYER                                                        */
-/* ================================================================== */
+// --- Data Layer ---
 
-/**
- * Initialise default habits if none exist, then return all habits.
- * Each habit: { id, name, emoji, color, bgColor, borderColor, tagline, log: { 'YYYY-MM-DD': true } }
- * @returns {Array<object>}
- */
+// Initialise default habits if none exist, then return all habits.
 export function getHabits() {
   let habits = storage.get(STORAGE_KEY, null);
   if (!habits) {
@@ -83,12 +63,7 @@ function _saveHabits(habits) {
   storage.set(STORAGE_KEY, habits);
 }
 
-/**
- * Add a custom habit.
- * @param {string} name
- * @param {string} emoji
- * @returns {object} The new habit.
- */
+// Add a custom habit.
 export function addHabit(name, emoji) {
   const habits = getHabits();
   const habit = {
@@ -113,9 +88,7 @@ export function addHabit(name, emoji) {
   return habit;
 }
 
-/**
- * Toggle a habit's completion for a given date.
- */
+// Toggle a habit's completion for a given date.
 export function toggleHabit(habitId, date) {
   const dateKey = date || localDateKey();
   const habits = getHabits();
@@ -156,9 +129,7 @@ export function calculateStreak(habitId) {
   return streak + (habit.baseStreak || 0);
 }
 
-/**
- * Get the all-time best streak for a habit.
- */
+// Get the all-time best streak for a habit.
 export function getBestStreak(habitId) {
   const habits = getHabits();
   const habit = habits.find((h) => h.id === habitId);
@@ -185,9 +156,7 @@ export function getBestStreak(habitId) {
   return best;
 }
 
-/**
- * Check whether ALL habits were completed on a given date.
- */
+// Check whether ALL habits were completed on a given date.
 export function isPerfectDay(date) {
   const dateKey = date || localDateKey();
   const habits = getHabits();
@@ -195,9 +164,7 @@ export function isPerfectDay(date) {
   return habits.every((h) => h.log[dateKey] || (h.freezes && h.freezes[dateKey]));
 }
 
-/* ================================================================== */
-/*  DOM HELPERS                                                       */
-/* ================================================================== */
+// --- Dom Helpers ---
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -206,9 +173,7 @@ function el(tag, cls = '', text = '') {
   return node;
 }
 
-/* ================================================================== */
-/*  RENDER FUNCTIONS                                                  */
-/* ================================================================== */
+// --- Render Functions ---
 
 /* ---------- Fire Status Banner ------------------------------------ */
 
@@ -593,9 +558,7 @@ function renderOverviewStats(container) {
   container.appendChild(bar);
 }
 
-/* ================================================================== */
-/*  MAIN RENDER                                                       */
-/* ================================================================== */
+// --- Main Render ---
 
 function renderFreezeStatus(container) {
   container.replaceChildren();
@@ -627,10 +590,7 @@ function renderFreezeStatus(container) {
   container.appendChild(card);
 }
 
-/**
- * Build the full Streaks page.
- * @param {HTMLElement} container - #page-streaks element.
- */
+// Build the full Streaks page.
 export function renderStreaksPage(container) {
   container.replaceChildren();
   container.appendChild(el('h1', 'page-title', '🔥 Daily Streaks'));
@@ -661,14 +621,9 @@ export function renderStreaksPage(container) {
   renderAddHabitForm(formContainer, refresh);
 }
 
-/* ================================================================== */
-/*  STREAK NOTIFICATIONS                                               */
-/* ================================================================== */
+// --- Streak Notifications ---
 
-/**
- * Request notification permission and schedule streak reminders.
- * Checks every 30 minutes if habits are incomplete and it's past 8 PM.
- */
+// Request notification permission and schedule streak reminders.
 export function initStreakNotifications() {
   if (!('Notification' in window)) return;
 

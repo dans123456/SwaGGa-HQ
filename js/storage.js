@@ -1,38 +1,17 @@
-/**
- * SwaGGa HQ — LocalStorage Wrapper
- *
- * Provides namespaced, JSON-aware access to localStorage with built-in error
- * handling for quota-exceeded, parse failures, and missing keys.
- *
- * SECURITY: Only non-sensitive application data (trades, streaks, lessons)
- * is stored. Never store auth tokens, passwords, or PII here.
- */
+// namespaced localStorage wrapper
 
 class Storage {
-  /**
-   * @param {string} namespace - Prefix for all keys (e.g. 'swagga').
-   */
+
   constructor(namespace = 'swagga') {
     this._ns = namespace;
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Internal helpers                                                   */
-  /* ------------------------------------------------------------------ */
+  // --- internals ---
 
-  /**
-   * Build the full key including namespace.
-   * @param {string} key
-   * @returns {string}
-   */
   _key(key) {
     return `${this._ns}:${key}`;
   }
 
-  /**
-   * Check whether localStorage is available.
-   * @returns {boolean}
-   */
   _isAvailable() {
     try {
       const test = '__storage_test__';
@@ -44,34 +23,22 @@ class Storage {
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Public API                                                        */
-  /* ------------------------------------------------------------------ */
+  // --- public API ---
 
-  /**
-   * Retrieve a value by key, automatically parsed from JSON.
-   * @param {string} key
-   * @param {*} defaultValue - Returned when key is missing or parse fails.
-   * @returns {*}
-   */
+  /* get a value by key, auto-parsed from JSON. returns defaultValue on miss/error */
   get(key, defaultValue = null) {
     try {
       const raw = localStorage.getItem(this._key(key));
       if (raw === null) return defaultValue;
       return JSON.parse(raw);
     } catch {
-      // Corrupted data — return the safe default.
+
       console.error('Storage: failed to parse key', key);
       return defaultValue;
     }
   }
 
-  /**
-   * Store a value under the namespaced key, serialised as JSON.
-   * @param {string} key
-   * @param {*} value
-   * @returns {boolean} true on success, false on error (e.g. quota exceeded).
-   */
+  // returns false on quota exceeded or other error
   set(key, value) {
     try {
       localStorage.setItem(this._key(key), JSON.stringify(value));
@@ -86,10 +53,6 @@ class Storage {
     }
   }
 
-  /**
-   * Delete a single key.
-   * @param {string} key
-   */
   delete(key) {
     try {
       localStorage.removeItem(this._key(key));
@@ -98,13 +61,7 @@ class Storage {
     }
   }
 
-  /**
-   * Retrieve all items whose key starts with the given prefix.
-   * The prefix is applied *after* the namespace, so passing 'trade' would
-   * match keys like `swagga:trade:abc`, `swagga:trades`, etc.
-   * @param {string} prefix
-   * @returns {Array<{key: string, value: *}>}
-   */
+  // prefix is matched after namespace, e.g. 'trade' matches swagga:trade:abc
   getAll(prefix = '') {
     const results = [];
     const fullPrefix = this._key(prefix);
@@ -126,11 +83,7 @@ class Storage {
     return results;
   }
 
-  /**
-   * Remove all keys that start with the given prefix (after namespace).
-   * If no prefix is provided, clears *all* keys under this namespace.
-   * @param {string} prefix
-   */
+  // clears all keys matching prefix (or everything if no prefix)
   clear(prefix = '') {
     const fullPrefix = this._key(prefix);
     const keysToRemove = [];
@@ -147,17 +100,11 @@ class Storage {
     }
   }
 
-  /**
-   * Check whether a key exists.
-   * @param {string} key
-   * @returns {boolean}
-   */
   has(key) {
     return localStorage.getItem(this._key(key)) !== null;
   }
 }
 
-/** Singleton instance namespaced to 'swagga'. */
 const storage = new Storage('swagga');
 
 export default storage;

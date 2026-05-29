@@ -1,8 +1,4 @@
-/**
- * SwaGGa HQ — Monthly Calendar View
- * Dynamically builds a monthly calendar overlaying trading days, streaks, and lessons.
- * SECURITY: All DOM built via createElement + textContent (no innerHTML).
- */
+// monthly calendar view
 
 import { getTrades } from './trading.js';
 import { getLessons } from './learning.js';
@@ -23,13 +19,10 @@ let _currentMonth = new Date().getMonth(); // 0-indexed
 export function renderCalendarPage(container) {
   container.replaceChildren();
 
-  // Page title
   container.appendChild(el('h1', 'page-title', '📅 Monthly Calendar'));
 
-  // Calendar container wrapper
   const wrapper = el('div', 'overview-panel calendar-wrapper');
   
-  // Header: Month controls
   const header = el('div', 'calendar-header');
   const prevBtn = el('button', 'btn btn-outline btn-sm calendar-month-btn', '◀');
   const monthTitle = el('h2', 'calendar-month-title');
@@ -58,7 +51,6 @@ export function renderCalendarPage(container) {
   header.appendChild(nextBtn);
   wrapper.appendChild(header);
 
-  // Weekdays header
   const weekdaysGrid = el('div', 'calendar-weekdays');
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   weekdays.forEach(w => {
@@ -66,7 +58,6 @@ export function renderCalendarPage(container) {
   });
   wrapper.appendChild(weekdaysGrid);
 
-  // Main days grid
   const daysGrid = el('div', 'calendar-grid');
   wrapper.appendChild(daysGrid);
   container.appendChild(wrapper);
@@ -74,27 +65,22 @@ export function renderCalendarPage(container) {
   function updateCalendar() {
     daysGrid.replaceChildren();
 
-    // Set month title
     const dummyDate = new Date(_currentYear, _currentMonth, 1);
     monthTitle.textContent = dummyDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-    // Math for starting cells
     const firstDayIndex = new Date(_currentYear, _currentMonth, 1).getDay();
     const totalDays = new Date(_currentYear, _currentMonth + 1, 0).getDate();
 
-    // Pull datasets
     const trades = getTrades();
     const lessons = getLessons();
     const habits = getHabits();
     const dailyGrades = storage.get('daily_grades', {});
     const pomoHistory = storage.get('pomodoro_history', {});
 
-    // Empty buffer cells
     for (let i = 0; i < firstDayIndex; i++) {
       daysGrid.appendChild(el('div', 'calendar-day calendar-day--empty'));
     }
 
-    // Days cells
     for (let day = 1; day <= totalDays; day++) {
       const cellDate = new Date(_currentYear, _currentMonth, day);
       const dateKey = `${_currentYear}-${String(_currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -102,7 +88,7 @@ export function renderCalendarPage(container) {
       const dayCell = el('div', 'calendar-day');
       dayCell.appendChild(el('span', 'calendar-day-number', String(day)));
 
-      // 0. Daily Discipline Grade Ring & Badge
+      // grade ring + badge
       const grade = dailyGrades[dateKey];
       if (grade) {
         dayCell.classList.add(`calendar-day--grade-${grade.replace('+', 'plus')}`);
@@ -112,7 +98,6 @@ export function renderCalendarPage(container) {
 
       const indicators = el('div', 'calendar-day-indicators');
 
-      // 1. Tally Trades
       const dayTrades = trades.filter(t => {
         const td = (t.date || t.createdAt || '').slice(0, 10);
         return td === dateKey;
@@ -125,7 +110,6 @@ export function renderCalendarPage(container) {
         indicators.appendChild(trIndicator);
       }
 
-      // 2. Tally Streaks
       const checkedHabits = habits.filter(h => h.log && h.log[dateKey]);
       const frozenHabits = habits.filter(h => h.freezes && h.freezes[dateKey]);
 
@@ -142,7 +126,6 @@ export function renderCalendarPage(container) {
         indicators.appendChild(streakIndicator);
       }
 
-      // 3. Tally Lessons
       const dayLessons = lessons.filter(l => {
         const ld = (l.date || l.loggedAt || l.createdAt || '').slice(0, 10);
         return ld === dateKey;
@@ -154,7 +137,6 @@ export function renderCalendarPage(container) {
         indicators.appendChild(lsIndicator);
       }
 
-      // 4. Tally Pomodoro Blocks
       const pomoCount = Number(pomoHistory[dateKey]) || 0;
       if (pomoCount > 0) {
         const pomoIndicator = el('span', 'calendar-day-indicator calendar-day-indicator--pomo');
@@ -164,13 +146,11 @@ export function renderCalendarPage(container) {
 
       dayCell.appendChild(indicators);
 
-      // Highlight Today
       const today = new Date();
       if (today.getDate() === day && today.getMonth() === _currentMonth && today.getFullYear() === _currentYear) {
         dayCell.classList.add('calendar-day--today');
       }
 
-      // All days are now active and clickable for daily performance grading
       dayCell.classList.add('calendar-day--active');
       dayCell.addEventListener('click', () => {
         openDayPopover(dateKey, dayTrades, checkedHabits, frozenHabits, dayLessons, pomoCount, grade);
@@ -184,7 +164,7 @@ export function renderCalendarPage(container) {
 }
 
 function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount = 0, grade = null) {
-  // Clear any existing modal
+
   const existing = document.getElementById('calendar-popover');
   if (existing) existing.remove();
 
@@ -194,12 +174,10 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
   const modal = el('div', 'welcome-modal');
   modal.style.maxWidth = '520px';
 
-  // Glow bar
   const glow = el('div', 'welcome-glow-bar');
   glow.style.background = 'linear-gradient(90deg, var(--cyan), var(--purple))';
   modal.appendChild(glow);
 
-  // Close Button
   const closeBtn = el('button', 'recap-close', '✕');
   closeBtn.addEventListener('click', () => {
     overlay.style.opacity = '0';
@@ -207,7 +185,6 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
   });
   modal.appendChild(closeBtn);
 
-  // Title: Formatted Date
   const formattedDate = formatDate(dateKey, 'long');
   const title = el('h2', 'welcome-modal__title', formattedDate);
   title.style.fontSize = 'var(--text-xl)';
@@ -219,7 +196,6 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
   container.style.maxHeight = '400px';
   container.style.overflowY = 'auto';
 
-  // 1. Trades section
   if (trades.length > 0) {
     const section = el('div', 'popover-section');
     section.appendChild(el('h3', 'popover-section-title', '📈 Trades Logged'));
@@ -244,7 +220,6 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
     container.appendChild(section);
   }
 
-  // 2. Habits section
   if (checkedHabits.length > 0 || frozenHabits.length > 0) {
     const section = el('div', 'popover-section');
     section.style.marginTop = 'var(--space-4)';
@@ -270,7 +245,6 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
     container.appendChild(section);
   }
 
-  // 3. Lessons section
   if (lessons.length > 0) {
     const section = el('div', 'popover-section');
     section.style.marginTop = 'var(--space-4)';
@@ -285,7 +259,6 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
     container.appendChild(section);
   }
 
-  // 4. Pomodoro Section
   if (pomoCount > 0) {
     const pomoSection = el('div', 'popover-section');
     pomoSection.style.marginTop = 'var(--space-4)';
@@ -298,7 +271,7 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
     container.appendChild(pomoSection);
   }
 
-  // 5. Daily Performance Grade Selection Card
+  // grade selection
   const gradeSection = el('div', 'popover-section');
   gradeSection.style.marginTop = 'var(--space-4)';
   gradeSection.style.borderTop = '1px solid rgba(255,255,255,0.06)';
@@ -327,21 +300,18 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
       }
       storage.set('daily_grades', dailyGradesMap);
 
-      // Sync to cloud immediately
       import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
         if (getCurrentUser()) pushToCloud();
       });
 
       overlay.remove();
-      
-      // Force trigger the main calendar's updateCalendar function
+
       const renderWrapper = document.getElementById('page-calendar');
       if (renderWrapper) {
-        // Redraw page container
+
         renderCalendarPage(renderWrapper);
       }
-      
-      // Reopen popover modal with fresh grade selection
+
       openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount, g === 'None' ? null : g);
     });
     gradeSelectRow.appendChild(btn);

@@ -1,22 +1,12 @@
-/**
- * SwaGGa HQ — Learning Hub Module (Redesigned)
- *
- * 33-lesson Brah Goh curriculum with popup quiz (MCQ + open-ended)
- * and popup lesson logger. Quiz auto-generates from completed lessons.
- *
- * SECURITY: All DOM via createElement + textContent. No innerHTML.
- */
+// SwaGGa HQ — Learning Hub Module (Redesigned)
 
 import storage from './storage.js';
 import { generateId, formatDate, sanitizeText } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 
-/* ================================================================== */
-/*  CONSTANTS                                                         */
-/* ================================================================== */
+// --- Constants ---
 
-/** Full 33-episode Brah Goh curriculum. Episodes 0-9 are detailed. */
 export const BRAH_GOH_CURRICULUM = [
   { id: 'ep0',  episode: 0,  title: 'The Trading Mindset',             concepts: ['mindset', 'journey', 'inspiration', 'goal-setting'],                              description: 'Why mindset is everything. Defining your trading journey and setting realistic goals.' },
   { id: 'ep1',  episode: 1,  title: 'Finding Your Edge',               concepts: ['edge', 'discipline', 'professional-habits', 'routine'],                            description: 'What separates profitable traders. Building discipline and professional habits.' },
@@ -54,7 +44,6 @@ export const BRAH_GOH_CURRICULUM = [
   { id: 'ep32', episode: 32, title: 'Lesson 32', concepts: [], description: '', locked: true },
 ];
 
-/** MCQ question bank — auto-matched to concepts */
 const QUIZ_BANK = [
   { concept: 'BOS',                q: 'What does BOS stand for?',                                      choices: ['Break of Structure', 'Balance of Supply', 'Base of Support', 'Band of Strength'],       answer: 0 },
   { concept: 'CHOCH',              q: 'What does CHOCH indicate?',                                     choices: ['Change of Character', 'Channel of Charts', 'Close of High/Open/Close/High', 'Check of Channel'], answer: 0 },
@@ -85,7 +74,6 @@ const QUIZ_BANK = [
   { concept: 'liquidity-sweeps',   q: 'A liquidity sweep occurs when price:',                          choices: ['Clears stop-losses above/below swing points before reversing', 'Moves sideways in low volume consolidation', 'Stays exactly at a key Fibonacci level', 'Breaks out with no retracement'], answer: 0 },
 ];
 
-/** Open-ended question templates */
 const OPEN_ENDED_TEMPLATES = [
   'In your own words, explain what "{concept}" means and how you would identify it on a chart.',
   'Describe a scenario where "{concept}" would help you make a better trading decision.',
@@ -108,9 +96,7 @@ const STORAGE_ASSIGNMENTS = 'assignments';
 const RANDOM_ASSETS = ['EUR/USD', 'GBP/USD', 'XAU/USD', 'BTC/USD', 'NAS100', 'US30', 'GBP/JPY'];
 const RANDOM_TIMEFRAMES = ['M15', 'M30', 'H1', 'H4', 'D1'];
 
-/* ================================================================== */
-/*  DATA LAYER                                                        */
-/* ================================================================== */
+// --- Data Layer ---
 
 export function getLessons() { return storage.get(STORAGE_LESSONS, []); }
 
@@ -343,7 +329,6 @@ function openPracticeLevelSelector(onRefresh) {
   body.appendChild(form);
 }
 
-/** Resize and compress image file to target width/height and return base64 jpeg */
 function compressImage(file, maxSize = 1000) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -382,7 +367,6 @@ function compressImage(file, maxSize = 1000) {
   });
 }
 
-/** Open full-size notes photo modal with download option */
 function openNotesImageModal(title, imageSrc) {
   const { body } = createModal(title);
   
@@ -412,9 +396,7 @@ function openNotesImageModal(title, imageSrc) {
   body.appendChild(container);
 }
 
-/* ================================================================== */
-/*  DOM HELPERS                                                       */
-/* ================================================================== */
+// --- Dom Helpers ---
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -423,7 +405,6 @@ function el(tag, cls = '', text = '') {
   return node;
 }
 
-/** Create and show a modal overlay. Returns { overlay, modal, close } */
 function createModal(title) {
   const overlay = el('div', 'modal-overlay');
   const modal = el('div', 'modal');
@@ -455,9 +436,7 @@ function createModal(title) {
   return { overlay, modal, body, close };
 }
 
-/* ================================================================== */
-/*  RENDER FUNCTIONS                                                  */
-/* ================================================================== */
+// --- Render Functions ---
 
 /* ---------- Mentor Cards + Profile Popup -------------------------- */
 
@@ -665,7 +644,6 @@ const MENTOR_DATA = {
   },
 };
 
-/** Boss Ackah curriculum — grows as lessons are assigned. */
 export const BOSS_ACKAH_CURRICULUM = [
   {
     id: 'ba-1',
@@ -687,8 +665,6 @@ function getBaLessons() { return storage.get(STORAGE_BA_LESSONS, []); }
 function getBaProgress(lessonId) { return storage.get(`${STORAGE_BA_PROGRESS}_${lessonId}`, { percent: 0, notes: '' }); }
 function saveBaProgress(lessonId, data) { storage.set(`${STORAGE_BA_PROGRESS}_${lessonId}`, data); }
 
-
-/** Which mentor tab is active. Persists across re-renders in the page session. */
 let _activeMentor = 'bradGoh';
 
 function renderMentorCards(container, onLessonLogged, curriculumContainer, baCurriculumContainer) {
@@ -795,7 +771,6 @@ function renderMentorCards(container, onLessonLogged, curriculumContainer, baCur
   switchCurriculumTab(curriculumContainer, baCurriculumContainer, _activeMentor);
 }
 
-/** Show/hide curriculum sections based on which mentor tab is active */
 function switchCurriculumTab(gohContainer, baContainer, active) {
   if (gohContainer) gohContainer.style.display = active === 'bradGoh' ? 'block' : 'none';
   if (baContainer) baContainer.style.display = active === 'bossAckah' ? 'block' : 'none';
@@ -813,12 +788,10 @@ function renderCurriculumLog(container) {
   const loggedEpisodes = new Set(lessons.map((l) => l.episodeId));
   const STORAGE_UNLOCKED = 'bg_unlocked_lessons';
 
-  /** Get user-unlocked lesson overrides from localStorage */
   function getUnlockedOverrides() {
     return storage.get(STORAGE_UNLOCKED, {});
   }
 
-  /** Merge curriculum with user unlocks */
   function getEffectiveCurriculum() {
     const overrides = getUnlockedOverrides();
     return BRAH_GOH_CURRICULUM.map(ep => {
@@ -906,7 +879,6 @@ function renderCurriculumLog(container) {
   container.appendChild(wrapper);
 }
 
-/** Map of keywords → concept tags for auto-detection from video titles */
 const CONCEPT_KEYWORDS = {
   'market structure':  'market-structure',
   'bos':              'BOS',
@@ -979,7 +951,6 @@ const CONCEPT_KEYWORDS = {
   'fundamental':      'fundamentals',
 };
 
-/** Extract concepts from a video title by keyword matching */
 function detectConcepts(title) {
   const lower = title.toLowerCase();
   const found = new Set();
@@ -991,12 +962,10 @@ function detectConcepts(title) {
   return [...found];
 }
 
-/** Generate a short description from a video title */
 function generateDescription(title, episode) {
   return `Episode ${episode} of the Brad Goh ICT/SMC trading course: ${title}.`;
 }
 
-/** Popup to unlock a locked Brad Goh lesson via YouTube link */
 function openUnlockPopup(ep, curriculumContainer) {
   const { body, close } = createModal(`🔓 Unlock Ep ${ep.episode}`);
 
@@ -1705,9 +1674,7 @@ function renderActionBar(container, onRefresh) {
   container.appendChild(bar);
 }
 
-/* ================================================================== */
-/*  DAILY ICT TIPS                                                     */
-/* ================================================================== */
+// --- Daily Ict Tips ---
 
 const DAILY_ICT_TIPS = [
   'Always identify the HTF bias before looking for entries on LTF. Never trade against the trend.',
@@ -1788,9 +1755,7 @@ function renderDailyTip(container) {
   container.appendChild(card);
 }
 
-/* ================================================================== */
-/*  PROGRESS MILESTONES & BADGES                                       */
-/* ================================================================== */
+// --- Progress Milestones & Badges ---
 
 const MILESTONES = [
   { id: 'first-steps',     emoji: '🥉', name: 'First Steps',         desc: 'Complete 1 lesson',       check: () => getLessons().length >= 1 },
@@ -1849,9 +1814,7 @@ function renderMilestones(container) {
   container.appendChild(section);
 }
 
-/* ================================================================== */
-/*  FLASHCARD QUIZ MODE                                                */
-/* ================================================================== */
+// --- Flashcard Quiz Mode ---
 
 const FLASHCARD_DATA = [
   { emoji: '📊', concept: 'Break of Structure (BOS)', answer: 'BOS occurs when price breaks a previous swing high (in an uptrend) or swing low (in a downtrend), confirming the current trend direction. It is the primary signal for trend continuation in ICT methodology.' },
@@ -2002,9 +1965,7 @@ function renderFlashcardMode() {
   document.body.appendChild(overlay);
 }
 
-/* ================================================================== */
-/*  MAIN RENDER                                                       */
-/* ================================================================== */
+// --- Main Render ---
 
 export function renderLearningPage(container) {
   container.replaceChildren();
@@ -2046,9 +2007,7 @@ export function renderLearningPage(container) {
   refresh();
 }
 
-/* ================================================================== */
-/*  BOSS ACKAH CURRICULUM SECTION                                      */
-/* ================================================================== */
+// --- Boss Ackah Curriculum Section ---
 
 function renderBossAckahCurriculum(container, onRefresh) {
   container.replaceChildren();
@@ -2216,7 +2175,6 @@ function getEffectiveBaCurriculum() {
   return [...BOSS_ACKAH_CURRICULUM, ...getUserBaLessons()];
 }
 
-/** Popup to add a new Boss Ackah lesson */
 function openAddBaLessonPopup(nextNum, currContainer, onRefresh) {
   const { body, close } = createModal('➕ Add Boss Ackah Lesson');
 
@@ -2338,7 +2296,6 @@ function openAddBaLessonPopup(nextNum, currContainer, onRefresh) {
   body.appendChild(form);
 }
 
-/** Popup to log notes for a Boss Ackah lesson. */
 function openBaLogPopup(lesson, onSaved) {
   const { body, close } = createModal(`📖 Log Notes — Lesson ${lesson.lesson}`);
 
@@ -2480,9 +2437,7 @@ function showNotificationToast(message) {
   }, 3500);
 }
 
-/* ================================================================== */
-/*  3D GLASSMORPHIC FLASHCARDS SYSTEM                                 */
-/* ================================================================== */
+// --- 3d Glassmorphic Flashcards System ---
 
 const FLASHCARD_TERMS = [
   {
@@ -2650,9 +2605,7 @@ export function renderFlashcards(container) {
   container.appendChild(section);
 }
 
-/* ================================================================== */
-/*  POMODORO FOCUS TIMER                                              */
-/* ================================================================== */
+// --- Pomodoro Focus Timer ---
 
 // Module-level Pomodoro state (survives tab switches!)
 let _pomoState = {

@@ -1,19 +1,7 @@
-/**
- * SwaGGa HQ — XP & Leveling System
- *
- * Tracks experience points earned from trading, learning, streaks.
- * Military-themed ranks with emoji.
- *
- * SECURITY: No DOM work here — pure data module.
- */
+// xp & leveling system
 
 import storage from './storage.js';
 
-/* ================================================================== */
-/*  CONSTANTS                                                         */
-/* ================================================================== */
-
-/** Level thresholds — each entry: { level, xp, title, emoji } */
 export const LEVELS = [
   { level: 1,  xp: 0,    title: 'Recruit',    emoji: '🪖' },
   { level: 2,  xp: 100,  title: 'Cadet',      emoji: '⭐' },
@@ -27,7 +15,6 @@ export const LEVELS = [
   { level: 10, xp: 5500, title: 'Legend',     emoji: '👑' },
 ];
 
-/** XP reward amounts for each action type. */
 export const XP_REWARDS = {
   habit: 10,
   trade: 25,
@@ -39,26 +26,15 @@ export const XP_REWARDS = {
 
 const STORAGE_KEY = 'xp_data';
 
-/* ================================================================== */
-/*  DATA LAYER                                                        */
-/* ================================================================== */
+// ---- data layer ----
 
-/**
- * Retrieve the full XP data object from storage.
- * @returns {{ totalXP: number, history: Array<{action: string, xp: number, date: string}> }}
- */
 export function getXPData() {
   return storage.get(STORAGE_KEY, { totalXP: 0, history: [] });
 }
 
-/**
- * Award XP for an action and persist.
- * @param {string} action — e.g. 'habit', 'trade', 'lesson', 'assignment', 'quiz', 'perfectDay'
- * @param {number} amount — XP to add
- * @returns {number} The new totalXP value.
- */
+// award XP and persist — dispatches 'xp-change' event
 export function addXP(action, amount) {
-  // Capture level before adding XP
+
   const oldLevelObj = getLevel();
   
   const data = getXPData();
@@ -69,12 +45,10 @@ export function addXP(action, amount) {
     date: new Date().toISOString(),
   });
   storage.set(STORAGE_KEY, data);
-  
-  // Check level after adding XP
+
   const newLevelObj = getLevel();
   const leveledUp = newLevelObj.level > oldLevelObj.level;
-  
-  // Dispatch custom event for real-time reactive UI updates
+
   window.dispatchEvent(new CustomEvent('xp-change', {
     detail: {
       action,
@@ -89,10 +63,6 @@ export function addXP(action, amount) {
   return data.totalXP;
 }
 
-/**
- * Determine the current level object based on total XP.
- * @returns {{ level: number, xp: number, title: string, emoji: string }}
- */
 export function getLevel() {
   const { totalXP } = getXPData();
   let current = LEVELS[0];
@@ -106,18 +76,13 @@ export function getLevel() {
   return current;
 }
 
-/**
- * Get progress toward the next level.
- * @returns {{ current: number, next: number, progress: number, nextTitle: string, nextEmoji: string }}
- *   progress is 0–1 float
- */
+// progress toward next level (0-1 float)
 export function getLevelProgress() {
   const { totalXP } = getXPData();
   const currentLvl = getLevel();
   const nextIdx = LEVELS.findIndex(l => l.level === currentLvl.level) + 1;
 
   if (nextIdx >= LEVELS.length) {
-    // Max level reached
     return {
       current: totalXP,
       next: currentLvl.xp,
@@ -141,10 +106,6 @@ export function getLevelProgress() {
   };
 }
 
-/**
- * Get current rank title string.
- * @returns {string}
- */
 export function getTitle() {
   return getLevel().title;
 }
