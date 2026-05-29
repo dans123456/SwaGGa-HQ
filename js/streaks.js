@@ -23,7 +23,7 @@ const STORAGE_KEY = 'habits';
 export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
-  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 45 },
+  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 },
 ];
 
 /* ================================================================== */
@@ -49,9 +49,9 @@ export function getHabits() {
         h.baseStreak = def ? def.baseStreak : 0;
         migrated = true;
       }
-      // Force duolingo base streak to be exactly 45 (to match user's actual 46th day today)
-      if (h.id === 'duolingo' && h.baseStreak !== 45) {
-        h.baseStreak = 45;
+      // Force duolingo base streak to be exactly 44 (so 44 + logged days = correct count)
+      if (h.id === 'duolingo' && h.baseStreak !== 44) {
+        h.baseStreak = 44;
         migrated = true;
       }
     });
