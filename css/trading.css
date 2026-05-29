@@ -2015,3 +2015,153 @@
     text-align: center;
   }
 }
+
+/* ── Canvas Painter & Previews ─────────────────────────── */
+.screenshot-form-group {
+  margin-top: var(--space-4);
+}
+
+.screenshot-preview-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.screenshot-thumbnail {
+  width: 80px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.painter-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.25s ease;
+}
+
+.painter-modal {
+  width: 90vw;
+  max-width: 1000px;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.painter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.painter-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  margin: 0;
+}
+
+.painter-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.painter-toolbelt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.painter-tool-group, .painter-color-group, .painter-action-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.painter-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.painter-color-btn.active {
+  transform: scale(1.15);
+  border-color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.painter-workspace {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: var(--space-4);
+  overflow: auto;
+  min-height: 300px;
+}
+
+.painter-workspace canvas {
+  display: block;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  cursor: crosshair;
+  background-color: #000;
+}
+
+.painter-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: var(--space-3);
+}
+
+.attachment-icon {
+  font-size: 0.95rem;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.trade-modal__screenshot {
+  width: 100%;
+  border-radius: var(--radius-md);
+  margin-top: var(--space-2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: zoom-in;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.trade-modal__screenshot:hover {
+  transform: scale(1.01);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}

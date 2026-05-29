@@ -211,6 +211,298 @@ function renderStatsBar(container, stats) {
   container.appendChild(bar);
 }
 
+/* ---------- Canvas Chart Painter --------------------------------- */
+
+function openCanvasPainter(originalDataUrl, onSave) {
+  const overlay = el('div', 'painter-overlay');
+  const modal = el('div', 'painter-modal glass-card');
+
+  // Header Bar
+  const header = el('div', 'painter-header');
+  header.appendChild(el('h2', 'painter-title', '🎨 SwaGGa Chart Annotator'));
+  const closeBtn = el('button', 'painter-close', '✕');
+  closeBtn.addEventListener('click', () => overlay.remove());
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  // Tools & Colors Panel (Toolbelt)
+  const toolbelt = el('div', 'painter-toolbelt');
+
+  // Tool Selectors
+  const toolsGroup = el('div', 'painter-tool-group');
+  const tools = [
+    { id: 'brush', label: '🖌️ Brush' },
+    { id: 'line', label: '📐 Line' },
+    { id: 'rect', label: '⬜ Zone' },
+    { id: 'arrow', label: '↗ Arrow' },
+    { id: 'text', label: '🔤 Text' }
+  ];
+  let activeTool = 'brush';
+  const toolButtons = {};
+
+  tools.forEach(t => {
+    const btn = el('button', `btn btn-outline btn-sm tool-btn${t.id === activeTool ? ' active' : ''}`, t.label);
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      Object.values(toolButtons).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTool = t.id;
+    });
+    toolButtons[t.id] = btn;
+    toolsGroup.appendChild(btn);
+  });
+  toolbelt.appendChild(toolsGroup);
+
+  // Color Selectors
+  const colorsGroup = el('div', 'painter-color-group');
+  const colors = [
+    { hex: '#089981', label: '🟢' },
+    { hex: '#f23645', label: '🔴' },
+    { hex: '#facc15', label: '🟡' },
+    { hex: '#b44dff', label: '🟣' },
+    { hex: '#ffffff', label: '⚪' }
+  ];
+  let activeColor = '#089981';
+  const colorButtons = {};
+
+  colors.forEach(c => {
+    const btn = el('button', `painter-color-btn${c.hex === activeColor ? ' active' : ''}`);
+    btn.type = 'button';
+    btn.style.backgroundColor = c.hex;
+    btn.addEventListener('click', () => {
+      Object.values(colorButtons).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeColor = c.hex;
+    });
+    colorButtons[c.hex] = btn;
+    colorsGroup.appendChild(btn);
+  });
+  toolbelt.appendChild(colorsGroup);
+
+  // Control Actions (Undo, Clear)
+  const actionsGroup = el('div', 'painter-action-group');
+  const undoBtn = el('button', 'btn btn-ghost btn-sm', '↩️ Undo');
+  undoBtn.type = 'button';
+  const clearBtn = el('button', 'btn btn-ghost btn-sm', '🗑️ Clear');
+  clearBtn.type = 'button';
+  actionsGroup.appendChild(undoBtn);
+  actionsGroup.appendChild(clearBtn);
+  toolbelt.appendChild(actionsGroup);
+
+  modal.appendChild(toolbelt);
+
+  // Canvas Workspace area
+  const workspace = el('div', 'painter-workspace');
+  const canvas = document.createElement('canvas');
+  workspace.appendChild(canvas);
+  modal.appendChild(workspace);
+
+  // Save / Apply bar at bottom
+  const footer = el('div', 'painter-footer');
+  const cancelBtn = el('button', 'btn btn-outline btn-sm', 'Cancel');
+  cancelBtn.type = 'button';
+  const saveBtn = el('button', 'btn btn-primary btn-sm', '💾 Apply Annotations');
+  saveBtn.type = 'button';
+  footer.appendChild(cancelBtn);
+  footer.appendChild(saveBtn);
+  modal.appendChild(footer);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Canvas Rendering & Drawing Logic
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.src = originalDataUrl;
+
+  let history = [];
+
+  function saveState() {
+    history.push(canvas.toDataURL());
+  }
+
+  img.onload = () => {
+    // Resize canvas based on aspect ratio
+    const maxWidth = window.innerWidth * 0.85;
+    const maxHeight = window.innerHeight * 0.6;
+    let width = img.width;
+    let height = img.height;
+
+    if (width > maxWidth) {
+      height = (maxWidth / width) * height;
+      width = maxWidth;
+    }
+    if (height > maxHeight) {
+      width = (maxHeight / height) * width;
+      height = maxHeight;
+    }
+
+    canvas.width = Math.floor(width);
+    canvas.height = Math.floor(height);
+
+    // Initial draw
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    saveState();
+  };
+
+  // Drawing event variables
+  let drawing = false;
+  let startX = 0;
+  let startY = 0;
+
+  function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  function restoreLastState() {
+    return new Promise((resolve) => {
+      if (!history.length) return resolve();
+      const lastImg = new Image();
+      lastImg.src = history[history.length - 1];
+      lastImg.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(lastImg, 0, 0);
+        resolve();
+      };
+    });
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    drawing = true;
+    const pos = getMousePos(e);
+    startX = pos.x;
+    startY = pos.y;
+
+    if (activeTool === 'brush') {
+      saveState();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.strokeStyle = activeColor;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    } else if (activeTool === 'line' || activeTool === 'rect' || activeTool === 'arrow') {
+      saveState();
+    }
+  });
+
+  canvas.addEventListener('mousemove', async (e) => {
+    if (!drawing) return;
+    const pos = getMousePos(e);
+
+    if (activeTool === 'brush') {
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (activeTool === 'line') {
+      await restoreLastState();
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = activeColor;
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+    } else if (activeTool === 'rect') {
+      await restoreLastState();
+      const w = pos.x - startX;
+      const h = pos.y - startY;
+      
+      // Semi-transparent glowing fill + solid border
+      ctx.fillStyle = hexToRgba(activeColor, 0.12);
+      ctx.fillRect(startX, startY, w, h);
+      ctx.strokeStyle = activeColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(startX, startY, w, h);
+    } else if (activeTool === 'arrow') {
+      await restoreLastState();
+      ctx.strokeStyle = activeColor;
+      ctx.lineWidth = 3;
+      drawArrow(ctx, startX, startY, pos.x, pos.y);
+    }
+  });
+
+  canvas.addEventListener('mouseup', (e) => {
+    if (!drawing) return;
+    drawing = false;
+    const pos = getMousePos(e);
+
+    if (activeTool === 'text') {
+      const textVal = prompt('Enter annotation label (e.g. BOS, FVG, OB):');
+      if (textVal) {
+        saveState();
+        ctx.fillStyle = activeColor;
+        ctx.font = 'bold 15px Outfit, sans-serif';
+        ctx.textBaseline = 'middle';
+        
+        // Add a clean shadow for readability
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(textVal.trim(), pos.x, pos.y);
+        ctx.shadowBlur = 0; // reset shadow
+      }
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    drawing = false;
+  });
+
+  // Undo button action
+  undoBtn.addEventListener('click', () => {
+    if (history.length > 1) {
+      history.pop(); // remove current state
+      const lastImg = new Image();
+      lastImg.src = history[history.length - 1];
+      lastImg.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(lastImg, 0, 0);
+      };
+    }
+  });
+
+  // Clear button action
+  clearBtn.addEventListener('click', () => {
+    history = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    saveState();
+  });
+
+  // Cancel and Apply actions
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  
+  saveBtn.addEventListener('click', () => {
+    const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    onSave(finalDataUrl);
+    overlay.remove();
+  });
+
+  // Helpers
+  function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function drawArrow(ctx, fromX, fromY, toX, toY) {
+    const headLength = 14;
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const angle = Math.atan2(dy, dx);
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  }
+}
+
 /* ---------- Trade Form -------------------------------------------- */
 
 // Build the "Log Trade" form.
@@ -363,6 +655,78 @@ export function renderTradeForm(container, onSaved) {
   notes.placeholder = 'Trade notes, lessons, emotions…';
   form.appendChild(formGroup('Notes', notes));
 
+  // ---- Attachment & Canvas Annotator ----
+  const fileGroup = el('div', 'form-group screenshot-form-group');
+  const fileLabel = el('label', 'form-label', '📷 Attach & Annotate Chart Screenshot');
+  
+  const screenshotInput = document.createElement('input');
+  screenshotInput.type = 'hidden';
+  screenshotInput.name = 'screenshot';
+  
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  
+  const uploadBtn = el('button', 'btn btn-outline btn-sm', '📁 Upload Screenshot');
+  uploadBtn.type = 'button';
+  
+  const previewContainer = el('div', 'screenshot-preview-container');
+  previewContainer.style.display = 'none';
+  
+  const thumbnail = document.createElement('img');
+  thumbnail.className = 'screenshot-thumbnail';
+  
+  const editBtn = el('button', 'btn btn-secondary btn-sm edit-screenshot-btn', '🎨 Annotate Chart');
+  editBtn.type = 'button';
+  
+  const removeBtn = el('button', 'btn btn-ghost btn-sm remove-screenshot-btn', '✕ Remove');
+  removeBtn.type = 'button';
+
+  uploadBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      screenshotInput.value = dataUrl;
+      thumbnail.src = dataUrl;
+      previewContainer.style.display = 'flex';
+      uploadBtn.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removeBtn.addEventListener('click', () => {
+    screenshotInput.value = '';
+    fileInput.value = '';
+    previewContainer.style.display = 'none';
+    uploadBtn.style.display = 'inline-flex';
+  });
+
+  editBtn.addEventListener('click', () => {
+    if (screenshotInput.value) {
+      openCanvasPainter(screenshotInput.value, (annotatedDataUrl) => {
+        screenshotInput.value = annotatedDataUrl;
+        thumbnail.src = annotatedDataUrl;
+      });
+    }
+  });
+
+  previewContainer.appendChild(thumbnail);
+  previewContainer.appendChild(editBtn);
+  previewContainer.appendChild(removeBtn);
+  
+  fileGroup.appendChild(fileLabel);
+  fileGroup.appendChild(screenshotInput);
+  fileGroup.appendChild(fileInput);
+  fileGroup.appendChild(uploadBtn);
+  fileGroup.appendChild(previewContainer);
+  form.appendChild(fileGroup);
+
   // ---- Submit ----
   const submitBtn = el('button', 'btn btn-primary', 'Save Trade 💾');
   submitBtn.type = 'submit';
@@ -394,6 +758,7 @@ export function renderTradeForm(container, onSaved) {
       outcome: fd.get('outcome'),
       mistake: fd.get('outcome') === 'loss' ? fd.get('mistake') : '',
       notes: sanitizeText(fd.get('notes') || '', 2000),
+      screenshot: fd.get('screenshot') || ''
     };
 
     if (!tradeData.asset || !tradeData.entry || !tradeData.exit) {
@@ -406,6 +771,13 @@ export function renderTradeForm(container, onSaved) {
     saveTrade(tradeData);
     addXP('trade', 25);
     form.reset();
+    
+    // Reset screenshot upload container
+    screenshotInput.value = '';
+    fileInput.value = '';
+    previewContainer.style.display = 'none';
+    uploadBtn.style.display = 'inline-flex';
+
     mistakeGroup.style.display = 'none'; // reset visibility
     dateInput.valueAsDate = new Date();
     if (typeof onSaved === 'function') onSaved();
@@ -545,6 +917,40 @@ function openTradeDetail(trade) {
     notesSection.appendChild(el('div', 'trade-modal__notes-title', 'Notes'));
     notesSection.appendChild(el('div', 'trade-modal__notes-body', trade.notes));
     body.appendChild(notesSection);
+  }
+
+  // Attached Chart Screenshot
+  if (trade.screenshot) {
+    const ssSection = el('div', 'trade-modal__notes');
+    ssSection.appendChild(el('div', 'trade-modal__notes-title', '🖼️ Attached Chart Screenshot'));
+    
+    const img = document.createElement('img');
+    img.src = trade.screenshot;
+    img.className = 'trade-modal__screenshot';
+    img.style.width = '100%';
+    img.style.borderRadius = 'var(--radius-md)';
+    img.style.marginTop = 'var(--space-2)';
+    img.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+    img.style.cursor = 'zoom-in';
+    
+    img.addEventListener('click', () => {
+      const zoomOverlay = el('div', 'trade-modal-overlay trade-modal-overlay--visible');
+      zoomOverlay.style.zIndex = '9999';
+      
+      const zoomImg = document.createElement('img');
+      zoomImg.src = trade.screenshot;
+      zoomImg.style.maxWidth = '90%';
+      zoomImg.style.maxHeight = '90%';
+      zoomImg.style.borderRadius = 'var(--radius-lg)';
+      zoomImg.style.boxShadow = '0 24px 64px rgba(0,0,0,0.8)';
+      
+      zoomOverlay.appendChild(zoomImg);
+      zoomOverlay.addEventListener('click', () => zoomOverlay.remove());
+      document.body.appendChild(zoomOverlay);
+    });
+    
+    ssSection.appendChild(img);
+    body.appendChild(ssSection);
   }
 
   // ── Mentor Critique Simulator ─────────────────────────────
@@ -834,6 +1240,13 @@ export function renderTradeHistory(container, onRefresh) {
       if (idx === 5) {
         td.textContent = val;
         td.classList.add(Number(t.pnl) >= 0 ? 'pnl-positive' : 'pnl-negative');
+      } else if (idx === 1) {
+        td.textContent = val;
+        if (t.screenshot) {
+          const clip = el('span', 'attachment-icon', ' 🖼️');
+          clip.title = 'Screenshot Attached';
+          td.appendChild(clip);
+        }
       } else if (idx === 8) {
         const badge = el('span', `setup-${val.toLowerCase().replace('+', 'plus')}`, val);
         td.appendChild(badge);
