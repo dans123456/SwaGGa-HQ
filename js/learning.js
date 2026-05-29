@@ -1644,7 +1644,291 @@ function renderActionBar(container, onRefresh) {
   quizBtn.addEventListener('click', () => openQuizPopup());
   bar.appendChild(quizBtn);
 
+  const flashcardBtn = el('button', 'btn btn-outline btn-lg', '🃏 Flashcards');
+  flashcardBtn.addEventListener('click', () => renderFlashcardMode());
+  bar.appendChild(flashcardBtn);
+
   container.appendChild(bar);
+}
+
+/* ================================================================== */
+/*  DAILY ICT TIPS                                                     */
+/* ================================================================== */
+
+const DAILY_ICT_TIPS = [
+  'Always identify the HTF bias before looking for entries on LTF. Never trade against the trend.',
+  'FVGs are magnets for price. When you see an unfilled FVG, expect price to return to it.',
+  'The best setups happen during Killzones. Avoid trading outside London and New York sessions.',
+  'A Break of Structure (BOS) confirms trend continuation. Wait for it before entering.',
+  'Change of Character (CHOCH) is the first sign of a reversal. Watch for it at key levels.',
+  'The OTE zone (0.618–0.786 Fibonacci retracement) is where smart money enters. Be patient for it.',
+  'Supply and demand zones are not the same as support and resistance. S/D zones are one-touch areas.',
+  'Liquidity rests above swing highs and below swing lows. Smart money hunts these levels before reversing.',
+  'An inducement (IDM) is a trap. When you see one, wait for the sweep before entering.',
+  'Always use a stop loss. Risk management is more important than any single trade setup.',
+  'The Asian session creates the range. London sweeps it. New York continues or reverses.',
+  'Pin bars with long wicks at supply/demand zones are powerful rejection signals.',
+  'An engulfing candle at a key zone with confluence is one of the highest probability entries.',
+  'Never risk more than 1-2% of your account on a single trade. Consistency beats home runs.',
+  'Revenge trading after a loss is a guaranteed way to blow your account. Walk away after 2 losses.',
+  'The trend is your friend until the CHOCH at a HTF POI. Then become the trend\'s new friend.',
+  'Mark your sessions with vertical lines. Most setups form within the first 2 hours of a Killzone.',
+  'A doji at a supply or demand zone shows indecision — wait for the next candle to confirm direction.',
+  'Top-down analysis: D1 for bias, H4 for structure, H1 for POI, M15 for entry. Never skip steps.',
+  'Fair Value Gaps inside the OTE zone are the highest quality entry points in ICT methodology.',
+  'Price always seeks liquidity. If you can see where the stops are, you can predict where price will go.',
+  'The London Killzone (2–5 AM NY time) often sets the high or low of the day. Trade accordingly.',
+  'The New York Killzone (7–10 AM NY time) is where the most volume and best setups occur.',
+  'Accumulation happens in a range. Distribution follows the trend. Learn to tell the difference.',
+  'Your trading journal is your most valuable tool. Log every trade — winners AND losers.',
+  'Backtesting builds confidence. Test your strategy on 100+ setups before trading it live.',
+  'A clean chart is a clear mind. Remove unnecessary indicators and trust price action.',
+  'Wicks tell stories. A long lower wick means buyers stepped in. A long upper wick means sellers rejected.',
+  'Confluence is king: S/D zone + FVG + OTE + Killzone timing = high probability trade.',
+  'Premium vs Discount: buy in discount (below 50% of range), sell in premium (above 50%).',
+  'Smart money doesn\'t chase. They wait for price to come to their level. Learn to be patient.',
+  'The Sunday candle open and the Monday range often set the tone for the entire week.',
+  'When in doubt, stay out. No trade is better than a bad trade. Protect your capital always.',
+];
+
+function renderDailyTip(container) {
+  container.replaceChildren();
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const diff = now - startOfYear;
+  const oneDay = 1000 * 60 * 60 * 24;
+  const dayOfYear = Math.floor(diff / oneDay);
+  const tipIndex = dayOfYear % DAILY_ICT_TIPS.length;
+  const tip = DAILY_ICT_TIPS[tipIndex];
+
+  const card = el('div', 'daily-tip-card');
+
+  const header = el('div', 'daily-tip-header');
+  header.appendChild(el('span', 'daily-tip-icon', '💡'));
+  header.appendChild(el('span', 'daily-tip-label', 'Daily ICT Tip'));
+  card.appendChild(header);
+
+  card.appendChild(el('p', 'daily-tip-text', tip));
+
+  const footer = el('p', 'daily-tip-footer');
+  footer.textContent = 'Tip #' + (tipIndex + 1) + ' of ' + DAILY_ICT_TIPS.length + ' — refreshes daily';
+  card.appendChild(footer);
+
+  container.appendChild(card);
+}
+
+/* ================================================================== */
+/*  PROGRESS MILESTONES & BADGES                                       */
+/* ================================================================== */
+
+const MILESTONES = [
+  { id: 'first-steps',     emoji: '🥉', name: 'First Steps',         desc: 'Complete 1 lesson',       check: () => getLessons().length >= 1 },
+  { id: 'getting-serious', emoji: '🏅', name: 'Getting Serious',     desc: 'Complete 5 lessons',      check: () => getLessons().length >= 5 },
+  { id: 'halfway',         emoji: '🥈', name: 'Halfway There',       desc: 'Complete 10 lessons',     check: () => getLessons().length >= 10 },
+  { id: 'almost-pro',      emoji: '🥇', name: 'Almost Pro',          desc: 'Complete 20 lessons',     check: () => getLessons().length >= 20 },
+  { id: 'graduate',        emoji: '🏆', name: 'Brah Goh Graduate',   desc: 'Complete all 33 lessons', check: () => getLessons().length >= 33 },
+  { id: 'assignment-ace',  emoji: '📝', name: 'Assignment Ace',      desc: 'Complete 5 assignments',  check: () => getAssignments().filter(a => a.completed).length >= 5 },
+  { id: 'quiz-master',     emoji: '🎯', name: 'Quiz Master',         desc: 'Score 80%+ on 10 quizzes', check: () => {
+    const quizScores = storage.get('quiz_scores', []);
+    return quizScores.filter(s => s >= 80).length >= 10;
+  }},
+  { id: 'streak-warrior',  emoji: '🔥', name: 'Streak Warrior',      desc: '7-day lesson streak',     check: () => {
+    const lessons = getLessons();
+    if (lessons.length < 7) return false;
+    const dates = lessons.map(l => new Date(l.createdAt).toDateString());
+    const uniqueDates = [...new Set(dates)].sort((a, b) => new Date(b) - new Date(a));
+    let streak = 1;
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prev = new Date(uniqueDates[i - 1]);
+      const curr = new Date(uniqueDates[i]);
+      const diffDays = Math.round((prev - curr) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) { streak++; if (streak >= 7) return true; }
+      else { streak = 1; }
+    }
+    return streak >= 7;
+  }},
+];
+
+function renderMilestones(container) {
+  container.replaceChildren();
+  const section = el('div', 'milestones-section');
+  section.appendChild(el('h2', 'section-title', '🏅 Milestones & Badges'));
+
+  const scroll = el('div', 'milestones-scroll');
+
+  MILESTONES.forEach(m => {
+    const unlocked = m.check();
+    const badge = el('div', 'milestone-badge ' + (unlocked ? 'milestone-badge--unlocked' : 'milestone-badge--locked'));
+
+    badge.appendChild(el('span', 'milestone-emoji', m.emoji));
+    badge.appendChild(el('span', 'milestone-name', m.name));
+    badge.appendChild(el('span', 'milestone-desc', m.desc));
+
+    if (unlocked) {
+      badge.appendChild(el('span', 'milestone-check', '✅'));
+    } else {
+      const lock = el('span', 'milestone-lock-overlay', '🔒');
+      badge.appendChild(lock);
+    }
+
+    scroll.appendChild(badge);
+  });
+
+  section.appendChild(scroll);
+  container.appendChild(section);
+}
+
+/* ================================================================== */
+/*  FLASHCARD QUIZ MODE                                                */
+/* ================================================================== */
+
+const FLASHCARD_DATA = [
+  { emoji: '📊', concept: 'Break of Structure (BOS)', answer: 'BOS occurs when price breaks a previous swing high (in an uptrend) or swing low (in a downtrend), confirming the current trend direction. It is the primary signal for trend continuation in ICT methodology.' },
+  { emoji: '🔄', concept: 'Change of Character (CHOCH)', answer: 'CHOCH is the first break of structure in the opposite direction, signaling a potential trend reversal. For example, in an uptrend, CHOCH happens when price breaks below the most recent higher low.' },
+  { emoji: '📦', concept: 'Fair Value Gap (FVG)', answer: 'An FVG is a three-candle pattern where the wicks of candle 1 and candle 3 do not overlap, creating a price inefficiency. Price tends to return to fill these gaps before continuing.' },
+  { emoji: '🏦', concept: 'Supply & Demand Zones', answer: 'Supply zones are areas where institutional sellers placed large orders (price dropped from). Demand zones are where institutional buyers placed large orders (price rallied from). These are one-touch zones, unlike support/resistance.' },
+  { emoji: '🎯', concept: 'Optimal Trade Entry (OTE)', answer: 'The OTE is the 0.618–0.786 Fibonacci retracement zone. Smart money typically enters positions in this zone during pullbacks, making it the highest probability entry area.' },
+  { emoji: '💰', concept: 'Premium vs Discount', answer: 'Divide any range into two halves using the 50% equilibrium level. Above 50% is Premium (sell zone), below 50% is Discount (buy zone). Always buy in discount and sell in premium.' },
+  { emoji: '🕐', concept: 'ICT Killzones', answer: 'Killzones are specific time windows of high institutional activity: Asian (8 PM–12 AM NY), London (2–5 AM NY), New York (7–10 AM NY), and London Close (10 AM–12 PM NY). Best setups form within these windows.' },
+  { emoji: '💧', concept: 'Liquidity', answer: 'Liquidity is the collection of stop-loss orders resting above swing highs (buy-side liquidity) and below swing lows (sell-side liquidity). Smart money drives price to these levels to fill large orders.' },
+  { emoji: '🪤', concept: 'Inducement (IDM)', answer: 'An inducement is a deliberate market trap designed to lure retail traders into early entries. Smart money creates these traps to build liquidity before the real move. Wait for the sweep before entering.' },
+  { emoji: '🕯️', concept: 'Engulfing Candle', answer: 'An engulfing candle completely covers the body of the previous candle. Bullish engulfing at demand zones and bearish engulfing at supply zones are powerful reversal/continuation signals.' },
+  { emoji: '📌', concept: 'Pin Bar', answer: 'A pin bar has a long wick and small body, showing strong rejection at a price level. The long wick indicates that price was pushed back aggressively, signaling potential reversal.' },
+  { emoji: '⚖️', concept: 'Doji Candle', answer: 'A doji has nearly equal open and close prices, creating a cross shape. It represents indecision between buyers and sellers. At key zones, it signals a potential reversal — wait for the next candle to confirm.' },
+  { emoji: '📐', concept: 'Fibonacci Retracement', answer: 'Fibonacci retracement levels (0.236, 0.382, 0.5, 0.618, 0.786) help identify potential reversal zones during pullbacks. The 0.618–0.786 zone is the most important for ICT entries.' },
+  { emoji: '🧠', concept: 'Trading Psychology', answer: 'Mastering emotions is the #1 factor in trading success. Fear causes early exits, greed causes overtrading, and impatience causes bad entries. Develop a plan and follow it mechanically.' },
+  { emoji: '📈', concept: 'Market Structure', answer: 'Market structure is defined by swing highs and swing lows. Higher highs + higher lows = bullish. Lower highs + lower lows = bearish. Always identify structure before placing any trade.' },
+  { emoji: '🔝', concept: 'Top-Down Analysis', answer: 'Start from the highest timeframe (D1/W1) to establish directional bias, then move to H4 for structure, H1 for POI identification, and M15/M5 for precise entries. Never trade without HTF context.' },
+  { emoji: '💹', concept: 'Order Flow', answer: 'Order flow is the stream of buy and sell orders that drives price movement. Understanding who is buying/selling and at what levels gives you an edge over retail traders who only see price.' },
+  { emoji: '⚡', concept: 'Price Action', answer: 'Price action is the study of raw price movement without indicators. Candle patterns, structure, and S/D zones are all price action tools. It reveals the true story of supply and demand in real time.' },
+  { emoji: '🎰', concept: 'Risk Management', answer: 'Never risk more than 1-2% per trade. Use proper position sizing. A 1:3 risk-to-reward ratio means you only need to win 25% of trades to be profitable. Protect capital above all else.' },
+  { emoji: '🧊', concept: 'Liquidity Sweep', answer: 'A liquidity sweep occurs when price pushes past a swing point to trigger stop-losses, then reverses sharply. This is smart money collecting orders. The reversal after a sweep is a high-probability entry.' },
+];
+
+function renderFlashcardMode() {
+  const reviewed = new Set();
+  let currentIndex = 0;
+  let isFlipped = false;
+
+  const overlay = el('div', 'flashcard-overlay');
+
+  // Header
+  const header = el('div', 'flashcard-header');
+  const titleEl = el('span', 'flashcard-title', 'Flashcards 🃏');
+  const progressEl = el('span', 'flashcard-progress', '1 of ' + FLASHCARD_DATA.length);
+  const closeBtn = el('button', 'flashcard-close', '✕');
+  closeBtn.addEventListener('click', () => {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 300);
+  });
+  header.appendChild(titleEl);
+  header.appendChild(progressEl);
+  header.appendChild(closeBtn);
+  overlay.appendChild(header);
+
+  // Card scene (3D perspective)
+  const scene = el('div', 'flashcard-scene');
+  const card = el('div', 'flashcard-card');
+
+  // Front face
+  const front = el('div', 'flashcard-face flashcard-front');
+  const frontEmoji = el('span', 'flashcard-emoji', FLASHCARD_DATA[0].emoji);
+  const frontConcept = el('span', 'flashcard-concept', FLASHCARD_DATA[0].concept);
+  const frontHint = el('span', 'flashcard-hint', 'Tap to reveal answer');
+  front.appendChild(frontEmoji);
+  front.appendChild(frontConcept);
+  front.appendChild(frontHint);
+
+  // Back face
+  const back = el('div', 'flashcard-face flashcard-back');
+  const backLabel = el('span', 'flashcard-answer-label', 'Answer');
+  const backText = el('p', 'flashcard-answer-text', FLASHCARD_DATA[0].answer);
+  back.appendChild(backLabel);
+  back.appendChild(backText);
+
+  card.appendChild(front);
+  card.appendChild(back);
+  scene.appendChild(card);
+  overlay.appendChild(scene);
+
+  // Flip handler
+  card.addEventListener('click', () => {
+    isFlipped = !isFlipped;
+    if (isFlipped) {
+      card.classList.add('flashcard-card--flipped');
+      reviewed.add(currentIndex);
+      updateDots();
+    } else {
+      card.classList.remove('flashcard-card--flipped');
+    }
+  });
+
+  // Navigation
+  const nav = el('div', 'flashcard-nav');
+  const prevBtn = el('button', 'flashcard-nav-btn', '◀ Prev');
+  const counterEl = el('span', 'flashcard-counter', '1 of ' + FLASHCARD_DATA.length);
+  const nextBtn = el('button', 'flashcard-nav-btn', 'Next ▶');
+  prevBtn.disabled = true;
+
+  function updateCard() {
+    const data = FLASHCARD_DATA[currentIndex];
+    frontEmoji.textContent = data.emoji;
+    frontConcept.textContent = data.concept;
+    backText.textContent = data.answer;
+    counterEl.textContent = (currentIndex + 1) + ' of ' + FLASHCARD_DATA.length;
+    progressEl.textContent = (currentIndex + 1) + ' of ' + FLASHCARD_DATA.length + ' — ' + reviewed.size + ' reviewed';
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.disabled = currentIndex === FLASHCARD_DATA.length - 1;
+    // Reset flip
+    isFlipped = false;
+    card.classList.remove('flashcard-card--flipped');
+    updateDots();
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (currentIndex > 0) { currentIndex--; updateCard(); }
+  });
+  nextBtn.addEventListener('click', () => {
+    if (currentIndex < FLASHCARD_DATA.length - 1) { currentIndex++; updateCard(); }
+  });
+
+  nav.appendChild(prevBtn);
+  nav.appendChild(counterEl);
+  nav.appendChild(nextBtn);
+  overlay.appendChild(nav);
+
+  // Reviewed dots
+  const dotsRow = el('div', 'flashcard-reviewed-row');
+  const dots = [];
+  for (let i = 0; i < FLASHCARD_DATA.length; i++) {
+    const dot = el('span', 'flashcard-dot');
+    dots.push(dot);
+    dotsRow.appendChild(dot);
+  }
+  overlay.appendChild(dotsRow);
+
+  function updateDots() {
+    dots.forEach((dot, i) => {
+      dot.className = 'flashcard-dot';
+      if (i === currentIndex) dot.classList.add('flashcard-dot--active');
+      if (reviewed.has(i)) dot.classList.add('flashcard-dot--reviewed');
+    });
+  }
+  updateDots();
+
+  // Keyboard navigation
+  function handleKeydown(e) {
+    if (e.key === 'ArrowLeft' && currentIndex > 0) { currentIndex--; updateCard(); }
+    else if (e.key === 'ArrowRight' && currentIndex < FLASHCARD_DATA.length - 1) { currentIndex++; updateCard(); }
+    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); card.click(); }
+    else if (e.key === 'Escape') { closeBtn.click(); }
+  }
+  document.addEventListener('keydown', handleKeydown);
+  // Cleanup keyboard on close
+  const origClose = closeBtn.onclick;
+  closeBtn.addEventListener('click', () => document.removeEventListener('keydown', handleKeydown));
+
+  document.body.appendChild(overlay);
 }
 
 /* ================================================================== */
@@ -1655,13 +1939,17 @@ export function renderLearningPage(container) {
   container.replaceChildren();
   container.appendChild(el('h1', 'page-title', '📚 Learning Hub'));
 
+  const dailyTipContainer = el('div');
+  const milestonesContainer = el('div');
   const actionContainer = el('div');
   const mentorContainer = el('div');
   const assignmentContainer = el('div');
   const curriculumContainer = el('div');
   const baCurriculumContainer = el('div');
 
-  // Order: Actions → Mentors → Assignments → Curriculum (tabs)
+  // Order: Daily Tip → Milestones → Actions → Mentors → Assignments → Curriculum (tabs)
+  container.appendChild(dailyTipContainer);
+  container.appendChild(milestonesContainer);
   container.appendChild(actionContainer);
   container.appendChild(mentorContainer);
   container.appendChild(assignmentContainer);
@@ -1669,6 +1957,8 @@ export function renderLearningPage(container) {
   container.appendChild(baCurriculumContainer);
 
   function refresh() {
+    renderDailyTip(dailyTipContainer);
+    renderMilestones(milestonesContainer);
     renderActionBar(actionContainer, refresh);
     renderMentorCards(mentorContainer, refresh, curriculumContainer, baCurriculumContainer);
     renderCurriculumLog(curriculumContainer);
