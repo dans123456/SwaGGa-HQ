@@ -1404,23 +1404,55 @@ function openQuizPopup() {
 
 /* ---------- Assignments ------------------------------------------- */
 
+let _activeAssignmentTab = 'active';
+
 function renderAssignments(container, onRefresh) {
   container.replaceChildren();
   const wrapper = el('div', 'assignments-section');
   wrapper.appendChild(el('h2', 'section-title', '📝 Assignments'));
 
+  // Split assignments into Active and Completed
+  const allAssignments = getAssignments();
+  const activeAssignments = allAssignments.filter(a => !a.completed);
+  const completedAssignments = allAssignments.filter(a => a.completed);
+
+  // Tab bar container
+  const tabContainer = el('div', 'tab-bar');
+  tabContainer.style.marginBottom = 'var(--space-4)';
+
+  const activeBtn = el('button', `tab-btn${_activeAssignmentTab === 'active' ? ' active' : ''}`, `🎯 Active (${activeAssignments.length})`);
+  activeBtn.addEventListener('click', () => {
+    _activeAssignmentTab = 'active';
+    renderAssignments(container, onRefresh);
+  });
+  tabContainer.appendChild(activeBtn);
+
+  const completedBtn = el('button', `tab-btn${_activeAssignmentTab === 'completed' ? ' active' : ''}`, `🏆 History (${completedAssignments.length})`);
+  completedBtn.addEventListener('click', () => {
+    _activeAssignmentTab = 'completed';
+    renderAssignments(container, onRefresh);
+  });
+  tabContainer.appendChild(completedBtn);
+
+  wrapper.appendChild(tabContainer);
+
   const genBtn = el('button', 'btn btn-secondary', '🎲 Generate Exercise');
+  genBtn.style.marginBottom = 'var(--space-4)';
   genBtn.addEventListener('click', () => {
     openPracticeLevelSelector(onRefresh);
   });
   wrapper.appendChild(genBtn);
 
-  const assignments = getAssignments();
-  if (!assignments.length) {
-    wrapper.appendChild(el('p', 'empty-hint', 'No assignments yet. Generate an exercise!'));
+  const filteredAssignments = _activeAssignmentTab === 'active' ? activeAssignments : completedAssignments;
+
+  if (!filteredAssignments.length) {
+    const hintText = _activeAssignmentTab === 'active' 
+      ? 'No active assignments. Click "Generate Exercise" to start practicing! 🎯' 
+      : 'No completed assignments in history yet. Finish some exercises to build your track record! 🏆';
+    wrapper.appendChild(el('p', 'empty-hint', hintText));
   } else {
     const list = el('div', 'assignment-list');
-    [...assignments].reverse().forEach((a) => {
+    [...filteredAssignments].reverse().forEach((a) => {
       const card = el('div', `assignment-card${a.completed ? ' done' : ''}`);
       card.appendChild(el('p', 'assignment-text', a.text));
 
