@@ -19,6 +19,15 @@ import { generateId, sanitizeText } from './utils.js';
 
 const STORAGE_KEY = 'habits';
 
+/** Return 'YYYY-MM-DD' in LOCAL timezone (not UTC). */
+function localDateKey(d) {
+  const dt = d || new Date();
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /** Default habits with brand-style theming. */
 export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
@@ -91,7 +100,7 @@ export function addHabit(name, emoji) {
  * Toggle a habit's completion for a given date.
  */
 export function toggleHabit(habitId, date) {
-  const dateKey = date || new Date().toISOString().slice(0, 10);
+  const dateKey = date || localDateKey();
   const habits = getHabits();
   const habit = habits.find((h) => h.id === habitId);
   if (!habit) return;
@@ -112,14 +121,14 @@ export function calculateStreak(habitId) {
   const d = new Date();
   
   // If today is not checked (and not frozen), start counting from yesterday
-  const todayKey = d.toISOString().slice(0, 10);
+  const todayKey = localDateKey(d);
   const todayDone = habit.log[todayKey] || (habit.freezes && habit.freezes[todayKey]);
   if (!todayDone) {
     d.setDate(d.getDate() - 1);
   }
 
   while (true) {
-    const key = d.toISOString().slice(0, 10);
+    const key = localDateKey(d);
     if (habit.log[key] || (habit.freezes && habit.freezes[key])) {
       streak++;
       d.setDate(d.getDate() - 1);
@@ -163,7 +172,7 @@ export function getBestStreak(habitId) {
  * Check whether ALL habits were completed on a given date.
  */
 export function isPerfectDay(date) {
-  const dateKey = date || new Date().toISOString().slice(0, 10);
+  const dateKey = date || localDateKey();
   const habits = getHabits();
   if (!habits.length) return false;
   return habits.every((h) => h.log[dateKey] || (h.freezes && h.freezes[dateKey]));
@@ -188,7 +197,7 @@ function el(tag, cls = '', text = '') {
 
 function renderFireBanner(container) {
   container.replaceChildren();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   const habits = getHabits();
   const doneCount = habits.filter((h) => h.log[today] || (h.freezes && h.freezes[today])).length;
   const total = habits.length;
@@ -234,7 +243,7 @@ function renderFireBanner(container) {
 function getRecentMissedDate(habit) {
   const d = new Date();
   d.setDate(d.getDate() - 1); // Yesterday
-  const yesterdayKey = d.toISOString().slice(0, 10);
+  const yesterdayKey = localDateKey(d);
   
   const yesterdayDone = habit.log[yesterdayKey] || (habit.freezes && habit.freezes[yesterdayKey]);
   if (!yesterdayDone) {
@@ -265,7 +274,7 @@ function playFreezeAnimation(cardElement, callback) {
 /* ---------- Professional Habit Card ------------------------------- */
 
 export function renderHabitCard(habit, onToggle) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   const done = !!habit.log[today];
   const streak = calculateStreak(habit.id);
   const best = getBestStreak(habit.id);
@@ -416,7 +425,7 @@ export function renderCalendarHeatmap(container, habitData) {
   for (let i = 89; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = localDateKey(d);
     const count = habitData.filter((h) => h.log[key] || (h.freezes && h.freezes[key])).length;
     const ratio = count / totalHabits;
 
@@ -527,7 +536,7 @@ function renderOverviewStats(container) {
   for (let i = 0; i < 30; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    if (isPerfectDay(d.toISOString().slice(0, 10))) perfectCount++;
+    if (isPerfectDay(localDateKey(d))) perfectCount++;
   }
 
   const items = [
@@ -651,7 +660,7 @@ function checkAndNotify() {
   // Only notify between 8 AM and 11 PM
   if (hour < 8 || hour > 23) return;
 
-  const today = now.toISOString().slice(0, 10);
+  const today = localDateKey(now);
   const habits = getHabits();
   const undone = habits.filter(h => !h.log[today]);
 

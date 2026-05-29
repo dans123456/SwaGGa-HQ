@@ -218,6 +218,12 @@ export async function pullFromCloud() {
             }
           });
           merged[key] = mergedHabits;
+          // Enforce correct Duolingo base streak after merge
+          merged[key].forEach(h => {
+            if (h.id === 'duolingo' && h.baseStreak !== 44) {
+              h.baseStreak = 44;
+            }
+          });
         } else {
           // Merge other arrays by id (local wins over cloud for same ID to keep new details)
           const seen = new Map();
