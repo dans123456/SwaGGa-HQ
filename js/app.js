@@ -567,7 +567,8 @@ function buildActivityItems(trades, lessons, habits) {
   });
 
   // Today's streak completions
-  const today = new Date().toISOString().slice(0, 10);
+  const _now = new Date();
+  const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
   habits.forEach(h => {
     if (h.log && h.log[today]) {
       items.push({
