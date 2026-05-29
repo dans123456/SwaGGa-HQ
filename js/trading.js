@@ -13,6 +13,7 @@ import {
   sanitizeText,
 } from './utils.js';
 import { addXP } from './xp.js';
+import { renderBacktestSandbox } from './backtest.js';
 
 // --- Constants ---
 
@@ -869,6 +870,7 @@ function buildTabs(onSelect) {
     { key: 'form', label: '📝 Log Trade' },
     { key: 'history', label: '📋 History' },
     { key: 'analytics', label: '📈 Analytics' },
+    { key: 'backtest', label: '🎯 Backtest Sandbox' },
   ];
   tabDefs.forEach(({ key, label }, idx) => {
     const btn = el('button', `tab-btn${idx === 0 ? ' active' : ''}`, label);
@@ -1268,8 +1270,10 @@ export function renderTradingPage(container) {
   historyPanel.style.display = 'none';
   const analyticsPanel = el('div', 'tab-panel');
   analyticsPanel.style.display = 'none';
+  const backtestPanel = el('div', 'tab-panel');
+  backtestPanel.style.display = 'none';
 
-  const panels = { form: formPanel, history: historyPanel, analytics: analyticsPanel };
+  const panels = { form: formPanel, history: historyPanel, analytics: analyticsPanel, backtest: backtestPanel };
 
   const tabs = buildTabs((key) => {
     Object.entries(panels).forEach(([k, p]) => {
@@ -1277,12 +1281,14 @@ export function renderTradingPage(container) {
     });
     if (key === 'history') renderTradeHistory(historyPanel, refresh);
     if (key === 'analytics') renderAnalytics(analyticsPanel);
+    if (key === 'backtest') renderBacktestSandbox(backtestPanel);
   });
 
   container.appendChild(tabs);
   container.appendChild(formPanel);
   container.appendChild(historyPanel);
   container.appendChild(analyticsPanel);
+  container.appendChild(backtestPanel);
 
   function refresh() {
     const trades = getTrades();
