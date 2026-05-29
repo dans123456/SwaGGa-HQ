@@ -460,7 +460,7 @@ function createModal(title) {
 
 /* ---------- Mentor Cards + Profile Popup -------------------------- */
 
-function openMentorProfile(mentor) {
+function openMentorProfile(mentor, onViewCurriculum) {
   const { body } = createModal(`${mentor.emoji} ${mentor.name}`);
 
   const profile = el('div', 'mentor-profile');
@@ -616,8 +616,16 @@ function openMentorProfile(mentor) {
     scrollBtn.addEventListener('click', () => {
       body.closest('.modal-overlay').style.opacity = '0';
       setTimeout(() => body.closest('.modal-overlay').remove(), 250);
-      const timeline = document.querySelector('.curriculum-section');
-      if (timeline) timeline.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      if (typeof onViewCurriculum === 'function') {
+        onViewCurriculum();
+      }
+
+      setTimeout(() => {
+        const selector = mentor.key === 'bossAckah' ? '.ba-curriculum-section' : '.curriculum-section:not(.ba-curriculum-section)';
+        const timeline = document.querySelector(selector);
+        if (timeline) timeline.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
     });
     profile.appendChild(scrollBtn);
   }
@@ -715,7 +723,12 @@ function renderMentorCards(container, onLessonLogged, curriculumContainer, baCur
       { icon: '📝', label: 'Assignments', value: String(getAssignments().length) },
       { icon: '🧩', label: 'Concepts', value: String(getConceptLibrary().length) },
     ];
-    openMentorProfile(gohData);
+    openMentorProfile(gohData, () => {
+      _activeMentor = 'bradGoh';
+      switchCurriculumTab(curriculumContainer, baCurriculumContainer, 'bradGoh');
+      grid.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('mentor-selected'));
+      gohCard.classList.add('mentor-selected');
+    });
   });
   gohCard.appendChild(gohProfileBtn);
 
@@ -758,7 +771,12 @@ function renderMentorCards(container, onLessonLogged, curriculumContainer, baCur
       { icon: '📚', label: 'Lessons', value: `${baCompletedCount}/${baTotalLessons}` },
       { icon: '🧠', label: 'Focus', value: 'Psychology' },
     ];
-    openMentorProfile(ackahData);
+    openMentorProfile(ackahData, () => {
+      _activeMentor = 'bossAckah';
+      switchCurriculumTab(curriculumContainer, baCurriculumContainer, 'bossAckah');
+      grid.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('mentor-selected'));
+      ackahCard.classList.add('mentor-selected');
+    });
   });
   ackahCard.appendChild(ackahProfileBtn);
 
