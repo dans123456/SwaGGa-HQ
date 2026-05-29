@@ -154,6 +154,7 @@ const SYNC_KEYS = [
   'mastered_terms',
   'daily_grades',
   'pomodoro_history',
+  'notepad_text',
 ];
 
 const NAMESPACE = 'swagga';
@@ -339,6 +340,11 @@ export async function pullFromCloud() {
           mergedPomo[d] = Math.max(Number(cloud?.[d]) || 0, Number(local?.[d]) || 0);
         });
         merged[key] = mergedPomo;
+      } else if (key === 'notepad_text') {
+        // Longer string wins to prevent losing detailed workspace notes
+        const localLen = (local || '').length;
+        const cloudLen = (cloud || '').length;
+        merged[key] = localLen >= cloudLen ? local : cloud;
       } else if (key.startsWith('ba_progress_')) {
         // Progress percentage - maximum level/progress wins
         merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);

@@ -13,6 +13,7 @@
 import storage from './storage.js';
 import { generateId, sanitizeText, triggerConfetti } from './utils.js';
 import { addXP } from './xp.js';
+import { playSynthSound } from './audio.js';
 
 /* ================================================================== */
 /*  CONSTANTS                                                         */
@@ -371,8 +372,13 @@ export function renderHabitCard(habit, onToggle) {
       const allHabits = getHabits();
       if (allHabits.length > 0 && allHabits.every(h => h.log[today])) {
         addXP('perfectDay', 50);
+        playSynthSound('fanfare'); // Triumphant arpeggio fanfare!
         triggerConfetti(); // Celebrate perfect day milestone!
+      } else {
+        playSynthSound('success'); // Ascending success beep arpeggio!
       }
+    } else {
+      playSynthSound('click'); // Quick navigation beep on unchecking
     }
     // Push updates to cloud immediately if signed in to prevent any lag or refresh loss
     import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {

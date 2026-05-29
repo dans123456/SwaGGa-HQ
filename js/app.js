@@ -16,6 +16,7 @@ import { checkAutoAssignment } from './notifications.js';
 import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser } from './firebase-sync.js';
 import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from './xp.js';
 import { renderCalendarPage } from './calendar.js';
+import { playSynthSound } from './audio.js';
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -377,6 +378,62 @@ function renderDashboard(container) {
   achievementsSection.appendChild(el('h2', 'dashboard-section__title', '🏆 Trophy Room'));
   renderAchievementBadges(achievementsSection, trades, tradeStats, lessons, habits);
   leftCol.appendChild(achievementsSection);
+
+  // 📝 Workspace Notepad & Scratchpad Card
+  const notepadSection = el('div', 'dashboard-section notepad-section');
+  notepadSection.appendChild(el('h2', 'dashboard-section__title', '📝 Daily Rules & Scratchpad'));
+
+  const notepadCard = el('div', 'overview-panel notepad-card');
+  notepadCard.style.padding = 'var(--space-4)';
+  notepadCard.style.position = 'relative';
+
+  const statusLabel = el('span', 'notepad-status-label', 'Saved ✓');
+  statusLabel.style.position = 'absolute';
+  statusLabel.style.bottom = 'var(--space-4)';
+  statusLabel.style.right = 'var(--space-5)';
+  statusLabel.style.fontSize = '10px';
+  statusLabel.style.fontWeight = '700';
+  statusLabel.style.color = 'var(--neon-green)';
+  statusLabel.style.opacity = '0.7';
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'form-input notepad-textarea';
+  textarea.placeholder = 'Type your trading rules, mindset focus points, or scratchpad notes here...\n\nExample:\n- I will not overtrade\n- Wait for FVG confirmation';
+  textarea.value = storage.get('notepad_text', '');
+  textarea.style.width = '100%';
+  textarea.style.minHeight = '140px';
+  textarea.style.background = 'rgba(255, 255, 255, 0.01)';
+  textarea.style.border = '1px solid rgba(255,255,255,0.06)';
+  textarea.style.borderRadius = 'var(--radius-md)';
+  textarea.style.color = 'var(--text-primary)';
+  textarea.style.fontFamily = 'var(--font-body)';
+  textarea.style.fontSize = 'var(--text-sm)';
+  textarea.style.resize = 'vertical';
+  textarea.style.padding = 'var(--space-3)';
+  textarea.style.paddingBottom = 'var(--space-6)'; // buffer for status label
+
+  let debounceTimeout = null;
+  textarea.addEventListener('input', () => {
+    statusLabel.textContent = 'Typing...';
+    statusLabel.style.color = 'var(--cyan)';
+    
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      storage.set('notepad_text', textarea.value);
+      statusLabel.textContent = 'Saved ✓';
+      statusLabel.style.color = 'var(--neon-green)';
+      
+      // Sync to cloud immediately
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      });
+    }, 1000);
+  });
+
+  notepadCard.appendChild(textarea);
+  notepadCard.appendChild(statusLabel);
+  notepadSection.appendChild(notepadCard);
+  leftCol.appendChild(notepadSection);
 
   bottomGrid.appendChild(leftCol);
 
@@ -1220,6 +1277,7 @@ function buildAppShell() {
     item.appendChild(el('span', 'nav-icon', icon));
     item.appendChild(el('span', 'nav-label', label));
     item.addEventListener('click', () => {
+      playSynthSound('click');
       router.navigate(hash);
       closeMobileMenu();
     });
@@ -1342,6 +1400,23 @@ function buildAppShell() {
   });
   sidebar.appendChild(themeBtn);
 
+  // 🔊 Retro Arcade Audio Mute Toggle in sidebar
+  const audioMuted = storage.get('audio_muted', false);
+  const audioBtn = el('button', 'theme-switch-btn audio-mute-btn');
+  const audioIcon = el('span', 'theme-switch-emoji', audioMuted ? '🔇 Sound Off' : '🔊 Sound On');
+  audioBtn.appendChild(audioIcon);
+
+  audioBtn.addEventListener('click', () => {
+    import('./audio.js').then(({ toggleMute, playSynthSound }) => {
+      const nextMuted = toggleMute();
+      audioIcon.textContent = nextMuted ? '🔇 Sound Off' : '🔊 Sound On';
+      if (!nextMuted) {
+        playSynthSound('click');
+      }
+    });
+  });
+  sidebar.appendChild(audioBtn);
+
   const collapseBtn = el('button', 'sidebar-collapse-btn', '◀');
   collapseBtn.setAttribute('aria-label', 'Toggle sidebar');
   collapseBtn.addEventListener('click', () => {
@@ -1368,6 +1443,7 @@ function buildAppShell() {
     item.appendChild(el('span', 'mobile-bottom-nav__icon', icon));
     item.appendChild(el('span', 'mobile-bottom-nav__label', label));
     item.addEventListener('click', () => {
+      playSynthSound('click');
       router.navigate(hash);
       closeMobileMenu();
     });

@@ -10,6 +10,7 @@
 import storage from './storage.js';
 import { generateId, formatDate, sanitizeText } from './utils.js';
 import { addXP } from './xp.js';
+import { playSynthSound } from './audio.js';
 
 /* ================================================================== */
 /*  CONSTANTS                                                         */
@@ -1362,6 +1363,17 @@ function openQuizPopup() {
     // Award XP for taking a quiz
     addXP('quiz', 15);
 
+    // Play arpeggio sound based on quiz performance
+    if (percentage >= 90) {
+      playSynthSound('fanfare');
+    } else if (percentage >= 70) {
+      playSynthSound('success');
+    } else if (percentage < 50) {
+      playSynthSound('fail');
+    } else {
+      playSynthSound('click');
+    }
+
     // Save quiz score for achievements tracking
     const quizScores = storage.get('quiz_scores', []);
     quizScores.push(percentage);
@@ -1529,7 +1541,12 @@ function renderAssignments(container, onRefresh) {
             if (currentTokens < 3) {
               storage.set('streak_freeze_tokens', currentTokens + 1);
               showNotificationToast('Assignment Completed! Earned 1 Streak Freeze ❄️');
+              playSynthSound('fanfare'); // Triumphant arpeggio for earning freeze token!
+            } else {
+              playSynthSound('success'); // Ascending arpeggio for completing assignment
             }
+          } else {
+            playSynthSound('click'); // Quick navigation beep on reopening
           }
           
           storage.set(STORAGE_ASSIGNMENTS, all);
