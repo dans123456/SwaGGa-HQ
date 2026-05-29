@@ -150,6 +150,7 @@ const SYNC_KEYS = [
   'streak_freeze_tokens',
   'xp_data',
   'quiz_scores',
+  'pomodoro_data',
 ];
 
 const NAMESPACE = 'swagga';
