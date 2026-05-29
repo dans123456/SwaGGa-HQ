@@ -1073,6 +1073,195 @@ function buildCorrelationEngine(trades) {
   return section;
 }
 
+// --- Advanced Performance Metrics Calculations ---
+
+function calculateAdvancedMetrics(trades) {
+  if (!trades.length) return null;
+
+  // Sort trades chronologically by date
+  const sorted = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let grossProfits = 0;
+  let grossLosses = 0;
+  let winCount = 0;
+  let lossCount = 0;
+
+  // Win/Loss streaks
+  let maxWinStreak = 0;
+  let maxLossStreak = 0;
+  let currentWinStreak = 0;
+  let currentLossStreak = 0;
+
+  // Drawdown tracking
+  let equity = 10000; // Baseline virtual account size
+  let peak = 10000;
+  let maxDrawdownPercent = 0;
+
+  const pnlList = [];
+
+  sorted.forEach(t => {
+    const pnl = Number(t.pnl) || 0;
+    pnlList.push(pnl);
+
+    if (pnl > 0) {
+      grossProfits += pnl;
+      winCount++;
+      currentWinStreak++;
+      if (currentWinStreak > maxWinStreak) maxWinStreak = currentWinStreak;
+      currentLossStreak = 0;
+    } else if (pnl < 0) {
+      grossLosses += Math.abs(pnl);
+      lossCount++;
+      currentLossStreak++;
+      if (currentLossStreak > maxLossStreak) maxLossStreak = currentLossStreak;
+      currentWinStreak = 0;
+    }
+
+    // Peak-to-trough Drawdown
+    equity += pnl;
+    if (equity > peak) {
+      peak = equity;
+    }
+    const drawdown = ((peak - equity) / peak) * 100;
+    if (drawdown > maxDrawdownPercent) {
+      maxDrawdownPercent = drawdown;
+    }
+  });
+
+  // Profit Factor
+  const profitFactor = grossLosses > 0 ? (grossProfits / grossLosses) : grossProfits;
+
+  // Sharpe Ratio
+  const n = pnlList.length;
+  const averagePnL = pnlList.reduce((s, x) => s + x, 0) / n;
+  let stdDev = 0;
+  if (n > 1) {
+    const variance = pnlList.reduce((s, x) => s + Math.pow(x - averagePnL, 2), 0) / n;
+    stdDev = Math.sqrt(variance);
+  }
+  const sharpeRatio = stdDev > 0 ? (averagePnL / stdDev) : 0;
+
+  // Average Win vs Average Loss
+  const averageWin = winCount > 0 ? (grossProfits / winCount) : 0;
+  const averageLoss = lossCount > 0 ? (grossLosses / lossCount) : 0;
+
+  return {
+    profitFactor: parseFloat(profitFactor.toFixed(2)),
+    sharpeRatio: parseFloat(sharpeRatio.toFixed(2)),
+    maxDrawdown: parseFloat(maxDrawdownPercent.toFixed(2)),
+    maxWinStreak,
+    maxLossStreak,
+    averageWin: parseFloat(averageWin.toFixed(2)),
+    averageLoss: parseFloat(averageLoss.toFixed(2))
+  };
+}
+
+// Build the premium Advanced Performance Metrics Widget
+function buildAdvancedMetricsWidget(trades) {
+  const metrics = calculateAdvancedMetrics(trades);
+  if (!metrics) return el('div');
+
+  const section = el('div', 'metrics-section');
+
+  const header = el('div', 'metrics-header');
+  header.appendChild(el('span', 'metrics-header-icon', '⚡'));
+  const titleWrap = el('div', 'metrics-title-wrap');
+  titleWrap.appendChild(el('h2', 'metrics-title', 'Advanced Performance Analytics'));
+  titleWrap.appendChild(el('p', 'metrics-subtitle', 'Professional-grade statistical calculations computed from your logs'));
+  header.appendChild(titleWrap);
+  section.appendChild(header);
+
+  // 4-Column Grid
+  const grid = el('div', 'metrics-summary-grid');
+
+  // 1. Profit Factor Card
+  const pfCard = el('div', 'metric-summary-card glass-card pf-card');
+  const pfVal = el('span', 'metric-summary-value', String(metrics.profitFactor));
+  if (metrics.profitFactor >= 1.5) pfVal.classList.add('val-high');
+  else if (metrics.profitFactor >= 1.0) pfVal.classList.add('val-mid');
+  else pfVal.classList.add('val-low');
+  pfCard.appendChild(pfVal);
+  pfCard.appendChild(el('span', 'metric-summary-label', 'Profit Factor'));
+  pfCard.appendChild(el('span', 'metric-summary-desc', 'Gross Profits / Gross Losses'));
+  grid.appendChild(pfCard);
+
+  // 2. Sharpe Ratio Card
+  const srCard = el('div', 'metric-summary-card glass-card sr-card');
+  const srVal = el('span', 'metric-summary-value', String(metrics.sharpeRatio));
+  if (metrics.sharpeRatio >= 1.0) srVal.classList.add('val-high');
+  else if (metrics.sharpeRatio >= 0.0) srVal.classList.add('val-mid');
+  else srVal.classList.add('val-low');
+  srCard.appendChild(srVal);
+  srCard.appendChild(el('span', 'metric-summary-label', 'Sharpe Ratio'));
+  srCard.appendChild(el('span', 'metric-summary-desc', 'Avg P&L / Standard Deviation'));
+  grid.appendChild(srCard);
+
+  // 3. Max Drawdown Card
+  const ddCard = el('div', 'metric-summary-card glass-card dd-card');
+  const ddVal = el('span', 'metric-summary-value', `${metrics.maxDrawdown}%`);
+  if (metrics.maxDrawdown <= 5) ddVal.classList.add('val-high');
+  else if (metrics.maxDrawdown <= 15) ddVal.classList.add('val-mid');
+  else ddVal.classList.add('val-low');
+  ddCard.appendChild(ddVal);
+  ddCard.appendChild(el('span', 'metric-summary-label', 'Max Drawdown %'));
+  ddCard.appendChild(el('span', 'metric-summary-desc', 'Peak-to-trough equity drop'));
+  grid.appendChild(ddCard);
+
+  // 4. Streaks Record Card
+  const stCard = el('div', 'metric-summary-card glass-card st-card');
+  const stVal = el('span', 'metric-summary-value');
+  stVal.appendChild(el('span', 'val-high', `${metrics.maxWinStreak}W`));
+  stVal.appendChild(document.createTextNode(' · '));
+  stVal.appendChild(el('span', 'val-low', `${metrics.maxLossStreak}L`));
+  stCard.appendChild(stVal);
+  stCard.appendChild(el('span', 'metric-summary-label', 'Streak Records'));
+  stCard.appendChild(el('span', 'metric-summary-desc', 'Consecutive wins and losses'));
+  grid.appendChild(stCard);
+
+  section.appendChild(grid);
+
+  // Average Win/Loss Ratio Gauge Card
+  const gaugeCard = el('div', 'metrics-ratio-gauge-card glass-card');
+  gaugeCard.appendChild(el('h3', 'gauge-card-title', 'Risk-to-Reward Ratio Split'));
+
+  const ratioWrapper = el('div', 'gauge-ratio-wrapper');
+  
+  // Left: Avg Win
+  const avgWinBlock = el('div', 'gauge-win-block');
+  avgWinBlock.appendChild(el('span', 'gauge-block-label', 'Average Winning Trade'));
+  avgWinBlock.appendChild(el('span', 'gauge-block-val val-high', `$${metrics.averageWin.toLocaleString()}`));
+  ratioWrapper.appendChild(avgWinBlock);
+
+  // Middle: Horizontal visual split bar
+  const totalAvg = metrics.averageWin + metrics.averageLoss;
+  const winPercent = totalAvg > 0 ? Math.round((metrics.averageWin / totalAvg) * 100) : 50;
+  const lossPercent = 100 - winPercent;
+
+  const barContainer = el('div', 'gauge-bar-container');
+  const winBar = el('div', 'gauge-bar-segment segment-win');
+  winBar.style.width = `${winPercent}%`;
+  winBar.appendChild(el('span', 'segment-label', `${winPercent}%`));
+  
+  const lossBar = el('div', 'gauge-bar-segment segment-loss');
+  lossBar.style.width = `${lossPercent}%`;
+  lossBar.appendChild(el('span', 'segment-label', `${lossPercent}%`));
+
+  barContainer.appendChild(winBar);
+  barContainer.appendChild(lossBar);
+  ratioWrapper.appendChild(barContainer);
+
+  // Right: Avg Loss
+  const avgLossBlock = el('div', 'gauge-loss-block');
+  avgLossBlock.appendChild(el('span', 'gauge-block-label', 'Average Losing Trade'));
+  avgLossBlock.appendChild(el('span', 'gauge-block-val val-low', `-$${metrics.averageLoss.toLocaleString()}`));
+  ratioWrapper.appendChild(avgLossBlock);
+
+  gaugeCard.appendChild(ratioWrapper);
+  section.appendChild(gaugeCard);
+
+  return section;
+}
+
 /* ---------- Analytics panel --------------------------------------- */
 
 function renderAnalytics(container) {
@@ -1091,6 +1280,9 @@ function renderAnalytics(container) {
 
   // Correlation Engine at the top
   container.appendChild(buildCorrelationEngine(trades));
+
+  // Advanced Performance Metrics Widget immediately below
+  container.appendChild(buildAdvancedMetricsWidget(trades));
 
   // Canvas wrappers (Chart.js will render into these).
   const grid = el('div', 'charts-grid');
