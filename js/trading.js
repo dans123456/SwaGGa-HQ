@@ -924,6 +924,195 @@ function buildTabs(onSelect) {
   return tabs;
 }
 
+/* ---------- Confluence Correlation Engine ------------------------- */
+
+function shortenConfluence(full) {
+  return full.replace(/\s*\[Ep\s*\d+\]\s*$/i, '').trim();
+}
+
+function buildCorrelationEngine(trades) {
+  const section = el('div', 'correlation-engine');
+
+  const header = el('div', 'correlation-header');
+  header.appendChild(el('span', 'correlation-icon', '🧬'));
+  const titleWrap = el('div', 'correlation-title-wrap');
+  titleWrap.appendChild(el('h2', 'correlation-title', 'Confluence Correlation Engine'));
+  titleWrap.appendChild(el('p', 'correlation-subtitle', 'Which confluences actually make you money?'));
+  header.appendChild(titleWrap);
+  section.appendChild(header);
+
+  // Need at least 3 trades with confluences to show meaningful data
+  const tagged = trades.filter(t => Array.isArray(t.confluences) && t.confluences.length > 0);
+  if (tagged.length < 3) {
+    const notice = el('div', 'correlation-notice');
+    notice.appendChild(el('span', '', '📉'));
+    notice.appendChild(el('p', '', 'Log at least 3 trades with confluence tags to unlock correlation insights.'));
+    section.appendChild(notice);
+    return section;
+  }
+
+  // --- Individual confluence stats ---
+  const confStats = new Map();
+  tagged.forEach(t => {
+    const isWin = t.outcome === 'win' || Number(t.pnl) > 0;
+    const pnl = Number(t.pnl) || 0;
+    t.confluences.forEach(c => {
+      if (!confStats.has(c)) confStats.set(c, { wins: 0, losses: 0, total: 0, pnl: 0 });
+      const s = confStats.get(c);
+      s.total++;
+      s.pnl += pnl;
+      if (isWin) s.wins++; else s.losses++;
+    });
+  });
+
+  // Sort by win rate descending (minimum 2 trades to rank)
+  const ranked = [...confStats.entries()]
+    .filter(([, s]) => s.total >= 2)
+    .map(([name, s]) => ({
+      name: shortenConfluence(name),
+      fullName: name,
+      winRate: Math.round((s.wins / s.total) * 100),
+      total: s.total,
+      wins: s.wins,
+      pnl: s.pnl,
+    }))
+    .sort((a, b) => b.winRate - a.winRate || b.total - a.total);
+
+  // --- Pair correlation stats ---
+  const pairStats = new Map();
+  tagged.forEach(t => {
+    const isWin = t.outcome === 'win' || Number(t.pnl) > 0;
+    const confs = t.confluences;
+    for (let i = 0; i < confs.length; i++) {
+      for (let j = i + 1; j < confs.length; j++) {
+        const pair = [confs[i], confs[j]].sort().join(' + ');
+        if (!pairStats.has(pair)) pairStats.set(pair, { wins: 0, total: 0 });
+        const s = pairStats.get(pair);
+        s.total++;
+        if (isWin) s.wins++;
+      }
+    }
+  });
+
+  const topPairs = [...pairStats.entries()]
+    .filter(([, s]) => s.total >= 2)
+    .map(([pair, s]) => ({
+      pair: pair.split(' + ').map(shortenConfluence).join(' + '),
+      winRate: Math.round((s.wins / s.total) * 100),
+      total: s.total,
+      wins: s.wins,
+    }))
+    .sort((a, b) => b.winRate - a.winRate || b.total - a.total)
+    .slice(0, 5);
+
+  // Overall baseline win rate for comparison
+  const baselineWins = tagged.filter(t => t.outcome === 'win' || Number(t.pnl) > 0).length;
+  const baselineWR = Math.round((baselineWins / tagged.length) * 100);
+
+  // --- Build the chart section ---
+  if (ranked.length > 0) {
+    const chartWrap = el('div', 'correlation-chart-wrap');
+    const canvas = document.createElement('canvas');
+    canvas.id = 'chart-correlation-engine';
+    chartWrap.appendChild(canvas);
+    section.appendChild(chartWrap);
+
+    // Render chart after DOM insertion (needs to be in DOM for Chart.js)
+    requestAnimationFrame(() => {
+      import('./charts.js').then(({ createConfluenceCorrelationChart }) => {
+        createConfluenceCorrelationChart(
+          'chart-correlation-engine',
+          ranked.map(r => r.name),
+          ranked.map(r => r.winRate),
+          ranked.map(r => r.total),
+        );
+      });
+    });
+  }
+
+  // --- Top insight callout ---
+  if (ranked.length > 0) {
+    const best = ranked[0];
+    const diff = best.winRate - baselineWR;
+    if (diff > 0) {
+      const insight = el('div', 'correlation-insight correlation-insight--positive');
+      insight.appendChild(el('span', 'correlation-insight-icon', '🔥'));
+      const txt = el('span', 'correlation-insight-text');
+      txt.appendChild(document.createTextNode('When you use '));
+
+      const strong = document.createElement('strong');
+      strong.textContent = best.name;
+      txt.appendChild(strong);
+
+      txt.appendChild(document.createTextNode(`, your win rate is ${best.winRate}% — that's +${diff}% above your baseline of ${baselineWR}%.`));
+      insight.appendChild(txt);
+      section.appendChild(insight);
+    }
+  }
+
+  // Worst confluence warning
+  if (ranked.length > 1) {
+    const worst = ranked[ranked.length - 1];
+    if (worst.winRate < baselineWR) {
+      const diff = baselineWR - worst.winRate;
+      const warn = el('div', 'correlation-insight correlation-insight--negative');
+      warn.appendChild(el('span', 'correlation-insight-icon', '⚠️'));
+      const txt = el('span', 'correlation-insight-text');
+      txt.appendChild(document.createTextNode('Watch out: '));
+
+      const strong = document.createElement('strong');
+      strong.textContent = worst.name;
+      txt.appendChild(strong);
+
+      txt.appendChild(document.createTextNode(` drags you ${diff}% below baseline (${worst.winRate}% win rate across ${worst.total} trades).`));
+      warn.appendChild(txt);
+      section.appendChild(warn);
+    }
+  }
+
+  // --- Top Combo Pairs section ---
+  if (topPairs.length > 0) {
+    const comboSection = el('div', 'correlation-combos');
+    comboSection.appendChild(el('h3', 'correlation-combos-title', 'Top Confluence Combos'));
+
+    const comboGrid = el('div', 'correlation-combo-grid');
+
+    topPairs.forEach((p, idx) => {
+      const card = el('div', 'correlation-combo-card');
+      if (idx === 0) card.classList.add('correlation-combo-card--best');
+
+      const rankBadge = el('span', 'correlation-combo-rank', `#${idx + 1}`);
+      card.appendChild(rankBadge);
+
+      const pairLabel = el('div', 'correlation-combo-pair');
+      const parts = p.pair.split(' + ');
+      pairLabel.appendChild(el('span', 'correlation-combo-tag', parts[0]));
+      pairLabel.appendChild(el('span', 'correlation-combo-plus', '+'));
+      pairLabel.appendChild(el('span', 'correlation-combo-tag', parts[1]));
+      card.appendChild(pairLabel);
+
+      const statsRow = el('div', 'correlation-combo-stats');
+      const wrSpan = el('span', 'correlation-combo-wr');
+      wrSpan.textContent = `${p.winRate}%`;
+      if (p.winRate >= 65) wrSpan.classList.add('wr-high');
+      else if (p.winRate >= 45) wrSpan.classList.add('wr-mid');
+      else wrSpan.classList.add('wr-low');
+      statsRow.appendChild(wrSpan);
+
+      statsRow.appendChild(el('span', 'correlation-combo-count', `${p.wins}W / ${p.total - p.wins}L · ${p.total} trades`));
+      card.appendChild(statsRow);
+
+      comboGrid.appendChild(card);
+    });
+
+    comboSection.appendChild(comboGrid);
+    section.appendChild(comboSection);
+  }
+
+  return section;
+}
+
+
 /* ---------- Analytics panel --------------------------------------- */
 
 function renderAnalytics(container) {
@@ -936,10 +1125,12 @@ function renderAnalytics(container) {
     empty.appendChild(el('p', '', 'Log some trades to see analytics.'));
     container.appendChild(empty);
 
-    // Still show Risk Calculator even with no trades
     container.appendChild(buildRiskCalculator());
     return;
   }
+
+  // Correlation Engine at the top
+  container.appendChild(buildCorrelationEngine(trades));
 
   // Canvas wrappers (Chart.js will render into these).
   const grid = el('div', 'charts-grid');
@@ -962,7 +1153,6 @@ function renderAnalytics(container) {
   grid.appendChild(makeCanvasCard('Performance by Session', 'chart-session'));
   container.appendChild(grid);
 
-  // Lazy-import charts module so Chart.js can load via CDN first.
   import('./charts.js').then(({
     createEquityCurve, createWinLossChart, createDailyPnLChart,
     createConfluenceWinRateChart, createMistakeChart,

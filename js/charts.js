@@ -484,6 +484,62 @@ export function createAssetPerformanceChart(canvasId, trades) {
  * @param {Array<object>} trades
  * @returns {Chart|null}
  */
+export function createConfluenceCorrelationChart(canvasId, labels, winRates, tradeCounts) {
+  const ctx = getCtx(canvasId);
+  if (!ctx) return null;
+
+  // Color each bar based on win rate (green for high, yellow for mid, red for low)
+  const bgColors = winRates.map(wr => {
+    if (wr >= 65) return 'rgba(57, 255, 20, 0.7)';
+    if (wr >= 45) return 'rgba(255, 200, 0, 0.7)';
+    return 'rgba(255, 59, 59, 0.6)';
+  });
+
+  return createTrackedChart(canvasId, ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Win Rate (%)',
+        data: winRates,
+        backgroundColor: bgColors,
+        borderRadius: 4,
+        barPercentage: 0.75,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        ...darkPluginOptions(),
+        tooltip: {
+          ...darkPluginOptions().tooltip,
+          callbacks: {
+            label: (ctx) => {
+              const idx = ctx.dataIndex;
+              return `Win Rate: ${winRates[idx]}% (${tradeCounts[idx]} trades)`;
+            },
+          },
+        },
+      },
+      scales: {
+        ...darkScaleOptions(true),
+        x: {
+          ...darkScaleOptions(true).x,
+          beginAtZero: true,
+          max: 100,
+          ticks: { ...darkScaleOptions(true).x.ticks, callback: v => v + '%' },
+        },
+        y: {
+          ...darkScaleOptions(true).y,
+          ticks: { ...darkScaleOptions(true).y.ticks, font: { size: 11 } },
+        },
+      },
+    },
+  });
+}
+
 export function createSessionPerformanceChart(canvasId, trades) {
   const ctx = getCtx(canvasId);
   if (!ctx) return null;
