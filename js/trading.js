@@ -337,6 +337,43 @@ export function renderTradeForm(container, onSaved) {
   });
   form.appendChild(formGroup('Outcome', outcomeSelect));
 
+  // ---- Mistake / Psychology Leak ----
+  const mistakeSelect = document.createElement('select');
+  mistakeSelect.name = 'mistake';
+  const defaultMistakeOpt = el('option', '', '— None (Clean Execution) —');
+  defaultMistakeOpt.value = '';
+  mistakeSelect.appendChild(defaultMistakeOpt);
+
+  const MISTAKE_OPTIONS = [
+    { value: 'fomo', label: 'FOMO (Fear of Missing Out)' },
+    { value: 'revenge', label: 'Revenge Trading' },
+    { value: 'outside_killzone', label: 'Outside Killzone Timing' },
+    { value: 'over_leveraging', label: 'Over-leveraging' },
+    { value: 'moved_sl', label: 'Moved Stop Loss (Rule Violation)' },
+    { value: 'early_exit', label: 'Early Exit (Fear)' },
+    { value: 'chasing_price', label: 'Chasing Price' },
+    { value: 'no_plan', label: 'No Trade Plan / Ad-hoc' }
+  ];
+
+  MISTAKE_OPTIONS.forEach((m) => {
+    const opt = el('option', '', m.label);
+    opt.value = m.value;
+    mistakeSelect.appendChild(opt);
+  });
+
+  const mistakeGroup = formGroup('Mistake / Psychology Leak', mistakeSelect);
+  mistakeGroup.style.display = 'none'; // Hidden by default
+  form.appendChild(mistakeGroup);
+
+  outcomeSelect.addEventListener('change', () => {
+    if (outcomeSelect.value === 'loss') {
+      mistakeGroup.style.display = 'block';
+    } else {
+      mistakeGroup.style.display = 'none';
+      mistakeSelect.value = ''; // Reset on hide
+    }
+  });
+
   // ---- Notes ----
   const notes = document.createElement('textarea');
   notes.name = 'notes';
@@ -373,6 +410,7 @@ export function renderTradeForm(container, onSaved) {
       session: fd.get('session'),
       confluences,
       outcome: fd.get('outcome'),
+      mistake: fd.get('outcome') === 'loss' ? fd.get('mistake') : '',
       notes: sanitizeText(fd.get('notes') || '', 2000),
     };
 
@@ -385,6 +423,7 @@ export function renderTradeForm(container, onSaved) {
 
     saveTrade(tradeData);
     form.reset();
+    mistakeGroup.style.display = 'none'; // reset visibility
     dateInput.valueAsDate = new Date();
     if (typeof onSaved === 'function') onSaved();
   });
@@ -417,6 +456,17 @@ function exportToCSV() {
 }
 
 /* ---------- Trade Detail Modal ------------------------------------- */
+
+export const MISTAKE_LABELS = {
+  fomo: 'FOMO (Fear of Missing Out)',
+  revenge: 'Revenge Trading',
+  outside_killzone: 'Outside Killzone Timing',
+  over_leveraging: 'Over-leveraging',
+  moved_sl: 'Moved Stop Loss (Rule Violation)',
+  early_exit: 'Early Exit (Fear)',
+  chasing_price: 'Chasing Price',
+  no_plan: 'No Trade Plan / Ad-hoc'
+};
 
 function openTradeDetail(trade) {
   const overlay = el('div', 'trade-modal-overlay');
@@ -475,6 +525,15 @@ function openTradeDetail(trade) {
     { label: 'Risk:Reward', value: `${trade.rr}R` },
     { label: 'Outcome', value: trade.outcome ? trade.outcome.charAt(0).toUpperCase() + trade.outcome.slice(1) : '—' },
   ];
+
+  if (trade.outcome === 'loss') {
+    const mistakeLabel = MISTAKE_LABELS[trade.mistake] || 'None (Clean Execution)';
+    detailPairs.push({
+      label: 'Psychology Leak',
+      value: mistakeLabel,
+      cls: trade.mistake ? 'pnl-negative' : 'pnl-positive'
+    });
+  }
 
   detailPairs.forEach(({ label, value, cls }) => {
     const item = el('div', 'trade-detail-item');
@@ -688,14 +747,16 @@ function renderAnalytics(container) {
   grid.appendChild(makeCanvasCard('Win / Loss', 'chart-winloss'));
   grid.appendChild(makeCanvasCard('Daily P&L', 'chart-daily'));
   grid.appendChild(makeCanvasCard('Win Rate vs Confluences', 'chart-confluence'));
+  grid.appendChild(makeCanvasCard('Loss Psychology Breakdown', 'chart-mistake'));
   container.appendChild(grid);
 
   // Lazy-import charts module so Chart.js can load via CDN first.
-  import('./charts.js').then(({ createEquityCurve, createWinLossChart, createDailyPnLChart, createConfluenceWinRateChart }) => {
+  import('./charts.js').then(({ createEquityCurve, createWinLossChart, createDailyPnLChart, createConfluenceWinRateChart, createMistakeChart }) => {
     createEquityCurve('chart-equity', trades);
     createWinLossChart('chart-winloss', trades);
     createDailyPnLChart('chart-daily', trades);
     createConfluenceWinRateChart('chart-confluence', trades);
+    createMistakeChart('chart-mistake', trades);
   }).catch((err) => {
     console.error('Failed to load chart module:', err.message);
   });

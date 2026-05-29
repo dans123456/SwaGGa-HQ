@@ -344,3 +344,94 @@ export function createConfluenceWinRateChart(canvasId, trades) {
   });
 }
 
+/**
+ * Create a mistake tracker doughnut chart.
+ * @param {string} canvasId
+ * @param {Array<object>} trades
+ * @returns {Chart|null}
+ */
+export function createMistakeChart(canvasId, trades) {
+  const ctx = getCtx(canvasId);
+  if (!ctx) return null;
+
+  const MISTAKE_LABELS = {
+    fomo: 'FOMO',
+    revenge: 'Revenge Trading',
+    outside_killzone: 'Outside Killzone',
+    over_leveraging: 'Over-leveraging',
+    moved_sl: 'Moved Stop Loss',
+    early_exit: 'Early Exit',
+    chasing_price: 'Chasing Price',
+    no_plan: 'No Plan'
+  };
+
+  const countsWithClean = {
+    clean: 0
+  };
+  Object.keys(MISTAKE_LABELS).forEach(k => {
+    countsWithClean[k] = 0;
+  });
+
+  trades.forEach((t) => {
+    if (t.outcome === 'loss') {
+      const m = t.mistake || 'clean';
+      countsWithClean[m] = (countsWithClean[m] || 0) + 1;
+    }
+  });
+
+  const labelsFiltered = [];
+  const dataFiltered = [];
+  const colorsFiltered = [];
+
+  const MISTAKE_COLORS = {
+    clean: COLORS.green,
+    fomo: COLORS.red,
+    revenge: COLORS.purple,
+    outside_killzone: COLORS.cyan,
+    over_leveraging: '#ff9100',
+    moved_sl: '#ff3d00',
+    early_exit: '#ffd600',
+    chasing_price: '#e040fb',
+    no_plan: '#7c4dff'
+  };
+
+  const labelMapping = {
+    clean: 'Clean Execution',
+    ...MISTAKE_LABELS
+  };
+
+  Object.entries(countsWithClean).forEach(([key, count]) => {
+    if (count > 0) {
+      labelsFiltered.push(labelMapping[key] || key);
+      dataFiltered.push(count);
+      colorsFiltered.push(MISTAKE_COLORS[key] || '#9e9e9e');
+    }
+  });
+
+  if (dataFiltered.length === 0) {
+    labelsFiltered.push('No Loss History');
+    dataFiltered.push(1);
+    colorsFiltered.push('#424242');
+  }
+
+  return createTrackedChart(canvasId, ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labelsFiltered,
+      datasets: [
+        {
+          data: dataFiltered,
+          backgroundColor: colorsFiltered,
+          borderColor: 'transparent',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: darkPluginOptions('Loss Psychology Breakdown'),
+    },
+  });
+}
+
