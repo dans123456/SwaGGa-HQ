@@ -341,6 +341,75 @@ function openPracticeLevelSelector(onRefresh) {
   body.appendChild(form);
 }
 
+/** Resize and compress image file to target width/height and return base64 jpeg */
+function compressImage(file, maxSize = 1000) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Image load error'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('File read error'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Open full-size notes photo modal with download option */
+function openNotesImageModal(title, imageSrc) {
+  const { body } = createModal(title);
+  
+  const img = document.createElement('img');
+  img.src = imageSrc;
+  img.style.width = '100%';
+  img.style.maxHeight = '70vh';
+  img.style.objectFit = 'contain';
+  img.style.borderRadius = 'var(--radius-md)';
+  img.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+  
+  const container = el('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = 'var(--space-3)';
+  container.appendChild(img);
+  
+  const dlLink = el('a', 'btn btn-secondary', '📥 Download Notes');
+  dlLink.href = imageSrc;
+  dlLink.download = `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.jpg`;
+  dlLink.style.width = '100%';
+  dlLink.style.justifyContent = 'center';
+  dlLink.style.display = 'inline-flex';
+  dlLink.style.alignItems = 'center';
+  container.appendChild(dlLink);
+  
+  body.appendChild(container);
+}
+
 /* ================================================================== */
 /*  DOM HELPERS                                                       */
 /* ================================================================== */
@@ -779,6 +848,32 @@ function renderCurriculumLog(container) {
       const noteCard = el('div', 'timeline-note');
       noteCard.appendChild(el('span', 'timeline-note-label', '📝 Your notes:'));
       noteCard.appendChild(el('p', 'timeline-note-text', lessonEntry.notes || 'No notes'));
+      
+      if (lessonEntry.notesImage) {
+        const thumbDiv = el('div', 'timeline-note-image-thumb');
+        thumbDiv.style.marginTop = 'var(--space-2)';
+        thumbDiv.style.cursor = 'pointer';
+        
+        const img = document.createElement('img');
+        img.src = lessonEntry.notesImage;
+        img.style.maxWidth = '120px';
+        img.style.maxHeight = '80px';
+        img.style.borderRadius = 'var(--radius-sm)';
+        img.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        img.style.transition = 'transform 0.2s';
+        
+        img.addEventListener('mouseenter', () => img.style.transform = 'scale(1.05)');
+        img.addEventListener('mouseleave', () => img.style.transform = 'scale(1)');
+        
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openNotesImageModal(`Notes — Ep ${ep.episode}: ${ep.title}`, lessonEntry.notesImage);
+        });
+        
+        thumbDiv.appendChild(img);
+        noteCard.appendChild(thumbDiv);
+      }
+      
       noteCard.appendChild(el('span', 'timeline-note-date', formatDate(lessonEntry.createdAt)));
       content.appendChild(noteCard);
     }
@@ -1041,6 +1136,54 @@ function openLogLessonPopup(onSaved) {
   rGroup.appendChild(ratingSelect);
   form.appendChild(rGroup);
 
+  // Notes Image Upload
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.name = 'notesImageFile';
+  fileInput.accept = 'image/*';
+  fileInput.className = 'form-input';
+  
+  const filePreview = el('div', 'notes-file-preview');
+  filePreview.style.display = 'none';
+  filePreview.style.marginTop = 'var(--space-2)';
+  
+  let notesImageBase64 = null;
+  
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file || !file.type.startsWith('image/')) {
+      filePreview.style.display = 'none';
+      notesImageBase64 = null;
+      return;
+    }
+    
+    filePreview.replaceChildren();
+    filePreview.style.display = 'block';
+    filePreview.appendChild(el('p', '', '⏳ Compressing photo of notes...'));
+    
+    compressImage(file, 1000).then(base64 => {
+      notesImageBase64 = base64;
+      filePreview.replaceChildren();
+      const img = document.createElement('img');
+      img.src = base64;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '150px';
+      img.style.borderRadius = 'var(--radius-md)';
+      img.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+      filePreview.appendChild(img);
+    }).catch(err => {
+      filePreview.replaceChildren();
+      filePreview.appendChild(el('p', 'pnl-negative', '⚠️ Error reading image file.'));
+      notesImageBase64 = null;
+    });
+  });
+  
+  const fileGroup = el('div', 'form-group');
+  fileGroup.appendChild(el('label', 'form-label', 'Upload Photo of Notes (Optional)'));
+  fileGroup.appendChild(fileInput);
+  fileGroup.appendChild(filePreview);
+  form.appendChild(fileGroup);
+
   const submitBtn = el('button', 'btn btn-primary btn-lg', 'Save Lesson 📖');
   submitBtn.type = 'submit';
   form.appendChild(submitBtn);
@@ -1058,6 +1201,7 @@ function openLogLessonPopup(onSaved) {
       concepts: ep ? ep.concepts : [],
       notes: fd.get('notes') || '',
       rating: Number(fd.get('rating')) || 3,
+      notesImage: notesImageBase64
     });
 
     close();
@@ -1590,6 +1734,32 @@ function renderBossAckahCurriculum(container, onRefresh) {
       const noteCard = el('div', 'timeline-note');
       noteCard.appendChild(el('span', 'timeline-note-label', '📝 Your notes:'));
       noteCard.appendChild(el('p', 'timeline-note-text', lessonEntry.notes || 'No notes'));
+      
+      if (lessonEntry.notesImage) {
+        const thumbDiv = el('div', 'timeline-note-image-thumb');
+        thumbDiv.style.marginTop = 'var(--space-2)';
+        thumbDiv.style.cursor = 'pointer';
+        
+        const img = document.createElement('img');
+        img.src = lessonEntry.notesImage;
+        img.style.maxWidth = '120px';
+        img.style.maxHeight = '80px';
+        img.style.borderRadius = 'var(--radius-sm)';
+        img.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        img.style.transition = 'transform 0.2s';
+        
+        img.addEventListener('mouseenter', () => img.style.transform = 'scale(1.05)');
+        img.addEventListener('mouseleave', () => img.style.transform = 'scale(1)');
+        
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openNotesImageModal(`Notes — Lesson ${lesson.lesson}: ${lesson.title}`, lessonEntry.notesImage);
+        });
+        
+        thumbDiv.appendChild(img);
+        noteCard.appendChild(thumbDiv);
+      }
+      
       noteCard.appendChild(el('span', 'timeline-note-date', formatDate(lessonEntry.createdAt)));
       content.appendChild(noteCard);
     }
@@ -1789,6 +1959,54 @@ function openBaLogPopup(lesson, onSaved) {
   rGroup.appendChild(ratingSelect);
   form.appendChild(rGroup);
 
+  // Notes Image Upload
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.name = 'notesImageFile';
+  fileInput.accept = 'image/*';
+  fileInput.className = 'form-input';
+  
+  const filePreview = el('div', 'notes-file-preview');
+  filePreview.style.display = 'none';
+  filePreview.style.marginTop = 'var(--space-2)';
+  
+  let baNotesImageBase64 = null;
+  
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file || !file.type.startsWith('image/')) {
+      filePreview.style.display = 'none';
+      baNotesImageBase64 = null;
+      return;
+    }
+    
+    filePreview.replaceChildren();
+    filePreview.style.display = 'block';
+    filePreview.appendChild(el('p', '', '⏳ Compressing photo of notes...'));
+    
+    compressImage(file, 1000).then(base64 => {
+      baNotesImageBase64 = base64;
+      filePreview.replaceChildren();
+      const img = document.createElement('img');
+      img.src = base64;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '150px';
+      img.style.borderRadius = 'var(--radius-md)';
+      img.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+      filePreview.appendChild(img);
+    }).catch(err => {
+      filePreview.replaceChildren();
+      filePreview.appendChild(el('p', 'pnl-negative', '⚠️ Error reading image file.'));
+      baNotesImageBase64 = null;
+    });
+  });
+  
+  const fileGroup = el('div', 'form-group');
+  fileGroup.appendChild(el('label', 'form-label', 'Upload Photo of Notes (Optional)'));
+  fileGroup.appendChild(fileInput);
+  fileGroup.appendChild(filePreview);
+  form.appendChild(fileGroup);
+
   const submitBtn = el('button', 'btn btn-primary btn-lg', 'Save Notes 📖');
   submitBtn.type = 'submit';
   form.appendChild(submitBtn);
@@ -1806,6 +2024,7 @@ function openBaLogPopup(lesson, onSaved) {
       notes,
       rating: Number(ratingSelect.value),
       concepts: lesson.concepts,
+      notesImage: baNotesImageBase64,
       createdAt: new Date().toISOString(),
     };
 
