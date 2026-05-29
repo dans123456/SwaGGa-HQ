@@ -34,10 +34,17 @@ export const ASSETS = {
     'EUR/GBP', 'EUR/AUD', 'GBP/JPY', 'EUR/JPY', 'AUD/JPY',
     'GBP/AUD', 'EUR/CAD', 'GBP/CAD', 'AUD/NZD',
   ],
-  'Gold': ['XAU/USD'],
+  'Gold & Metals': ['XAU/USD', 'XAU/EUR', 'XAG/USD'],
   'Crypto': ['BTC/USD', 'BTC/USDT'],
   'Indices': ['US30', 'NAS100', 'SPX500', 'GER40', 'UK100'],
-  'Synthetics': ['V15', 'V25', 'V75', 'V100'],
+  'Volatility Indices': [
+    'Volatility 10', 'Volatility 15', 'Volatility 25',
+    'Volatility 50', 'Volatility 75', 'Volatility 100',
+  ],
+  'Volatility (1s)': [
+    'Volatility 10 (1s)', 'Volatility 15 (1s)', 'Volatility 25 (1s)',
+    'Volatility 50 (1s)', 'Volatility 75 (1s)', 'Volatility 100 (1s)',
+  ],
 };
 
 /** Confluence / edge factors that can be tagged on a trade. */
@@ -73,6 +80,8 @@ const TV_SYMBOL_MAP = {
   'GBP/CAD': 'FX:GBPCAD',
   'AUD/NZD': 'FX:AUDNZD',
   'XAU/USD': 'TVC:GOLD',
+  'XAU/EUR': 'FX:XAUEUR',
+  'XAG/USD': 'TVC:SILVER',
   'BTC/USD': 'COINBASE:BTCUSD',
   'BTC/USDT': 'BINANCE:BTCUSDT',
   'US30': 'TVC:DJI',
@@ -80,10 +89,18 @@ const TV_SYMBOL_MAP = {
   'SPX500': 'FOREXCOM:SPXUSD',
   'GER40': 'PEPPERSTONE:GER40',
   'UK100': 'PEPPERSTONE:UK100',
-  'V15': 'DERIV:VOLATILITY15',
-  'V25': 'DERIV:VOLATILITY25',
-  'V75': 'DERIV:VOLATILITY75',
-  'V100': 'DERIV:VOLATILITY100',
+  'Volatility 10': 'DERIV:VOLATILITY10',
+  'Volatility 15': 'DERIV:VOLATILITY15',
+  'Volatility 25': 'DERIV:VOLATILITY25',
+  'Volatility 50': 'DERIV:VOLATILITY50',
+  'Volatility 75': 'DERIV:VOLATILITY75',
+  'Volatility 100': 'DERIV:VOLATILITY100',
+  'Volatility 10 (1s)': 'DERIV:1HZ10V',
+  'Volatility 15 (1s)': 'DERIV:1HZ15V',
+  'Volatility 25 (1s)': 'DERIV:1HZ25V',
+  'Volatility 50 (1s)': 'DERIV:1HZ50V',
+  'Volatility 75 (1s)': 'DERIV:1HZ75V',
+  'Volatility 100 (1s)': 'DERIV:1HZ100V',
 };
 
 /** Flat list of all assets for the chart selector */
@@ -728,6 +745,9 @@ function renderAnalytics(container) {
     empty.appendChild(el('span', 'empty-icon', '📊'));
     empty.appendChild(el('p', '', 'Log some trades to see analytics.'));
     container.appendChild(empty);
+
+    // Still show Risk Calculator even with no trades
+    container.appendChild(buildRiskCalculator());
     return;
   }
 
@@ -748,18 +768,147 @@ function renderAnalytics(container) {
   grid.appendChild(makeCanvasCard('Daily P&L', 'chart-daily'));
   grid.appendChild(makeCanvasCard('Win Rate vs Confluences', 'chart-confluence'));
   grid.appendChild(makeCanvasCard('Loss Psychology Breakdown', 'chart-mistake'));
+  grid.appendChild(makeCanvasCard('P&L by Asset', 'chart-asset'));
+  grid.appendChild(makeCanvasCard('Performance by Session', 'chart-session'));
   container.appendChild(grid);
 
   // Lazy-import charts module so Chart.js can load via CDN first.
-  import('./charts.js').then(({ createEquityCurve, createWinLossChart, createDailyPnLChart, createConfluenceWinRateChart, createMistakeChart }) => {
+  import('./charts.js').then(({
+    createEquityCurve, createWinLossChart, createDailyPnLChart,
+    createConfluenceWinRateChart, createMistakeChart,
+    createAssetPerformanceChart, createSessionPerformanceChart
+  }) => {
     createEquityCurve('chart-equity', trades);
     createWinLossChart('chart-winloss', trades);
     createDailyPnLChart('chart-daily', trades);
     createConfluenceWinRateChart('chart-confluence', trades);
     createMistakeChart('chart-mistake', trades);
+    createAssetPerformanceChart('chart-asset', trades);
+    createSessionPerformanceChart('chart-session', trades);
   }).catch((err) => {
     console.error('Failed to load chart module:', err.message);
   });
+
+  // Risk Calculator below charts
+  container.appendChild(buildRiskCalculator());
+}
+
+/* ---------- Risk Calculator --------------------------------------- */
+
+function buildRiskCalculator() {
+  const section = el('div', 'risk-calc-section');
+
+  const header = el('div', 'risk-calc-header');
+  header.appendChild(el('span', 'risk-calc-icon', '🧮'));
+  header.appendChild(el('h2', 'risk-calc-title', 'Position Size Calculator'));
+  section.appendChild(header);
+
+  const desc = el('p', 'risk-calc-desc', 'Enter your account details to calculate the optimal position size based on your risk tolerance.');
+  section.appendChild(desc);
+
+  const form = el('div', 'risk-calc-form');
+
+  // Account Balance
+  const balInput = document.createElement('input');
+  balInput.type = 'number';
+  balInput.className = 'form-input';
+  balInput.placeholder = 'e.g. 1000';
+  balInput.step = 'any';
+  balInput.id = 'rc-balance';
+  form.appendChild(formGroup('Account Balance ($)', balInput));
+
+  // Risk %
+  const riskInput = document.createElement('input');
+  riskInput.type = 'number';
+  riskInput.className = 'form-input';
+  riskInput.placeholder = 'e.g. 1';
+  riskInput.step = 'any';
+  riskInput.min = '0.1';
+  riskInput.max = '100';
+  riskInput.id = 'rc-risk';
+  form.appendChild(formGroup('Risk Per Trade (%)', riskInput));
+
+  // Entry Price
+  const entryInput = document.createElement('input');
+  entryInput.type = 'number';
+  entryInput.className = 'form-input';
+  entryInput.placeholder = 'e.g. 2650.50';
+  entryInput.step = 'any';
+  entryInput.id = 'rc-entry';
+  form.appendChild(formGroup('Entry Price', entryInput));
+
+  // Stop Loss Price
+  const stopInput = document.createElement('input');
+  stopInput.type = 'number';
+  stopInput.className = 'form-input';
+  stopInput.placeholder = 'e.g. 2645.00';
+  stopInput.step = 'any';
+  stopInput.id = 'rc-stop';
+  form.appendChild(formGroup('Stop Loss Price', stopInput));
+
+  // Calculate button
+  const calcBtn = el('button', 'btn btn-primary', 'Calculate Position Size 📐');
+  form.appendChild(calcBtn);
+
+  section.appendChild(form);
+
+  // Results panel (hidden initially)
+  const results = el('div', 'risk-calc-results');
+  results.style.display = 'none';
+  section.appendChild(results);
+
+  calcBtn.addEventListener('click', () => {
+    const balance = Number(balInput.value);
+    const riskPct = Number(riskInput.value);
+    const entry = Number(entryInput.value);
+    const stop = Number(stopInput.value);
+
+    if (!balance || !riskPct || !entry || !stop) {
+      results.style.display = 'block';
+      results.replaceChildren();
+      results.appendChild(el('p', 'risk-calc-error', '⚠️ Please fill in all fields.'));
+      return;
+    }
+
+    const riskAmount = (balance * riskPct) / 100;
+    const slDistance = Math.abs(entry - stop);
+
+    if (slDistance === 0) {
+      results.style.display = 'block';
+      results.replaceChildren();
+      results.appendChild(el('p', 'risk-calc-error', '⚠️ Entry and Stop Loss cannot be the same.'));
+      return;
+    }
+
+    const positionSize = riskAmount / slDistance;
+    const direction = entry > stop ? 'LONG' : 'SHORT';
+
+    results.style.display = 'block';
+    results.replaceChildren();
+
+    const grid = el('div', 'risk-results-grid');
+
+    const items = [
+      { label: 'Risk Amount', value: `$${riskAmount.toFixed(2)}`, icon: '💵' },
+      { label: 'SL Distance', value: `${slDistance.toFixed(5)}`, icon: '📏' },
+      { label: 'Position Size', value: `${positionSize.toFixed(4)} units`, icon: '📐' },
+      { label: 'Direction', value: direction, icon: direction === 'LONG' ? '🟢' : '🔴' },
+      { label: 'Risk/Reward at 2R', value: `TP: ${(direction === 'LONG' ? entry + slDistance * 2 : entry - slDistance * 2).toFixed(5)}`, icon: '🎯' },
+      { label: 'Risk/Reward at 3R', value: `TP: ${(direction === 'LONG' ? entry + slDistance * 3 : entry - slDistance * 3).toFixed(5)}`, icon: '🏆' },
+    ];
+
+    items.forEach(({ label, value, icon }) => {
+      const card = el('div', 'risk-result-card');
+      card.appendChild(el('span', 'risk-result-icon', icon));
+      card.appendChild(el('span', 'risk-result-label', label));
+      card.appendChild(el('span', 'risk-result-value', value));
+      grid.appendChild(card);
+    });
+
+    results.appendChild(grid);
+  });
+
+  return section;
 }
 
 /* ================================================================== */

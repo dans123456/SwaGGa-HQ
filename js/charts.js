@@ -435,3 +435,100 @@ export function createMistakeChart(canvasId, trades) {
   });
 }
 
+/**
+ * Create a horizontal bar chart showing total P&L per asset.
+ * @param {string} canvasId
+ * @param {Array<object>} trades
+ * @returns {Chart|null}
+ */
+export function createAssetPerformanceChart(canvasId, trades) {
+  const ctx = getCtx(canvasId);
+  if (!ctx) return null;
+
+  const byAsset = new Map();
+  trades.forEach(t => {
+    const asset = t.asset || 'Unknown';
+    byAsset.set(asset, (byAsset.get(asset) || 0) + (Number(t.pnl) || 0));
+  });
+
+  // Sort by P&L descending
+  const sorted = [...byAsset.entries()].sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(([a]) => a);
+  const data = sorted.map(([, v]) => parseFloat(v.toFixed(2)));
+  const bgColors = data.map(v => v >= 0 ? COLORS.green : COLORS.red);
+
+  return createTrackedChart(canvasId, ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total P&L',
+        data,
+        backgroundColor: bgColors,
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: darkPluginOptions('P&L by Asset'),
+      scales: darkScaleOptions(true),
+    },
+  });
+}
+
+/**
+ * Create a grouped bar chart showing win rate & trade count per session.
+ * @param {string} canvasId
+ * @param {Array<object>} trades
+ * @returns {Chart|null}
+ */
+export function createSessionPerformanceChart(canvasId, trades) {
+  const ctx = getCtx(canvasId);
+  if (!ctx) return null;
+
+  const sessions = ['London', 'New York', 'Asia', 'London Close', 'Overlap'];
+  const winRates = [];
+  const tradeCounts = [];
+
+  sessions.forEach(s => {
+    const sessionTrades = trades.filter(t => t.session === s);
+    tradeCounts.push(sessionTrades.length);
+    const wins = sessionTrades.filter(t => t.outcome === 'win' || Number(t.pnl) > 0).length;
+    winRates.push(sessionTrades.length > 0 ? Math.round((wins / sessionTrades.length) * 100) : 0);
+  });
+
+  return createTrackedChart(canvasId, ctx, {
+    type: 'bar',
+    data: {
+      labels: sessions,
+      datasets: [
+        {
+          label: 'Win Rate (%)',
+          data: winRates,
+          backgroundColor: COLORS.green,
+          borderRadius: 6,
+        },
+        {
+          label: 'Total Trades',
+          data: tradeCounts,
+          backgroundColor: COLORS.cyan,
+          borderRadius: 6,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: darkPluginOptions('Performance by Session'),
+      scales: {
+        ...darkScaleOptions(),
+        y: {
+          ...darkScaleOptions().y,
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
