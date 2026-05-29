@@ -734,6 +734,61 @@ export function renderTradeForm(container, onSaved) {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+
+    // Check form validity using browser validity mechanics
+    const invalidFields = form.querySelectorAll(':invalid');
+    if (invalidFields.length > 0) {
+      invalidFields.forEach((field) => {
+        field.classList.add('error');
+        const clearError = () => {
+          field.classList.remove('error');
+          field.removeEventListener('input', clearError);
+          field.removeEventListener('change', clearError);
+        };
+        field.addEventListener('input', clearError);
+        field.addEventListener('change', clearError);
+      });
+
+      invalidFields[0].focus();
+
+      // Inline validation warning notification banner
+      let notice = form.querySelector('.trade-validation-notice');
+      if (notice) notice.remove();
+
+      notice = el('div', 'trade-validation-notice');
+      notice.style.background = 'rgba(242, 54, 69, 0.1)';
+      notice.style.border = '1px solid var(--neon-red)';
+      notice.style.color = 'var(--neon-red)';
+      notice.style.padding = 'var(--space-3) var(--space-4)';
+      notice.style.borderRadius = 'var(--radius-md)';
+      notice.style.marginTop = 'var(--space-4)';
+      notice.style.marginBottom = 'var(--space-4)';
+      notice.style.fontSize = 'var(--text-xs)';
+      notice.style.fontWeight = '700';
+      notice.style.textTransform = 'uppercase';
+      notice.style.letterSpacing = '0.05em';
+      notice.style.display = 'flex';
+      notice.style.alignItems = 'center';
+      notice.style.gap = 'var(--space-2)';
+      notice.style.animation = 'fadeIn 0.3s ease';
+
+      const icon = el('span', '', '⚠️');
+      notice.appendChild(icon);
+      notice.appendChild(document.createTextNode('Please fill in all required fields highlighted in neon red!'));
+
+      form.insertBefore(notice, submitBtn);
+
+      setTimeout(() => {
+        if (notice && notice.parentNode) {
+          notice.style.opacity = '0';
+          notice.style.transition = 'opacity 0.3s ease';
+          setTimeout(() => notice.remove(), 300);
+        }
+      }, 4000);
+
+      return;
+    }
+
     const fd = new FormData(form);
 
     // Collect checked confluences.
@@ -761,13 +816,6 @@ export function renderTradeForm(container, onSaved) {
       screenshot: fd.get('screenshot') || ''
     };
 
-    if (!tradeData.asset || !tradeData.entry || !tradeData.exit) {
-      // Simple validation — highlight first empty required field.
-      const first = form.querySelector(':invalid');
-      if (first) first.focus();
-      return;
-    }
-
     saveTrade(tradeData);
     addXP('trade', 25);
     form.reset();
@@ -780,6 +828,11 @@ export function renderTradeForm(container, onSaved) {
 
     mistakeGroup.style.display = 'none'; // reset visibility
     dateInput.valueAsDate = new Date();
+    
+    // Clear any active validation notice
+    const activeNotice = form.querySelector('.trade-validation-notice');
+    if (activeNotice) activeNotice.remove();
+
     if (typeof onSaved === 'function') onSaved();
   });
 
