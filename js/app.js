@@ -572,36 +572,6 @@ function renderDashboard(container) {
   }
 }
 
-  /* ---- Quick-link cards ---- */
-  const grid = el('div', 'dashboard-grid');
-  const cards = [
-    { icon: '📊', title: 'Trading Journal', desc: 'Log trades, track P&L, and analyse your performance.', route: '#trading' },
-    { icon: '📚', title: 'Learning Hub', desc: 'Follow the Brad Goh curriculum and complete assignments.', route: '#learning' },
-    { icon: '🔥', title: 'Streaks', desc: 'Build habits and maintain daily streaks.', route: '#streaks' },
-  ];
-
-  cards.forEach(({ icon, title, desc, route }) => {
-    const card = el('div', 'dash-card');
-    card.appendChild(el('span', 'dash-card-icon', icon));
-    card.appendChild(el('h3', 'dash-card-title', title));
-    card.appendChild(el('p', 'dash-card-desc', desc));
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', () => router.navigate(route));
-    grid.appendChild(card);
-  });
-  container.appendChild(grid);
-
-  /* ---- Auto-show Weekly Recap on Sunday ---- */
-  const dayOfWeek = new Date().getDay();
-  if (dayOfWeek === 0) {
-    const today = new Date().toISOString().slice(0, 10);
-    const lastShown = storage.get('weekly_recap_shown', '');
-    if (lastShown !== today) {
-      setTimeout(() => renderWeeklyRecap(), 1500);
-    }
-  }
-}
-
 /** Build a sorted list of recent activity items from all modules. */
 function buildActivityItems(trades, lessons, habits) {
   const items = [];
