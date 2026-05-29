@@ -99,9 +99,16 @@ export function addHabit(name, emoji) {
     borderColor: 'rgba(0, 212, 255, 0.25)',
     tagline: 'Stay consistent',
     log: {},
+    freezes: {},
   };
   habits.push(habit);
   _saveHabits(habits);
+
+  // Push updates to cloud immediately if signed in
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  });
+
   return habit;
 }
 

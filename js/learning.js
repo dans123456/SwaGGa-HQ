@@ -1354,6 +1354,9 @@ function openQuizPopup() {
       if (currentTokens < 3) {
         storage.set('streak_freeze_tokens', currentTokens + 1);
         showNotificationToast('Perfect Score! Earned 1 Streak Freeze ❄️');
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
       }
     }
 
@@ -1512,6 +1515,11 @@ function renderAssignments(container, onRefresh) {
           }
           
           storage.set(STORAGE_ASSIGNMENTS, all);
+          
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          });
+
           if (typeof onRefresh === 'function') onRefresh();
         }
       });

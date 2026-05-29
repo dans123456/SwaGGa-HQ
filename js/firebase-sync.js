@@ -147,6 +147,9 @@ const SYNC_KEYS = [
   'ba_user_lessons',
   'mentor_avatar_brahGoh',
   'mentor_avatar_bossAckah',
+  'streak_freeze_tokens',
+  'xp_data',
+  'quiz_scores',
 ];
 
 const NAMESPACE = 'swagga';
