@@ -30,6 +30,8 @@ const NAV_ITEMS = [
   { hash: '#learning', label: 'Learning', icon: '📚' },
 ];
 
+let _killzonesInterval = null;
+
 /* ================================================================ */
 /*  WELCOME POPUP                                                    */
 /* ================================================================ */
@@ -106,6 +108,146 @@ function showWelcomePopup() {
   modal.appendChild(actions);
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
+}
+
+/* ================================================================ */
+/*  ICT KILLZONES HELPERS & CONSTANTS                                */
+/* ================================================================ */
+
+const SESSIONS = [
+  { name: 'Asian', start: 20, end: 24, label: 'Asian Killzone', nyRange: '8:00 PM - 12:00 AM' },
+  { name: 'London', start: 2, end: 5, label: 'London Killzone', nyRange: '2:00 AM - 5:00 AM' },
+  { name: 'New York', start: 7, end: 10, label: 'New York Killzone', nyRange: '7:00 AM - 10:00 AM' },
+  { name: 'London Close', start: 10, end: 12, label: 'London Close Killzone', nyRange: '10:00 AM - 12:00 PM' }
+];
+
+const PREP_CHECKLISTS = {
+  'Asian': [
+    'Mark Higher Time Frame (Daily/H4) structure and swing points.',
+    'Draw current Premium vs Discount zones (Fibonacci 50% equilibrium).',
+    'Check high-impact news releases for AUD, NZD, and JPY pairs.',
+    'Identify major resting buy-stop and sell-stop liquidity pools.'
+  ],
+  'London': [
+    'Check High-Impact News Calendar (GBP, EUR, USD news).',
+    'Locate Asian Session High/Low (major liquidity sweep targets).',
+    'Identify H4/H1 key Order Blocks and Fair Value Gaps.',
+    'Watch for the London Judas Swing (fake breakout against HTF bias).'
+  ],
+  'New York': [
+    'Check High-Impact USD News releases (e.g. 8:30 AM EST news).',
+    'Mark Asian Session High/Low and London Session High/Low.',
+    'Confirm that HTF directional bias aligns with lower timeframe entries.',
+    'Wait for London Session high/low mitigation or liquidity sweeps.'
+  ],
+  'London Close': [
+    'Identify the day\'s overall trend (expansion vs reversal profile).',
+    'Look for key retracements back into NY Session Fair Value Gaps.',
+    'Check if daily profit target has been achieved (avoid over-trading).',
+    'Review logged trades and prepare to write lessons in the journal.'
+  ],
+  'General': [
+    'Confirm your HTF (Daily/H4) bias is established.',
+    'Mark key supply/demand zones and Fair Value Gaps on your chart.',
+    'Ensure you are only executing trades within valid session hours.',
+    'Verify that your risk per trade is strictly capped (e.g. 1% maximum).'
+  ]
+};
+
+function isSessionActive(nyHours, start, end) {
+  if (start < end) {
+    return nyHours >= start && nyHours < end;
+  } else {
+    return nyHours >= start || nyHours < end;
+  }
+}
+
+function getConvertedLocalRange(nyStartHour, nyEndHour) {
+  try {
+    const now = new Date();
+    
+    // Get timezone offset difference in ms
+    const localTime = new Date();
+    const nyTimeStr = localTime.toLocaleString("en-US", { timeZone: "America/New_York" });
+    const nyTime = new Date(nyTimeStr);
+    const diffMs = localTime.getTime() - nyTime.getTime();
+    
+    // Format today in NY (MM/DD/YYYY)
+    const nyDateStr = now.toLocaleDateString("en-US", { timeZone: "America/New_York" });
+    const [m, d, y] = nyDateStr.split('/');
+    
+    const startNY = new Date(y, m - 1, d, nyStartHour, 0, 0);
+    const endNY = new Date(y, m - 1, d, nyEndHour, 0, 0);
+    
+    if (nyEndHour <= nyStartHour) {
+      endNY.setDate(endNY.getDate() + 1);
+    }
+    
+    const localStart = new Date(startNY.getTime() + diffMs);
+    const localEnd = new Date(endNY.getTime() + diffMs);
+    
+    const formatTime = (date) => {
+      let hours = date.getHours();
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      return `${hours}:${minutes} ${ampm}`;
+    };
+    
+    return `${formatTime(localStart)} - ${formatTime(localEnd)}`;
+  } catch (err) {
+    const pad = (h) => String(h).padStart(2, '0');
+    return `${pad(nyStartHour)}:00 - ${pad(nyEndHour)}:00 NY`;
+  }
+}
+
+function getChecklistState(sessionKey) {
+  return storage.get(`killzone_prep_${sessionKey}`, {});
+}
+
+function saveChecklistState(sessionKey, state) {
+  storage.set(`killzone_prep_${sessionKey}`, state);
+}
+
+function renderChecklist(container, sessionKey) {
+  container.replaceChildren();
+  const list = PREP_CHECKLISTS[sessionKey] || PREP_CHECKLISTS['General'];
+  const savedState = getChecklistState(sessionKey);
+
+  const title = el('h4', 'prep-checklist__title', `📝 ${sessionKey} Session Prep`);
+  container.appendChild(title);
+
+  const listEl = el('ul', 'prep-checklist');
+  list.forEach((item, idx) => {
+    const li = el('li', 'prep-item');
+    const label = el('label', 'prep-item__label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'prep-item__checkbox';
+    cb.checked = !!savedState[idx];
+    
+    cb.addEventListener('change', () => {
+      const currentState = getChecklistState(sessionKey);
+      currentState[idx] = cb.checked;
+      saveChecklistState(sessionKey, currentState);
+      if (cb.checked) {
+        li.classList.add('prep-item--completed');
+      } else {
+        li.classList.remove('prep-item--completed');
+      }
+    });
+
+    if (cb.checked) {
+      li.classList.add('prep-item--completed');
+    }
+
+    label.appendChild(cb);
+    label.appendChild(el('span', 'prep-item__text', item));
+    li.appendChild(label);
+    listEl.appendChild(li);
+  });
+  container.appendChild(listEl);
 }
 
 /* ================================================================ */
@@ -278,8 +420,103 @@ function renderDashboard(container) {
   learnPanel.appendChild(progBar);
 
   panelsCol.appendChild(learnPanel);
-  bottomGrid.appendChild(panelsCol);
 
+  // ---- ICT Killzones widget ----
+  const killzonesPanel = el('div', 'overview-panel killzones-panel');
+  killzonesPanel.appendChild(el('h3', 'overview-panel__title', '⚡ ICT Killzones & Session Prep'));
+
+  // Clock row
+  const clockRow = el('div', 'kz-clocks');
+  
+  const nyClock = el('div', 'kz-clock');
+  nyClock.appendChild(el('span', 'kz-clock__label', 'New York Time'));
+  const nyClockTime = el('span', 'kz-clock__value kz-clock__value--ny', '00:00:00');
+  nyClock.appendChild(nyClockTime);
+  
+  const localClock = el('div', 'kz-clock');
+  localClock.appendChild(el('span', 'kz-clock__label', 'Local Time'));
+  const localClockTime = el('span', 'kz-clock__value kz-clock__value--local', '00:00:00');
+  localClock.appendChild(localClockTime);
+  
+  clockRow.appendChild(nyClock);
+  clockRow.appendChild(localClock);
+  killzonesPanel.appendChild(clockRow);
+
+  // Sessions list
+  const sessionsList = el('div', 'kz-sessions');
+  killzonesPanel.appendChild(sessionsList);
+
+  // Active checklist container
+  const checklistContainer = el('div', 'kz-checklist-container');
+  killzonesPanel.appendChild(checklistContainer);
+
+  panelsCol.appendChild(killzonesPanel);
+
+  let lastActiveSession = null;
+
+  function updateKillzonesWidget() {
+    const pageDashboard = document.getElementById('page-dashboard');
+    if (!pageDashboard || pageDashboard.style.display === 'none') {
+      return;
+    }
+
+    const now = new Date();
+    
+    // Update digital clocks
+    const nyTimeStr = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
+    const localTimeStr = now.toLocaleTimeString('en-US', { hour12: false });
+    
+    nyClockTime.textContent = nyTimeStr;
+    localClockTime.textContent = localTimeStr;
+
+    // Get current NY time details
+    const nyLocaleStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+    const nyTime = new Date(nyLocaleStr);
+    const nyHours = nyTime.getHours();
+
+    // Determine active session
+    let currentActiveSession = 'General';
+    sessionsList.replaceChildren();
+
+    SESSIONS.forEach(s => {
+      const active = isSessionActive(nyHours, s.start, s.end);
+      if (active) {
+        currentActiveSession = s.name;
+      }
+
+      const item = el('div', `kz-session-item${active ? ' kz-session-item--active' : ''}`);
+      
+      const details = el('div', 'kz-session-item__details');
+      details.appendChild(el('span', 'kz-session-item__name', s.label));
+      
+      const localRange = getConvertedLocalRange(s.start, s.end);
+      details.appendChild(el('span', 'kz-session-item__times', `NY: ${s.nyRange} | Local: ${localRange}`));
+      
+      item.appendChild(details);
+      
+      const badge = el('span', `kz-session-item__badge ${active ? 'kz-session-badge--active' : 'kz-session-badge--inactive'}`);
+      badge.textContent = active ? 'ACTIVE ⚡' : 'INACTIVE';
+      item.appendChild(badge);
+
+      sessionsList.appendChild(item);
+    });
+
+    if (currentActiveSession !== lastActiveSession) {
+      lastActiveSession = currentActiveSession;
+      renderChecklist(checklistContainer, currentActiveSession);
+    }
+  }
+
+  // Clear any old interval first to prevent leakage
+  if (_killzonesInterval) {
+    clearInterval(_killzonesInterval);
+  }
+  
+  // Initial run and start interval
+  updateKillzonesWidget();
+  _killzonesInterval = setInterval(updateKillzonesWidget, 1000);
+
+  bottomGrid.appendChild(panelsCol);
   container.appendChild(bottomGrid);
 
   /* ---- Quick-link cards ---- */
