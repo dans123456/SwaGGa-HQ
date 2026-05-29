@@ -48,12 +48,20 @@ export const DEFAULT_HABITS = [
 export function getHabits() {
   let habits = storage.get(STORAGE_KEY, null);
   if (!habits) {
-    habits = DEFAULT_HABITS.map((h) => ({ ...h, log: {} }));
+    habits = DEFAULT_HABITS.map((h) => ({ ...h, log: {}, freezes: {} }));
     storage.set(STORAGE_KEY, habits);
   } else {
-    // Migration: add baseStreak if missing and enforce correct duolingo base
+    // Migration: add baseStreak if missing, initialize log/freezes if null, and enforce correct duolingo base
     let migrated = false;
     habits.forEach(h => {
+      if (!h.log) {
+        h.log = {};
+        migrated = true;
+      }
+      if (!h.freezes) {
+        h.freezes = {};
+        migrated = true;
+      }
       if (h.baseStreak === undefined) {
         const def = DEFAULT_HABITS.find(d => d.id === h.id);
         h.baseStreak = def ? def.baseStreak : 0;
