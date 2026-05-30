@@ -153,6 +153,44 @@ const PREP_CHECKLISTS = {
   ]
 };
 
+function getNYTimeComponents() {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour12: false,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric'
+    });
+    
+    const parts = formatter.formatToParts(new Date());
+    const getPart = (type) => parseInt(parts.find(p => p.type === type).value, 10);
+    
+    return {
+      year: getPart('year'),
+      month: getPart('month'),
+      day: getPart('day'),
+      hours: getPart('hour'),
+      minutes: getPart('minute'),
+      seconds: getPart('second')
+    };
+  } catch (err) {
+    // Robust fallback to local time in case of internationalization engine failure
+    const now = new Date();
+    return {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      day: now.getDate(),
+      hours: now.getHours(),
+      minutes: now.getMinutes(),
+      seconds: now.getSeconds()
+    };
+  }
+}
+
 function isSessionActive(nyHours, start, end) {
   if (start < end) {
     return nyHours >= start && nyHours < end;
@@ -163,20 +201,14 @@ function isSessionActive(nyHours, start, end) {
 
 function getConvertedLocalRange(nyStartHour, nyEndHour) {
   try {
-    const now = new Date();
-    
-    // Get timezone offset difference in ms
+    const ny = getNYTimeComponents();
     const localTime = new Date();
-    const nyTimeStr = localTime.toLocaleString("en-US", { timeZone: "America/New_York" });
-    const nyTime = new Date(nyTimeStr);
-    const diffMs = localTime.getTime() - nyTime.getTime();
     
-    // Format today in NY (MM/DD/YYYY)
-    const nyDateStr = now.toLocaleDateString("en-US", { timeZone: "America/New_York" });
-    const [m, d, y] = nyDateStr.split('/');
+    const nyClockDate = new Date(ny.year, ny.month - 1, ny.day, ny.hours, ny.minutes, ny.seconds);
+    const diffMs = localTime.getTime() - nyClockDate.getTime();
     
-    const startNY = new Date(y, m - 1, d, nyStartHour, 0, 0);
-    const endNY = new Date(y, m - 1, d, nyEndHour, 0, 0);
+    const startNY = new Date(ny.year, ny.month - 1, ny.day, nyStartHour, 0, 0);
+    const endNY = new Date(ny.year, ny.month - 1, ny.day, nyEndHour, 0, 0);
     
     if (nyEndHour <= nyStartHour) {
       endNY.setDate(endNY.getDate() + 1);
@@ -190,7 +222,7 @@ function getConvertedLocalRange(nyStartHour, nyEndHour) {
       const minutes = String(date.getMinutes()).padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
+      hours = hours ? hours : 12;
       return `${hours}:${minutes} ${ampm}`;
     };
     
@@ -504,90 +536,80 @@ function renderDashboard(container) {
   // 3. ICT Killzones widget
   const killzonesPanel = el('div', 'overview-panel killzones-panel');
   killzonesPanel.appendChild(el('h3', 'overview-panel__title', '⚡ ICT Killzones & Session Prep'));
-
-  const clockRow = el('div', 'kz-clocks');
-  const nyClock = el('div', 'kz-clock');
-  nyClock.appendChild(el('span', 'kz-clock__label', 'New York Time'));
-  const nyClockTime = el('span', 'kz-clock__value kz-clock__value--ny', '00:00:00');
-  nyClock.appendChild(nyClockTime);
   
+  const clockRow = el('div', 'kz-clocks');
   const localClock = el('div', 'kz-clock');
   localClock.appendChild(el('span', 'kz-clock__label', 'Local Time'));
   const localClockTime = el('span', 'kz-clock__value kz-clock__value--local', '00:00:00');
   localClock.appendChild(localClockTime);
   
-  clockRow.appendChild(nyClock);
   clockRow.appendChild(localClock);
   killzonesPanel.appendChild(clockRow);
-
+  
   const sessionsList = el('div', 'kz-sessions');
   killzonesPanel.appendChild(sessionsList);
-
+  
   const checklistContainer = el('div', 'kz-checklist-container');
   killzonesPanel.appendChild(checklistContainer);
   panelsCol.appendChild(killzonesPanel);
-
+  
   // 4. Volatility Economic News Feed Widget
   const newsPanel = el('div', 'overview-panel news-panel');
   newsPanel.appendChild(el('h3', 'overview-panel__title', '📰 Volatility Economic Feed'));
   renderEconomicNewsWidget(newsPanel);
   panelsCol.appendChild(newsPanel);
-
+  
   let lastActiveSession = null;
-
+  
   function updateKillzonesWidget() {
     const pageDashboard = document.getElementById('page-dashboard');
     if (!pageDashboard || pageDashboard.style.display === 'none') {
       return;
     }
-
+    
     const now = new Date();
     
-    // Update digital clocks
-    const nyTimeStr = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
+    // Update local clock display
     const localTimeStr = now.toLocaleTimeString('en-US', { hour12: false });
-    
-    nyClockTime.textContent = nyTimeStr;
     localClockTime.textContent = localTimeStr;
-
-    // Get current NY time details
-    const nyLocaleStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
-    const nyTime = new Date(nyLocaleStr);
-    const nyHours = nyTime.getHours();
-
+    
+    // Get current NY time details via robust Intl components
+    const ny = getNYTimeComponents();
+    const nyHours = ny.hours;
+    
     // Determine active session
     let currentActiveSession = 'General';
     sessionsList.replaceChildren();
-
+    
     SESSIONS.forEach(s => {
       const active = isSessionActive(nyHours, s.start, s.end);
       if (active) {
         currentActiveSession = s.name;
       }
-
+      
       const item = el('div', `kz-session-item${active ? ' kz-session-item--active' : ''}`);
       
       const details = el('div', 'kz-session-item__details');
       details.appendChild(el('span', 'kz-session-item__name', s.label));
       
       const localRange = getConvertedLocalRange(s.start, s.end);
-      details.appendChild(el('span', 'kz-session-item__times', `NY: ${s.nyRange} | Local: ${localRange}`));
+      details.appendChild(el('span', 'kz-session-item__times', `${localRange}`));
       
       item.appendChild(details);
       
       const badge = el('span', `kz-session-item__badge ${active ? 'kz-session-badge--active' : 'kz-session-badge--inactive'}`);
       badge.textContent = active ? 'ACTIVE ⚡' : 'INACTIVE';
       item.appendChild(badge);
-
+      
       sessionsList.appendChild(item);
     });
-
+    
     if (currentActiveSession !== lastActiveSession) {
       lastActiveSession = currentActiveSession;
       renderChecklist(checklistContainer, currentActiveSession);
     }
   }
-
+  
   // Clear any old interval first to prevent leakage
   if (_killzonesInterval) {
     clearInterval(_killzonesInterval);
@@ -1439,6 +1461,26 @@ function buildAppShell() {
   const main = el('main', 'main-content');
   main.id = 'main-content';
 
+  // ---- Dynamic PWA Killzone Topbar HUD ----
+  const topbar = el('div', 'killzone-topbar');
+  topbar.id = 'killzone-topbar';
+  topbar.style.display = 'none'; // Hidden when no session is active
+  
+  const tbLeft = el('div', 'killzone-topbar__left');
+  const tbDot = el('div', 'killzone-topbar__dot');
+  const tbText = el('span', 'killzone-topbar__text');
+  tbLeft.appendChild(tbDot);
+  tbLeft.appendChild(tbText);
+  topbar.appendChild(tbLeft);
+  
+  const tbTimerBox = el('div', 'killzone-topbar__timer-box');
+  tbTimerBox.appendChild(el('span', 'killzone-topbar__timer-label', 'Ends In'));
+  const tbTimerVal = el('span', 'killzone-topbar__timer-val', '00:00:00');
+  tbTimerBox.appendChild(tbTimerVal);
+  topbar.appendChild(tbTimerBox);
+  
+  main.appendChild(topbar);
+
   const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
@@ -1447,6 +1489,66 @@ function buildAppShell() {
   });
 
   app.appendChild(main);
+
+  // Global Killzone Countdown Timer Interval
+  function updateGlobalKillzoneTimer() {
+    const now = new Date();
+    const ny = getNYTimeComponents();
+    
+    // Find active session
+    let activeSession = null;
+    SESSIONS.forEach(s => {
+      if (isSessionActive(ny.hours, s.start, s.end)) {
+        activeSession = s;
+      }
+    });
+    
+    const topbarEl = document.getElementById('killzone-topbar');
+    if (!topbarEl) return;
+    
+    if (activeSession) {
+      const currentNYDate = new Date(ny.year, ny.month - 1, ny.day, ny.hours, ny.minutes, ny.seconds);
+      
+      let targetNYHour = activeSession.end;
+      const targetNYDate = new Date(ny.year, ny.month - 1, ny.day, targetNYHour, 0, 0);
+      if (activeSession.end <= activeSession.start) {
+        targetNYDate.setDate(targetNYDate.getDate() + 1);
+      }
+      
+      const diffMs = targetNYDate.getTime() - currentNYDate.getTime();
+      
+      if (diffMs > 0) {
+        const hours = Math.floor(diffMs / 3600000);
+        const minutes = Math.floor((diffMs % 3600000) / 60000);
+        const seconds = Math.floor((diffMs % 60000) / 1000);
+        const timeString = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        tbText.replaceChildren();
+        const strong = document.createElement('strong');
+        strong.textContent = activeSession.label;
+        tbText.appendChild(strong);
+        
+        const localRange = getConvertedLocalRange(activeSession.start, activeSession.end);
+        const timeSpan = el('span');
+        timeSpan.style.opacity = '0.65';
+        timeSpan.style.fontSize = 'var(--text-xs)';
+        timeSpan.style.marginLeft = 'var(--space-2)';
+        timeSpan.style.fontWeight = '500';
+        timeSpan.textContent = `(${localRange})`;
+        tbText.appendChild(timeSpan);
+        
+        tbTimerVal.textContent = timeString;
+        topbarEl.style.display = 'flex';
+      } else {
+        topbarEl.style.display = 'none';
+      }
+    } else {
+      topbarEl.style.display = 'none';
+    }
+  }
+  
+  updateGlobalKillzoneTimer();
+  setInterval(updateGlobalKillzoneTimer, 1000);
 
   // ---- Mobile menu logic ----
   function openMobileMenu() {
