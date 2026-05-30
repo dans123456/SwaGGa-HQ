@@ -1980,9 +1980,14 @@ body, .sidebar, .main-content, .card, .stat-card, .dash-card, .nav-item,
 
 /* ── Dynamic PWA Killzone Topbar HUD ──────────────────────── */
 .killzone-topbar {
-  background: var(--accent-gradient);
+  position: sticky;
+  top: var(--space-4); /* Floats beautifully 16px from the top on desktop */
+  z-index: 100;
+  background: rgba(13, 11, 15, 0.75); /* Charcoal blend background */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: var(--shadow-lg), 0 0 20px rgba(142, 14, 0, 0.25);
+  box-shadow: var(--shadow-lg), 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(142, 14, 0, 0.15);
   border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-5);
   margin-bottom: var(--space-6);
@@ -1991,6 +1996,7 @@ body, .sidebar, .main-content, .card, .stat-card, .dash-card, .nav-item,
   justify-content: space-between;
   gap: var(--space-4);
   animation: fadeIn 0.4s ease both;
+  transition: background var(--transition-base), box-shadow var(--transition-base);
 }
 
 .killzone-topbar__left {
@@ -2040,6 +2046,12 @@ body, .sidebar, .main-content, .card, .stat-card, .dash-card, .nav-item,
   color: var(--neon-green);
   letter-spacing: 0.05em;
   text-shadow: var(--neon-green-glow);
+}
+
+@media (max-width: 768px) {
+  .killzone-topbar {
+    top: 72px; /* Sticks perfectly below the mobile hamburger button */
+  }
 }
 
 @media (max-width: 650px) {
