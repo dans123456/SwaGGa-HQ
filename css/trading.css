@@ -2165,3 +2165,77 @@
   transform: scale(1.01);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
+
+/* ── Active Lot-Size & Risk Position Calculator ──────────── */
+.trade-form__risk-helper {
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 212, 255, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.trade-form__risk-helper:hover {
+  border-color: rgba(0, 212, 255, 0.25) !important;
+  box-shadow: 0 12px 40px rgba(0, 212, 255, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+
+.risk-helper-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #ffffff 40%, var(--cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.risk-helper-icon {
+  font-size: 1.15rem;
+}
+
+.risk-helper-card-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.risk-helper-card-value {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.risk-helper-card-value.val-high {
+  color: var(--neon-green);
+  text-shadow: var(--neon-green-glow);
+}
+
+.risk-helper-card-value.val-low {
+  color: var(--neon-red);
+  text-shadow: var(--neon-red-glow);
+}
+
+@media (max-width: 650px) {
+  .risk-helper-inputs {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-2) !important;
+  }
+  .risk-helper-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-2) !important;
+  }
+  .risk-helper-targets {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-2) !important;
+  }
+}

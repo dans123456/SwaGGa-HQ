@@ -542,6 +542,7 @@ export function renderTradeForm(container, onSaved) {
   form.appendChild(formGroup('Direction', dirSelect));
 
   // ---- Numeric fields ----
+  let entryInput, stopInput, exitInput;
   const numericFields = [
     { name: 'entry', label: 'Entry Price', step: 'any', required: true },
     { name: 'stop', label: 'Stop Loss', step: 'any', required: true },
@@ -554,8 +555,201 @@ export function renderTradeForm(container, onSaved) {
     input.step = step;
     input.placeholder = '0.00';
     if (required) input.required = true;
+    
+    if (name === 'entry') entryInput = input;
+    else if (name === 'stop') stopInput = input;
+    else if (name === 'exit') exitInput = input;
+    
     form.appendChild(formGroup(label, input));
   });
+
+  // ---- Active Lot-Size & Risk Position Calculator ----
+  const riskHelper = el('div', 'trade-form__risk-helper glass-card');
+  riskHelper.style.marginTop = 'var(--space-4)';
+  riskHelper.style.marginBottom = 'var(--space-4)';
+  riskHelper.style.padding = 'var(--space-4)';
+  riskHelper.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+  
+  const rhHeader = el('div', 'risk-helper-header');
+  rhHeader.style.display = 'flex';
+  rhHeader.style.alignItems = 'center';
+  rhHeader.style.gap = 'var(--space-2)';
+  rhHeader.style.marginBottom = 'var(--space-3)';
+  rhHeader.appendChild(el('span', 'risk-helper-icon', '🧮'));
+  rhHeader.appendChild(el('h4', 'risk-helper-title', 'Active Risk Sizer & Position Calculator'));
+  riskHelper.appendChild(rhHeader);
+
+  // Inputs: Balance and Risk %
+  const rhInputs = el('div', 'risk-helper-inputs');
+  rhInputs.style.display = 'grid';
+  rhInputs.style.gridTemplateColumns = '1fr 1fr';
+  rhInputs.style.gap = 'var(--space-3)';
+  rhInputs.style.marginBottom = 'var(--space-3)';
+
+  const balInput = document.createElement('input');
+  balInput.type = 'number';
+  balInput.className = 'form-input';
+  balInput.value = '10000'; // Default $10,000 balance
+  balInput.step = 'any';
+  rhInputs.appendChild(formGroup('Account Balance ($)', balInput));
+
+  const pctInput = document.createElement('input');
+  pctInput.type = 'number';
+  pctInput.className = 'form-input';
+  pctInput.value = '1'; // Default 1% risk
+  pctInput.step = '0.1';
+  rhInputs.appendChild(formGroup('Risk Per Trade (%)', pctInput));
+
+  riskHelper.appendChild(rhInputs);
+
+  // Outputs grid
+  const rhGrid = el('div', 'risk-helper-grid');
+  rhGrid.style.display = 'grid';
+  rhGrid.style.gridTemplateColumns = '1fr 1fr';
+  rhGrid.style.gap = 'var(--space-3)';
+  rhGrid.style.marginBottom = 'var(--space-3)';
+
+  const makeRhCard = (label, valText = '—', valClass = '') => {
+    const card = el('div', 'risk-helper-card');
+    card.style.background = 'rgba(255, 255, 255, 0.02)';
+    card.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+    card.style.padding = 'var(--space-2) var(--space-3)';
+    card.style.borderRadius = 'var(--radius-md)';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    
+    card.appendChild(el('span', 'risk-helper-card-label', label));
+    const valNode = el('span', `risk-helper-card-value ${valClass}`, valText);
+    card.appendChild(valNode);
+    return { card, valNode };
+  };
+
+  const cashCell = makeRhCard('Risk Amount ($)');
+  const distCell = makeRhCard('Stop Loss Distance');
+  const sizeCell = makeRhCard('Suggested Position Size', '—', 'val-high');
+  const dirCell = makeRhCard('Direction');
+
+  rhGrid.appendChild(cashCell.card);
+  rhGrid.appendChild(distCell.card);
+  rhGrid.appendChild(sizeCell.card);
+  rhGrid.appendChild(dirCell.card);
+  riskHelper.appendChild(rhGrid);
+
+  // TP Target Buttons
+  const targetRow = el('div', 'risk-helper-targets');
+  targetRow.style.display = 'grid';
+  targetRow.style.gridTemplateColumns = '1fr 1fr';
+  targetRow.style.gap = 'var(--space-3)';
+
+  const tp2Btn = el('button', 'btn btn-outline btn-sm', '🎯 Auto-Fill 2R Target');
+  tp2Btn.type = 'button';
+  tp2Btn.disabled = true;
+
+  const tp3Btn = el('button', 'btn btn-outline btn-sm', '🏆 Auto-Fill 3R Target');
+  tp3Btn.type = 'button';
+  tp3Btn.disabled = true;
+
+  targetRow.appendChild(tp2Btn);
+  targetRow.appendChild(tp3Btn);
+  riskHelper.appendChild(targetRow);
+
+  // Informative warning hint when empty
+  const hint = el('p', 'risk-helper-hint', '💡 Enter Entry Price and Stop Loss to calculate optimal risk and position sizing.');
+  hint.style.fontSize = 'var(--text-xs)';
+  hint.style.color = 'var(--text-muted)';
+  hint.style.fontStyle = 'italic';
+  hint.style.marginTop = 'var(--space-2)';
+  riskHelper.appendChild(hint);
+
+  form.appendChild(riskHelper);
+
+  let tp2Val = null;
+  let tp3Val = null;
+
+  function updateLiveRisk() {
+    const entry = Number(entryInput.value);
+    const stop = Number(stopInput.value);
+    const balance = Number(balInput.value);
+    const riskPct = Number(pctInput.value);
+
+    // Calculate risk amount
+    const riskAmount = (balance * riskPct) / 100;
+    cashCell.valNode.textContent = formatCurrency(riskAmount);
+
+    if (!entry || !stop || entry <= 0 || stop <= 0) {
+      distCell.valNode.textContent = '—';
+      sizeCell.valNode.textContent = '—';
+      dirCell.valNode.textContent = '—';
+      dirCell.valNode.className = 'risk-helper-card-value';
+      tp2Btn.disabled = true;
+      tp3Btn.disabled = true;
+      tp2Val = null;
+      tp3Val = null;
+      return;
+    }
+
+    const slDistance = Math.abs(entry - stop);
+    if (slDistance === 0) {
+      distCell.valNode.textContent = 'Invalid (SL=Entry)';
+      sizeCell.valNode.textContent = '—';
+      dirCell.valNode.textContent = '—';
+      tp2Btn.disabled = true;
+      tp3Btn.disabled = true;
+      tp2Val = null;
+      tp3Val = null;
+      return;
+    }
+
+    const direction = entry > stop ? 'LONG' : 'SHORT';
+    dirCell.valNode.textContent = direction;
+    dirCell.valNode.className = `risk-helper-card-value ${direction === 'LONG' ? 'val-high' : 'val-low'}`;
+
+    // Format stop loss distance beautifully
+    distCell.valNode.textContent = slDistance.toFixed(5);
+
+    // Position size calculation
+    const units = riskAmount / slDistance;
+    // Assuming standard lots where 1 standard lot = 100,000 units
+    const lots = units / 100000;
+    
+    sizeCell.valNode.textContent = `${units.toLocaleString(undefined, { maximumFractionDigits: 2 })} Units (${lots.toFixed(2)} Lots)`;
+
+    // Calculate 2R and 3R Targets
+    if (direction === 'LONG') {
+      tp2Val = entry + slDistance * 2;
+      tp3Val = entry + slDistance * 3;
+    } else {
+      tp2Val = entry - slDistance * 2;
+      tp3Val = entry - slDistance * 3;
+    }
+
+    tp2Btn.textContent = `🎯 Auto-Fill 2R (${tp2Val.toFixed(5)})`;
+    tp3Btn.textContent = `🏆 Auto-Fill 3R (${tp3Val.toFixed(5)})`;
+    tp2Btn.disabled = false;
+    tp3Btn.disabled = false;
+  }
+
+  // Event listeners for interactive ticking
+  [entryInput, stopInput, balInput, pctInput].forEach(inp => {
+    inp.addEventListener('input', updateLiveRisk);
+    inp.addEventListener('change', updateLiveRisk);
+  });
+
+  // Handle auto-fill click actions
+  tp2Btn.addEventListener('click', () => {
+    if (tp2Val !== null) {
+      exitInput.value = tp2Val.toFixed(5);
+      exitInput.dispatchEvent(new Event('input'));
+    }
+  });
+
+  tp3Btn.addEventListener('click', () => {
+    if (tp3Val !== null) {
+      exitInput.value = tp3Val.toFixed(5);
+      exitInput.dispatchEvent(new Event('input'));
+    }
+  });
+
 
   // ---- Date ----
   const dateInput = document.createElement('input');
