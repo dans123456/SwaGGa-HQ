@@ -1473,11 +1473,21 @@ function buildAppShell() {
   tbLeft.appendChild(tbText);
   topbar.appendChild(tbLeft);
   
+  const tbRight = el('div', 'killzone-topbar__right');
+  
+  const tbClockBox = el('div', 'killzone-topbar__clock-box');
+  tbClockBox.appendChild(el('span', 'killzone-topbar__clock-label', 'Local Time'));
+  const tbClockVal = el('span', 'killzone-topbar__clock-val', '00:00:00');
+  tbClockBox.appendChild(tbClockVal);
+  tbRight.appendChild(tbClockBox);
+  
   const tbTimerBox = el('div', 'killzone-topbar__timer-box');
   tbTimerBox.appendChild(el('span', 'killzone-topbar__timer-label', 'Ends In'));
   const tbTimerVal = el('span', 'killzone-topbar__timer-val', '00:00:00');
   tbTimerBox.appendChild(tbTimerVal);
-  topbar.appendChild(tbTimerBox);
+  tbRight.appendChild(tbTimerBox);
+  
+  topbar.appendChild(tbRight);
   
   main.appendChild(topbar);
 
@@ -1538,6 +1548,11 @@ function buildAppShell() {
         tbText.appendChild(timeSpan);
         
         tbTimerVal.textContent = timeString;
+        
+        // Update topbar clock with current local time
+        const localTimeStr = now.toLocaleTimeString('en-US', { hour12: false });
+        tbClockVal.textContent = localTimeStr;
+        
         topbarEl.style.display = 'flex';
       } else {
         topbarEl.style.display = 'none';
