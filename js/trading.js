@@ -13,7 +13,6 @@ import {
   sanitizeText,
 } from './utils.js';
 import { addXP } from './xp.js';
-import { renderBacktestSandbox } from './backtest.js';
 
 // --- Constants ---
 
@@ -589,16 +588,24 @@ export function renderTradeForm(container, onSaved) {
   const balInput = document.createElement('input');
   balInput.type = 'number';
   balInput.className = 'form-input';
-  balInput.value = '10000'; // Default $10,000 balance
+  balInput.value = storage.get('preset_balance', '10000'); // Load saved balance preset
   balInput.step = 'any';
   rhInputs.appendChild(formGroup('Account Balance ($)', balInput));
 
   const pctInput = document.createElement('input');
   pctInput.type = 'number';
   pctInput.className = 'form-input';
-  pctInput.value = '1'; // Default 1% risk
+  pctInput.value = storage.get('preset_risk', '1'); // Load saved risk preset
   pctInput.step = '0.1';
   rhInputs.appendChild(formGroup('Risk Per Trade (%)', pctInput));
+
+  // Auto-save preset when typed
+  balInput.addEventListener('input', () => {
+    storage.set('preset_balance', balInput.value);
+  });
+  pctInput.addEventListener('input', () => {
+    storage.set('preset_risk', pctInput.value);
+  });
 
   riskHelper.appendChild(rhInputs);
 
@@ -1530,7 +1537,6 @@ function buildTabs(onSelect) {
     { key: 'form', label: '📝 Log Trade' },
     { key: 'history', label: '📋 History' },
     { key: 'analytics', label: '📈 Analytics' },
-    { key: 'backtest', label: '🎯 Backtest Sandbox' },
   ];
   tabDefs.forEach(({ key, label }, idx) => {
     const btn = el('button', `tab-btn${idx === 0 ? ' active' : ''}`, label);
@@ -2122,10 +2128,8 @@ export function renderTradingPage(container) {
   historyPanel.style.display = 'none';
   const analyticsPanel = el('div', 'tab-panel');
   analyticsPanel.style.display = 'none';
-  const backtestPanel = el('div', 'tab-panel');
-  backtestPanel.style.display = 'none';
 
-  const panels = { form: formPanel, history: historyPanel, analytics: analyticsPanel, backtest: backtestPanel };
+  const panels = { form: formPanel, history: historyPanel, analytics: analyticsPanel };
 
   const tabs = buildTabs((key) => {
     Object.entries(panels).forEach(([k, p]) => {
@@ -2133,14 +2137,12 @@ export function renderTradingPage(container) {
     });
     if (key === 'history') renderTradeHistory(historyPanel, refresh);
     if (key === 'analytics') renderAnalytics(analyticsPanel);
-    if (key === 'backtest') renderBacktestSandbox(backtestPanel);
   });
 
   container.appendChild(tabs);
   container.appendChild(formPanel);
   container.appendChild(historyPanel);
   container.appendChild(analyticsPanel);
-  container.appendChild(backtestPanel);
 
   function refresh() {
     const trades = getTrades();
