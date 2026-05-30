@@ -87,10 +87,36 @@
         console.error("UNHANDLED REJECTION:", e.reason);
         var msg = (e.reason && e.reason.message) || String(e.reason);
         var code = (e.reason && e.reason.code) || 'N/A';
+        
+        var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+        var fixMsg = 'Firefox restricts cross-domain storage on local servers (127.0.0.1). Click the <strong>Shield Icon</strong> next to the URL bar and toggle "Enhanced Tracking Protection" <strong>OFF</strong> for SwaGGa HQ, then refresh and try again!';
+        
+        if (isMobile) {
+          if (isStandalone) {
+            fixMsg = 'Mobile operating systems strictly block cross-domain authentication inside standalone PWAs when served from third-party hosting.<br><br>' +
+                     '✨ <strong>Solution:</strong> Open SwaGGa HQ using the official first-party Firebase URL: <br>' +
+                     '<a href="https://swagga-hq.firebaseapp.com" target="_blank" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a> or ' +
+                     '<a href="https://swagga-hq.web.app" target="_blank" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.web.app</a> ' +
+                     'in your phone\'s Safari or Chrome browser. Google Sign-In works flawlessly there, and you can re-install the PWA directly from that domain!';
+          } else {
+            fixMsg = 'Mobile browsers block cross-domain cookies and storage partition access by default.<br><br>' +
+                     '✨ <strong>Solution:</strong> Open the app on the official Firebase hosting URL: <br>' +
+                     '<a href="https://swagga-hq.firebaseapp.com" target="_blank" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a> ' +
+                     'which runs on the first-party authentication domain, OR go to your phone\'s Settings > Safari and toggle <strong>Prevent Cross-Site Tracking OFF</strong>.';
+          }
+        } else {
+          var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+          if (!isFirefox) {
+            fixMsg = 'Your browser is blocking cross-origin storage or cookies. Disable tracking shields, Brave shields, or adblockers for this site, or run the app on the first-party hosting domain: ' +
+                     '<a href="https://swagga-hq.firebaseapp.com" target="_blank" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a>.';
+          }
+        }
+
         window.showGlobalError(
           'Sign-In / Firebase Error!',
           'Firebase encountered a storage or security shield restriction.<br><strong>Details:</strong> ' + msg + ' (Code: ' + code + ')',
-          'Firefox restricts cross-domain storage on local servers (127.0.0.1). Click the <strong>Shield Icon</strong> next to the URL bar and toggle "Enhanced Tracking Protection" <strong>OFF</strong> for SwaGGa HQ, then refresh and try again!'
+          fixMsg
         );
       });
     </script>
