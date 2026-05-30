@@ -2050,7 +2050,10 @@ body, .sidebar, .main-content, .card, .stat-card, .dash-card, .nav-item,
 
 @media (max-width: 768px) {
   .killzone-topbar {
-    top: 72px; /* Sticks perfectly below the mobile hamburger button */
+    top: var(--space-4); /* Sticks perfectly aligned with the hamburger button */
+  }
+  .killzone-topbar__left {
+    margin-left: 38px; /* Shifts session name text to the right of the floating mobile menu button */
   }
 }
 
