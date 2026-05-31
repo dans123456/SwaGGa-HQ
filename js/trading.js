@@ -1014,11 +1014,22 @@ export function renderTradeForm(container, onSaved) {
       outcome: fd.get('outcome'),
       mistake: fd.get('outcome') === 'loss' ? fd.get('mistake') : '',
       notes: sanitizeText(fd.get('notes') || '', 2000),
-      screenshot: fd.get('screenshot') || ''
+      screenshot: fd.get('screenshot') || '',
+      balanceUsed: Number(balInput.value) || 10000,
+      riskPct: Number(pctInput.value) || 1.0,
     };
 
     saveTrade(tradeData);
     addXP('trade', 25);
+
+    // Check general achievements dynamically to prevent cycle
+    try {
+      import('./streaks.js').then(({ checkAndUnlockAchievements }) => {
+        checkAndUnlockAchievements('trade');
+      });
+    } catch (e) {
+      console.error(e);
+    }
     form.reset();
     
     // Reset screenshot upload container

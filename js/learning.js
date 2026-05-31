@@ -105,6 +105,16 @@ export function saveLessonEntry(lessonData) {
   const entry = { id: generateId(), ...lessonData, notes: sanitizeText(lessonData.notes || '', 2000), createdAt: new Date().toISOString() };
   lessons.push(entry);
   storage.set(STORAGE_LESSONS, lessons);
+  
+  // Check general achievements dynamically to prevent cycle
+  try {
+    import('./streaks.js').then(({ checkAndUnlockAchievements }) => {
+      checkAndUnlockAchievements('lesson');
+    });
+  } catch (e) {
+    console.error(e);
+  }
+  
   return entry;
 }
 

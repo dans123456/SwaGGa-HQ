@@ -329,13 +329,22 @@ export function renderHabitCard(habit, onToggle) {
   toggleBtn.addEventListener('click', () => {
     const wasDone = done;
     toggleHabit(habit.id);
+    const updatedHabits = getHabits();
+    const updatedHabit = updatedHabits.find(h => h.id === habit.id);
+
     // Award XP when marking a habit as done (not when un-marking)
     if (!wasDone) {
       addXP('habit', 10);
+      
+      // Check streak milestones (multiples of 7)
+      checkStreakMilestones(updatedHabit);
+
+      // Check general achievements
+      checkAndUnlockAchievements('habit');
+
       // Check for perfect day bonus (all habits done)
       const today = localDateKey();
-      const allHabits = getHabits();
-      if (allHabits.length > 0 && allHabits.every(h => h.log[today])) {
+      if (updatedHabits.length > 0 && updatedHabits.every(h => h.log[today])) {
         addXP('perfectDay', 50);
         playSynthSound('fanfare'); // Triumphant arpeggio fanfare!
         triggerConfetti(); // Celebrate perfect day milestone!
@@ -466,6 +475,257 @@ export function renderCalendarHeatmap(container, habitData) {
   wrapper.appendChild(legend);
 
   container.appendChild(wrapper);
+}
+
+export const ACHIEVEMENT_DEFS = {
+  risk_manager: {
+    id: 'risk_manager',
+    name: 'Risk Manager',
+    desc: 'Log 5 consecutive trades with risk <= 1%',
+    emoji: '🛡️',
+    xpReward: 100,
+  },
+  unstoppable: {
+    id: 'unstoppable',
+    name: 'Unstoppable',
+    desc: 'Hit a 14-day habit streak on any habit',
+    emoji: '🏃‍♂️',
+    xpReward: 150,
+  },
+  perfect_week: {
+    id: 'perfect_week',
+    name: 'Perfect Week',
+    desc: 'Achieve 7 consecutive perfect days (all habits completed)',
+    emoji: '⚡',
+    xpReward: 200,
+    awardsToken: true,
+  },
+  absolute_discipline: {
+    id: 'absolute_discipline',
+    name: 'Absolute Discipline',
+    desc: 'Log 5 curriculum lessons in the Learning Hub',
+    emoji: '📚',
+    xpReward: 100,
+  },
+  profitable_trader: {
+    id: 'profitable_trader',
+    name: 'Profitable Trader',
+    desc: 'Record a 5-trade win streak in the journal',
+    emoji: '💰',
+    xpReward: 150,
+  },
+  psychology_shield: {
+    id: 'psychology_shield',
+    name: 'Psychology Shield',
+    desc: 'Log 3 losses with a psychological mistake tagged',
+    emoji: '🧠',
+    xpReward: 100,
+  }
+};
+
+export function getUnlockedAchievements() {
+  return storage.get('unlocked_achievements', {});
+}
+
+export function checkAndUnlockAchievements(triggerType) {
+  const unlocked = getUnlockedAchievements();
+  let updated = false;
+
+  function unlock(id) {
+    if (unlocked[id]) return;
+    unlocked[id] = { unlocked: true, unlockedAt: new Date().toISOString() };
+    updated = true;
+
+    const def = ACHIEVEMENT_DEFS[id];
+    addXP('achievement', def.xpReward);
+
+    if (def.awardsToken) {
+      const currentTokens = storage.get('streak_freeze_tokens', 0);
+      if (currentTokens < 3) {
+        storage.set('streak_freeze_tokens', currentTokens + 1);
+      }
+    }
+
+    showFreezeToast(`🏆 Trophy Unlocked: ${def.name}! +${def.xpReward} XP awarded!`);
+    playSynthSound('fanfare');
+    triggerConfetti();
+  }
+
+  if (triggerType === 'habit') {
+    const habits = getHabits();
+    
+    // Check "Unstoppable" (14-day habit streak on any habit)
+    if (!unlocked.unstoppable) {
+      const has14 = habits.some(h => calculateStreak(h.id) >= 14);
+      if (has14) unlock('unstoppable');
+    }
+
+    // Check "Perfect Week" (7 consecutive perfect days)
+    if (!unlocked.perfect_week) {
+      let perfectStreak = 0;
+      for (let i = 0; i < 30; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        if (isPerfectDay(localDateKey(d))) {
+          perfectStreak++;
+          if (perfectStreak >= 7) {
+            unlock('perfect_week');
+            break;
+          }
+        } else {
+          perfectStreak = 0;
+        }
+      }
+    }
+  }
+
+  if (triggerType === 'trade') {
+    import('./trading.js').then(({ getTrades }) => {
+      const trades = getTrades();
+      if (!trades.length) return;
+
+      const sorted = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      // Check "Risk Manager" (5 consecutive trades with risk <= 1%)
+      if (!unlocked.risk_manager) {
+        let consecutiveLowRisk = 0;
+        for (const t of sorted) {
+          const risk = t.riskPct !== undefined ? t.riskPct : 1.0;
+          if (risk <= 1.0) {
+            consecutiveLowRisk++;
+            if (consecutiveLowRisk >= 5) {
+              unlock('risk_manager');
+              break;
+            }
+          } else {
+            consecutiveLowRisk = 0;
+          }
+        }
+      }
+
+      // Check "Profitable Trader" (5-trade win streak)
+      if (!unlocked.profitable_trader) {
+        let winStreak = 0;
+        for (const t of sorted) {
+          if (t.outcome === 'win') {
+            winStreak++;
+            if (winStreak >= 5) {
+              unlock('profitable_trader');
+              break;
+            }
+          } else if (t.outcome === 'loss') {
+            winStreak = 0;
+          }
+        }
+      }
+
+      // Check "Psychology Shield" (Log 3 losses with a psychological mistake tagged)
+      if (!unlocked.psychology_shield) {
+        const lossesWithMistakes = sorted.filter(t => t.outcome === 'loss' && t.mistake && t.mistake !== '').length;
+        if (lossesWithMistakes >= 3) {
+          unlock('psychology_shield');
+        }
+      }
+    });
+  }
+
+  if (triggerType === 'lesson') {
+    import('./learning.js').then(({ getLessons }) => {
+      const lessons = getLessons();
+      if (!unlocked.absolute_discipline) {
+        if (lessons.length >= 5) {
+          unlock('absolute_discipline');
+        }
+      }
+    });
+  }
+
+  if (updated) {
+    storage.set('unlocked_achievements', unlocked);
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
+  }
+}
+
+function checkStreakMilestones(habit) {
+  const currentStreak = calculateStreak(habit.id);
+  if (currentStreak > 0 && currentStreak % 7 === 0) {
+    const milestoneKey = `milestone_${habit.id}_${currentStreak}`;
+    const milestones = storage.get('awarded_milestones', {});
+    if (!milestones[milestoneKey]) {
+      milestones[milestoneKey] = true;
+      storage.set('awarded_milestones', milestones);
+
+      const currentTokens = storage.get('streak_freeze_tokens', 0);
+      if (currentTokens < 3) {
+        storage.set('streak_freeze_tokens', currentTokens + 1);
+        showFreezeToast(`❄️ Streak Milestone! Earned 1 Freeze Token for a ${currentStreak}-day streak on ${habit.emoji} ${habit.name}!`);
+      } else {
+        showFreezeToast(`✨ Streak Milestone! ${currentStreak}-day streak on ${habit.emoji} ${habit.name}! (Freeze tokens at max capacity)`);
+      }
+      playSynthSound('fanfare');
+      triggerConfetti();
+    }
+  }
+}
+
+export function showFreezeToast(message) {
+  let toast = document.querySelector('.freeze-toast');
+  if (toast) toast.remove();
+  
+  toast = document.createElement('div');
+  toast.className = 'freeze-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  requestAnimationFrame(() => {
+    toast.classList.add('freeze-toast--visible');
+  });
+  
+  setTimeout(() => {
+    if (toast) {
+      toast.classList.remove('freeze-toast--visible');
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 4000);
+}
+
+export function renderTrophyCabinet(container) {
+  container.replaceChildren();
+  
+  const section = el('div', 'streaks-trophy-cabinet');
+  section.appendChild(el('h2', 'section-title', '🏆 Achievement Trophy Case'));
+  
+  const grid = el('div', 'trophy-cabinet-grid');
+  const unlocked = getUnlockedAchievements();
+  
+  Object.values(ACHIEVEMENT_DEFS).forEach(def => {
+    const isUnlocked = !!unlocked[def.id];
+    const card = el('div', `trophy-card ${isUnlocked ? 'trophy-card--unlocked' : 'trophy-card--locked'}`);
+    
+    const header = el('div', 'trophy-card__header');
+    const iconBox = el('div', 'trophy-card__icon-box');
+    iconBox.textContent = def.emoji;
+    header.appendChild(iconBox);
+    
+    const status = el('span', `trophy-card__status ${isUnlocked ? 'status--unlocked' : 'status--locked'}`);
+    status.textContent = isUnlocked ? '🏆 Unlocked' : '🔒 Locked';
+    card.appendChild(header);
+    
+    card.appendChild(el('h3', 'trophy-card__title', def.name));
+    card.appendChild(el('p', 'trophy-card__desc', def.desc));
+    
+    const footer = el('div', 'trophy-card__footer');
+    footer.appendChild(el('span', '', 'Reward'));
+    footer.appendChild(el('span', 'trophy-card__xp', `+${def.xpReward} XP`));
+    card.appendChild(footer);
+    
+    grid.appendChild(card);
+  });
+  
+  section.appendChild(grid);
+  container.appendChild(section);
 }
 
 /* ---------- Add Habit Form ---------------------------------------- */
@@ -600,6 +860,7 @@ export function renderStreaksPage(container) {
   const statsContainer = el('div');
   const cardsContainer = el('div');
   const heatmapContainer = el('div');
+  const trophyContainer = el('div');
   const formContainer = el('div');
 
   container.appendChild(freezeContainer);
@@ -607,6 +868,7 @@ export function renderStreaksPage(container) {
   container.appendChild(statsContainer);
   container.appendChild(cardsContainer);
   container.appendChild(heatmapContainer);
+  container.appendChild(trophyContainer);
   container.appendChild(formContainer);
 
   function refresh() {
@@ -615,6 +877,7 @@ export function renderStreaksPage(container) {
     renderOverviewStats(statsContainer);
     renderHabitCards(cardsContainer, refresh);
     renderCalendarHeatmap(heatmapContainer, getHabits());
+    renderTrophyCabinet(trophyContainer);
   }
 
   refresh();
