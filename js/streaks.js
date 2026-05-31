@@ -4,6 +4,7 @@ import storage from './storage.js';
 import { generateId, sanitizeText, triggerConfetti, showNotificationToast } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
+import router from './router.js';
 
 // --- Constants ---
 
@@ -337,7 +338,11 @@ function playFreezeAnimation(cardElement, callback) {
 
 export function renderHabitCard(habit, onToggle) {
   const today = localDateKey();
-  const done = !!habit.log[today];
+  let done = !!habit.log[today];
+  if (habit.id === 'course33') {
+    const lessonsList = storage.get('lessons', []);
+    done = lessonsList.some(l => l.createdAt && l.createdAt.startsWith(today));
+  }
   const streak = calculateStreak(habit.id);
   const best = getBestStreak(habit.id);
 
@@ -862,6 +867,12 @@ export function renderHabitCard(habit, onToggle) {
     toggleBtn.style.color = '#0a0a0f';
   }
   toggleBtn.addEventListener('click', () => {
+    if (habit.id === 'course33') {
+      playSynthSound('click');
+      showNotificationToast("Please upload your new lesson notes in the Learning Hub to tick this habit! 📚🪖");
+      router.navigate('#learning');
+      return;
+    }
     const wasDone = done;
     
     // IF habit has subtasks, update their checked states
