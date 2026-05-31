@@ -113,7 +113,7 @@ export function getHabits() {
 
         // Ensure the log has exactly totalCurriculumItems ending yesterday, plus today if already completed
         const pastKeys = Object.keys(h.log).filter(k => k !== todayKey);
-        if (pastKeys.length !== totalCurriculumItems) {
+        if (pastKeys.length !== totalCurriculumItems || Object.keys(h.log).length > (totalCurriculumItems + (hasToday ? 1 : 0))) {
           h.log = {};
           if (hasToday) {
             h.log[todayKey] = true;
