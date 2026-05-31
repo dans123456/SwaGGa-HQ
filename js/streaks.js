@@ -391,19 +391,48 @@ export function renderHabitCard(habit, onToggle) {
   // Stats row
   const stats = el('div', 'habit-pro__stats');
 
+  const totalDays = Object.keys(habit.log || {}).length;
+
+  const displayStreak = done ? streak : (streak + 1);
+  const displayBest = done ? best : Math.max(best, streak + 1);
+  const displayTotal = done ? totalDays : (totalDays + 1);
+
   const streakStat = el('div', 'habit-pro__stat');
-  streakStat.appendChild(el('span', 'habit-pro__stat-value', String(streak)));
+  const streakVal = el('span', 'habit-pro__stat-value', String(displayStreak));
+  if (done) {
+    streakVal.style.color = habit.color || 'var(--cyan)';
+    streakVal.style.textShadow = `0 0 12px ${habit.borderColor || 'rgba(0, 212, 255, 0.4)'}`;
+  } else {
+    streakVal.style.color = 'rgba(255, 255, 255, 0.2)';
+    streakVal.style.textShadow = 'none';
+  }
+  streakStat.appendChild(streakVal);
   streakStat.appendChild(el('span', 'habit-pro__stat-label', 'Current'));
   stats.appendChild(streakStat);
 
   const bestStat = el('div', 'habit-pro__stat');
-  bestStat.appendChild(el('span', 'habit-pro__stat-value', String(best)));
+  const bestVal = el('span', 'habit-pro__stat-value', String(displayBest));
+  if (done) {
+    bestVal.style.color = habit.color || 'var(--cyan)';
+    bestVal.style.textShadow = `0 0 12px ${habit.borderColor || 'rgba(0, 212, 255, 0.4)'}`;
+  } else {
+    bestVal.style.color = 'rgba(255, 255, 255, 0.2)';
+    bestVal.style.textShadow = 'none';
+  }
+  bestStat.appendChild(bestVal);
   bestStat.appendChild(el('span', 'habit-pro__stat-label', 'Best'));
   stats.appendChild(bestStat);
 
   const totalStat = el('div', 'habit-pro__stat');
-  const totalDays = Object.keys(habit.log || {}).length;
-  totalStat.appendChild(el('span', 'habit-pro__stat-value', String(totalDays)));
+  const totalVal = el('span', 'habit-pro__stat-value', String(displayTotal));
+  if (done) {
+    totalVal.style.color = habit.color || 'var(--cyan)';
+    totalVal.style.textShadow = `0 0 12px ${habit.borderColor || 'rgba(0, 212, 255, 0.4)'}`;
+  } else {
+    totalVal.style.color = 'rgba(255, 255, 255, 0.2)';
+    totalVal.style.textShadow = 'none';
+  }
+  totalStat.appendChild(totalVal);
   totalStat.appendChild(el('span', 'habit-pro__stat-label', 'Total'));
   stats.appendChild(totalStat);
 
