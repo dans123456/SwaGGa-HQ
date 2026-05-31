@@ -1758,6 +1758,42 @@ if (document.readyState === 'loading') {
 
 // --- Economic Calendar News Feed Widget Support ---
 
+export function fetchEconomicCalendar() {
+  const CACHE_KEY = 'economic_calendar';
+  const FETCHED_KEY = 'economic_calendar_fetched';
+  const CACHE_DURATION = 3 * 60 * 60 * 1000; // 3 hours
+
+  const cachedData = storage.get(CACHE_KEY, null);
+  const fetchedTime = storage.get(FETCHED_KEY, 0);
+  const now = Date.now();
+
+  if (cachedData && Array.isArray(cachedData) && (now - fetchedTime < CACHE_DURATION)) {
+    return Promise.resolve(cachedData);
+  }
+
+  const proxyUrl = 'https://api.allorigins.win/raw?url=';
+  const targetUrl = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+
+  return fetch(proxyUrl + encodeURIComponent(targetUrl))
+    .then(res => {
+      if (!res.ok) throw new Error('API request failed');
+      return res.json();
+    })
+    .then(events => {
+      if (!Array.isArray(events)) throw new Error('Invalid JSON structure');
+      storage.set(CACHE_KEY, events);
+      storage.set(FETCHED_KEY, now);
+      return events;
+    })
+    .catch(err => {
+      console.warn('Live news calendar fetch failed, using old cache or fallback...', err);
+      if (cachedData && Array.isArray(cachedData)) {
+        return cachedData;
+      }
+      return getCuratedFallbackEvents();
+    });
+}
+
 function renderEconomicNewsWidget(container) {
   const listContainer = el('div', 'news-list-container');
   container.appendChild(listContainer);
@@ -1767,24 +1803,14 @@ function renderEconomicNewsWidget(container) {
   loadingText.style.color = 'var(--text-muted)';
   listContainer.appendChild(loadingText);
 
-  // We fetch through allorigins proxy with a curated fallback calendar so SwaGGa HQ NEVER breaks
-  const proxyUrl = 'https://api.allorigins.win/raw?url=';
-  const targetUrl = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
-  
-  fetch(proxyUrl + encodeURIComponent(targetUrl))
-    .then(res => {
-      if (!res.ok) throw new Error('API request failed');
-      return res.json();
-    })
+  fetchEconomicCalendar()
     .then(events => {
-      if (!Array.isArray(events)) throw new Error('Invalid JSON structure');
       renderEventsList(listContainer, events);
     })
     .catch(err => {
-      console.warn('Live news calendar fetch failed, loading curated fallback feed...', err);
-      // Generate standard fallback high-impact releases for the current week
-      const fallbackEvents = getCuratedFallbackEvents();
-      renderEventsList(listContainer, fallbackEvents);
+      console.error('Failed to load economic news calendar:', err);
+      listContainer.replaceChildren();
+      listContainer.appendChild(el('p', 'news-empty-text', '❌ Failed to load economic calendar.'));
     });
 }
 

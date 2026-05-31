@@ -549,6 +549,90 @@ export function renderTradeForm(container, onSaved) {
   }
   form.appendChild(formGroup('Asset', assetSelect));
 
+  // ---- News Warning Container ----
+  const newsWarningContainer = el('div', 'news-warning-container');
+  form.appendChild(newsWarningContainer);
+
+  function updateNewsWarning(selectedAsset) {
+    newsWarningContainer.replaceChildren();
+    if (!selectedAsset) return;
+
+    function getMatchingCurrencies(asset) {
+      if (!asset) return [];
+      if (asset.includes('/')) {
+        return asset.split('/');
+      }
+      if (asset === 'XAU/USD' || asset === 'XAG/USD') {
+        return ['USD'];
+      }
+      if (asset.includes('US30') || asset.includes('NAS100') || asset.includes('SPX500') || asset.includes('BTC/USD') || asset.includes('BTC/USDT')) {
+        return ['USD'];
+      }
+      if (asset.includes('GER40')) {
+        return ['EUR'];
+      }
+      if (asset.includes('UK100')) {
+        return ['GBP'];
+      }
+      return [];
+    }
+
+    const matchedCurrencies = getMatchingCurrencies(selectedAsset);
+    if (matchedCurrencies.length === 0) return;
+
+    const events = storage.get('economic_calendar', []);
+    if (!Array.isArray(events) || events.length === 0) return;
+
+    const now = new Date();
+    
+    const activeNews = events.filter(e => {
+      const isMatch = matchedCurrencies.includes(e.country);
+      const isHigh = e.impact === 'High';
+      if (!isMatch || !isHigh) return false;
+
+      const eventDate = new Date(e.date);
+      const diffMin = Math.round((eventDate - now) / 60000);
+      
+      return diffMin >= -30 && diffMin <= 120;
+    });
+
+    if (activeNews.length === 0) return;
+
+    activeNews.forEach(e => {
+      const eventDate = new Date(e.date);
+      const diffMin = Math.round((eventDate - now) / 60000);
+      
+      const alert = el('div', 'news-warning-alert');
+      
+      const icon = el('span', '', '⚠️');
+      icon.style.fontSize = '1.3rem';
+      alert.appendChild(icon);
+
+      const info = el('div', '');
+      info.appendChild(el('h5', 'news-warning-alert__title', `High-Impact News: ${e.country} ${e.title}`));
+      
+      let timeText = '';
+      if (diffMin < 0) {
+        timeText = `Released ${Math.abs(diffMin)} minutes ago (Active Now).`;
+      } else if (diffMin === 0) {
+        timeText = 'Releasing active now!';
+      } else {
+        const hours = Math.floor(diffMin / 60);
+        const mins = diffMin % 60;
+        timeText = `Releasing in ${hours > 0 ? `${hours}h ` : ''}${mins}m.`;
+      }
+
+      info.appendChild(el('p', 'news-warning-alert__text', `${timeText} High risk of slippage, wild spreads, and rapid volatility.`));
+      alert.appendChild(info);
+
+      newsWarningContainer.appendChild(alert);
+    });
+  }
+
+  assetSelect.addEventListener('change', () => {
+    updateNewsWarning(assetSelect.value);
+  });
+
   // ---- Direction ----
   const dirSelect = document.createElement('select');
   dirSelect.name = 'direction';

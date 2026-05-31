@@ -225,9 +225,10 @@ export function generateCumulativeAssignment(episodeNum, asset, timeframe) {
         ul.concepts.forEach(concept => {
           const exists = steps.some(s => s.title.toLowerCase().includes(concept.toLowerCase()));
           if (!exists) {
+            const cleanConceptName = concept.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
             steps.push({
-              title: `Custom Confluence (${concept}) [Ep ${ul.episode}]`,
-              text: `Locate and verify the ${concept} concept setup on the chart for ${asset}.`
+              title: `${cleanConceptName} [Ep ${ul.episode}]`,
+              text: `Locate and verify the ${cleanConceptName} setup on the chart for ${asset}.`
             });
           }
         });
@@ -972,6 +973,43 @@ const CONCEPT_KEYWORDS = {
   'consolidation':    'consolidation',
   'news':             'fundamentals',
   'fundamental':      'fundamentals',
+  'flip zone':        'flip-zone',
+  'flip zones':       'flip-zone',
+  'mitigation':       'failed-zone-mitigation',
+  'mitigation block': 'mitigation-block',
+  'breaker':          'breaker-block',
+  'breaker block':    'breaker-block',
+  'propulsion':       'propulsion-block',
+  'propulsion block': 'propulsion-block',
+  'silver bullet':    'silver-bullet',
+  'judas swing':      'judas-swing',
+  'judas':            'judas-swing',
+  'turtle soup':      'turtle-soup',
+  'equal highs':      'equal-highs',
+  'equal lows':       'equal-lows',
+  'bsl':              'buy-side-liquidity',
+  'ssl':              'sell-side-liquidity',
+  'buy-side liquidity': 'buy-side-liquidity',
+  'sell-side liquidity': 'sell-side-liquidity',
+  'market structure shift': 'market-structure-shift',
+  'mss':              'market-structure-shift',
+  'displacement':     'displacement',
+  'liquidity void':   'liquidity-void',
+  'volume imbalance': 'volume-imbalance',
+  'supply to demand flip': 'supply-to-demand-flip',
+  'demand to supply flip': 'demand-to-supply-flip',
+  'failed zone mitigation': 'failed-zone-mitigation',
+  'failed zone':      'failed-zone-mitigation',
+  'power of three':   'power-of-three',
+  'po3':              'power-of-three',
+  'daily bias':       'daily-bias',
+  'killzone':         'killzones',
+  'killzones':        'killzones',
+  'asian range':      'asian-range',
+  'macro':            'macro-timing',
+  'consequent encroachment': 'consequent-encroachment',
+  'mean threshold':   'mean-threshold',
+  'institutional order flow': 'institutional-order-flow',
 };
 
 function detectConcepts(title) {
@@ -1022,6 +1060,93 @@ function openUnlockPopup(ep, curriculumContainer) {
   let fetchedTitle = '';
   let fetchedConcepts = [];
 
+  const tagEditorContainer = el('div', 'tag-editor-container');
+  tagEditorContainer.style.marginTop = 'var(--space-4)';
+
+  function slugifyConcept(text) {
+    return text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+
+  function renderTagEditor() {
+    tagEditorContainer.replaceChildren();
+
+    tagEditorContainer.appendChild(el('p', 'unlock-preview-label', '🏷️ CURATE CONCEPTS FOR ASSIGNMENTS & JOURNAL:'));
+
+    const tagList = el('div', 'concept-tags');
+    tagList.style.marginBottom = 'var(--space-3)';
+
+    if (fetchedConcepts.length === 0) {
+      const emptyHint = el('p', 'unlock-preview-sub', 'No concept tags added yet. Type a concept below to add one.');
+      emptyHint.style.fontSize = 'var(--text-xs)';
+      tagList.appendChild(emptyHint);
+    } else {
+      fetchedConcepts.forEach((c, idx) => {
+        const cleanConcept = c.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        const tag = el('span', 'tag tag-editable', cleanConcept);
+        tag.style.display = 'inline-flex';
+        tag.style.alignItems = 'center';
+        tag.style.gap = 'var(--space-1)';
+
+        const delBtn = el('span', 'tag-delete', '✕');
+        delBtn.style.cursor = 'pointer';
+        delBtn.style.fontWeight = 'bold';
+        delBtn.style.color = 'var(--text-muted)';
+        delBtn.addEventListener('mouseenter', () => delBtn.style.color = '#ff4757');
+        delBtn.addEventListener('mouseleave', () => delBtn.style.color = 'var(--text-muted)');
+        delBtn.addEventListener('click', () => {
+          fetchedConcepts.splice(idx, 1);
+          renderTagEditor();
+        });
+
+        tag.appendChild(delBtn);
+        tagList.appendChild(tag);
+      });
+    }
+    tagEditorContainer.appendChild(tagList);
+
+    // Add Tag Input Row
+    const inputRow = el('div', '');
+    inputRow.style.display = 'flex';
+    inputRow.style.gap = 'var(--space-2)';
+    inputRow.style.alignItems = 'center';
+
+    const addInput = document.createElement('input');
+    addInput.type = 'text';
+    addInput.className = 'form-input';
+    addInput.placeholder = 'Add custom concept (e.g. silver-bullet)';
+    addInput.style.flex = '1';
+    addInput.style.fontSize = 'var(--text-sm)';
+    addInput.style.padding = '0.5rem 0.75rem';
+
+    const addBtn = el('button', 'btn btn-outline', '+ Add');
+    addBtn.type = 'button';
+    addBtn.style.padding = '0.5rem 1rem';
+    addBtn.style.fontSize = 'var(--text-sm)';
+
+    const handleAdd = () => {
+      const val = addInput.value.trim();
+      if (!val) return;
+      const slug = slugifyConcept(val);
+      if (slug && !fetchedConcepts.includes(slug)) {
+        fetchedConcepts.push(slug);
+        renderTagEditor();
+      }
+      addInput.value = '';
+    };
+
+    addBtn.addEventListener('click', handleAdd);
+    addInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAdd();
+      }
+    });
+
+    inputRow.appendChild(addInput);
+    inputRow.appendChild(addBtn);
+    tagEditorContainer.appendChild(inputRow);
+  }
+
   fetchBtn.addEventListener('click', async () => {
     const url = urlInput.value.trim();
     if (!url) return;
@@ -1044,15 +1169,10 @@ function openUnlockPopup(ep, curriculumContainer) {
 
       preview.appendChild(el('p', 'unlock-preview-label', '📺 VIDEO FOUND:'));
       preview.appendChild(el('p', 'unlock-preview-title', fetchedTitle));
-
-      if (fetchedConcepts.length) {
-        const tagRow = el('div', 'concept-tags');
-        fetchedConcepts.forEach(c => tagRow.appendChild(el('span', 'tag', c)));
-        preview.appendChild(el('p', 'unlock-preview-label', '🏷️ DETECTED CONCEPTS:'));
-        preview.appendChild(tagRow);
-      } else {
-        preview.appendChild(el('p', 'unlock-preview-sub', 'No trading concepts auto-detected — you can add them manually after unlocking.'));
-      }
+      
+      // Append our tag editor
+      renderTagEditor();
+      preview.appendChild(tagEditorContainer);
 
       fetchBtn.textContent = '✅ Fetched!';
       submitBtn.disabled = false;
