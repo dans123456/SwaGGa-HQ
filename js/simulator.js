@@ -13,7 +13,7 @@ import { addXP } from './xp.js';
 const SIM_SCENARIOS = [
   {
     id: 'ep7-demand',
-    title: 'Ep 7: Bullish Order Block Mitigation',
+    title: 'Ep 7: Bullish Order Block Mitigation (Long)',
     asset: 'EUR/USD',
     description: 'An aggressive breakout left behind a powerful institutional Demand Zone (Order Block). Wait for the price to retrace and mitigate this zone before entering a long position.',
     optimalDirection: 'long',
@@ -38,8 +38,32 @@ const SIM_SCENARIOS = [
     ]
   },
   {
+    id: 'ep7-supply',
+    title: 'Ep 7: Bearish Supply Zone Mitigation (Short)',
+    asset: 'EUR/USD',
+    description: 'An aggressive breakout to the downside left behind a powerful institutional Supply Zone (Bearish Order Block). Wait for the price to retrace and mitigate this zone before entering a short position.',
+    optimalDirection: 'short',
+    initialBalance: 10000,
+    historyCount: 6,
+    candles: [
+      { open: 1.0920, high: 1.0925, low: 1.0915, close: 1.0918 }, // 1. Base consolidation
+      { open: 1.0918, high: 1.0922, low: 1.0912, close: 1.0921 }, // 2. Minor up wick sweep before drop
+      { open: 1.0921, high: 1.0923, low: 1.0888, close: 1.0892 }, // 3. Bearish Displacement breakout (BOS!)
+      { open: 1.0892, high: 1.0898, low: 1.0880, close: 1.0884 }, // 4. Expansion continues
+      { open: 1.0884, high: 1.0890, low: 1.0878, close: 1.0880 }, // 5. Low consolidation (CONTEXT ENDS HERE)
+      { open: 1.0880, high: 1.0892, low: 1.0876, close: 1.0890 }, // 6. Pullback commences
+      { open: 1.0890, high: 1.0902, low: 1.0888, close: 1.0900 }, // 7. Drifting higher towards Supply Zone
+      { open: 1.0900, high: 1.0922, low: 1.0896, close: 1.0918 }, // 8. MITIGATION: Taps directly into the Bearish OB (1.0915-1.0922)!
+      { open: 1.0918, high: 1.0924, low: 1.0902, close: 1.0905 }, // 9. Bearish rejection pin-bar forms (Trigger Entry!)
+      { open: 1.0905, high: 1.0912, low: 1.0885, close: 1.0888 }, // 10. Bearish momentum expands down
+      { open: 1.0888, high: 1.0894, low: 1.0868, close: 1.0872 }, // 11. Breaching swing lows
+      { open: 1.0872, high: 1.0878, low: 1.0845, close: 1.0848 }, // 12. Taps short Take Profit target at 1.0850!
+      { open: 1.0848, high: 1.0855, low: 1.0842, close: 1.0845 }, // 13. Consolidation
+    ]
+  },
+  {
     id: 'ep9-fvg',
-    title: 'Ep 9: Fair Value Gap Retracement',
+    title: 'Ep 9: Bullish Fair Value Gap Retracement (Long)',
     asset: 'GBP/USD',
     description: 'A massive high-volume news candle created a prominent 3-bar Fair Value Gap (imbalance) on the M15 chart. Wait for price to pull back, fill the FVG inefficiency, and reverse in alignment with our HTF bias.',
     optimalDirection: 'long',
@@ -50,7 +74,7 @@ const SIM_SCENARIOS = [
       { open: 1.2585, high: 1.2588, low: 1.2572, close: 1.2574 }, // 2. Quiet down bar (Candle 1 of FVG)
       { open: 1.2574, high: 1.2648, low: 1.2572, close: 1.2642 }, // 3. News Expansion (Candle 2 - Imbalance!)
       { open: 1.2642, high: 1.2655, low: 1.2630, close: 1.2650 }, // 4. Extension high (Candle 3 - FVG established between 1.2588 and 1.2630)
-      { open: 1.2650, high: 1.2652, low: 1.2625, close: 1.2628 }, // 5. Top consolidation begins
+      { open: 1.2650, high: 1.2652, low: 1.2625, close: 1.2628 }, // 5. Top consolidation begins (CONTEXT ENDS HERE)
       { open: 1.2628, high: 1.2635, low: 1.2612, close: 1.2616 }, // 6. Pullback commences
       { open: 1.2616, high: 1.2622, low: 1.2598, close: 1.2602 }, // 7. Price enters upper FVG corridor (50% equilibrium tap)
       { open: 1.2602, high: 1.2608, low: 1.2586, close: 1.2590 }, // 8. FULL FVG FILL: Deep tap into the FVG imbalance zone!
@@ -62,8 +86,32 @@ const SIM_SCENARIOS = [
     ]
   },
   {
+    id: 'ep9-bearish-fvg',
+    title: 'Ep 9: Bearish Fair Value Gap Retracement (Short)',
+    asset: 'GBP/USD',
+    description: 'A high-volume news event caused an aggressive bearish expansion, creating a prominent M15 Fair Value Gap (imbalance) pointing downwards. Wait for price to retrace, fill the FVG inefficiency, and reverse.',
+    optimalDirection: 'short',
+    initialBalance: 10000,
+    historyCount: 6,
+    candles: [
+      { open: 1.2650, high: 1.2658, low: 1.2642, close: 1.2648 }, // 1. Quiet pre-news range
+      { open: 1.2648, high: 1.2655, low: 1.2645, close: 1.2652 }, // 2. Quiet up bar (Candle 1 of FVG)
+      { open: 1.2652, high: 1.2655, low: 1.2585, close: 1.2590 }, // 3. News Bearish Expansion - Candle 2
+      { open: 1.2590, high: 1.2605, low: 1.2575, close: 1.2580 }, // 4. News extension - Candle 3, FVG open between 1.2645 and 1.2605
+      { open: 1.2580, high: 1.2592, low: 1.2572, close: 1.2590 }, // 5. Bottom consolidation (CONTEXT ENDS HERE)
+      { open: 1.2590, high: 1.2612, low: 1.2588, close: 1.2610 }, // 6. Pullback commences
+      { open: 1.2610, high: 1.2628, low: 1.2602, close: 1.2625 }, // 7. Enters FVG upper boundary
+      { open: 1.2625, high: 1.2642, low: 1.2615, close: 1.2638 }, // 8. FULL FVG FILL: Deep tap into FVG imbalance!
+      { open: 1.2638, high: 1.2645, low: 1.2610, close: 1.2614 }, // 9. Immediate bearish rejection close (Trigger Entry!)
+      { open: 1.2614, high: 1.2620, low: 1.2588, close: 1.2592 }, // 10. Re-expansion down
+      { open: 1.2592, high: 1.2600, low: 1.2562, close: 1.2566 }, // 11. Breaching lows
+      { open: 1.2566, high: 1.2572, low: 1.2542, close: 1.2546 }, // 12. Hits short Take Profit target at 1.2550!
+      { open: 1.2546, high: 1.2552, low: 1.2540, close: 1.2542 }, // 13. Consolidation
+    ]
+  },
+  {
     id: 'ep14-flip',
-    title: 'Ep 14: Failed Zone & Flip Zone Mitigation',
+    title: 'Ep 14: Failed Zone & Flip Zone Mitigation (Long)',
     asset: 'USD/CAD',
     description: 'An aggressive bearish supply zone was broken through with massive momentum, flipping it into a highly active Demand Zone. Watch for a retracement to mitigate the Flip Zone boundary before timing a high-R long entry.',
     optimalDirection: 'long',
@@ -76,13 +124,37 @@ const SIM_SCENARIOS = [
       { open: 1.3648, high: 1.3695, low: 1.3642, close: 1.3690 }, // 4. Supply Broken! Impulsive displacement upward (Flip Zone established at 1.3670!)
       { open: 1.3690, high: 1.3705, low: 1.3685, close: 1.3700 }, // 5. Expansion continues
       { open: 1.3700, high: 1.3708, low: 1.3690, close: 1.3694 }, // 6. Profit taking consolidation
-      { open: 1.3694, high: 1.3698, low: 1.3678, close: 1.3680 }, // 7. Retracement begins
+      { open: 1.3694, high: 1.3698, low: 1.3678, close: 1.3680 }, // 7. Retracement begins (CONTEXT ENDS HERE)
       { open: 1.3680, high: 1.3682, low: 1.3668, close: 1.3672 }, // 8. MITIGATION: Retests the exact broken supply flip boundary!
       { open: 1.3672, high: 1.3688, low: 1.3666, close: 1.3684 }, // 9. Bullish rejection wick engulfing forms!
       { open: 1.3684, high: 1.3698, low: 1.3680, close: 1.3695 }, // 10. Re-expansion
       { open: 1.3695, high: 1.3712, low: 1.3692, close: 1.3708 }, // 11. Breaching local swing high structure
       { open: 1.3708, high: 1.3725, low: 1.3702, close: 1.3722 }, // 12. Rises strongly to our TP (1.3720) target!
       { open: 1.3722, high: 1.3730, low: 1.3715, close: 1.3720 }, // 13. Consolidation
+    ]
+  },
+  {
+    id: 'ep14-bearish-flip',
+    title: 'Ep 14: Failed Zone & Flip Zone Mitigation (Short)',
+    asset: 'USD/CAD',
+    description: 'An aggressive bullish demand zone was broken through with high momentum, flipping it into an active Bearish Supply (Flip Zone). Wait for price to pull back to mitigate the flip zone boundary before entering a short position.',
+    optimalDirection: 'short',
+    initialBalance: 10000,
+    historyCount: 6,
+    candles: [
+      { open: 1.3750, high: 1.3762, low: 1.3748, close: 1.3758 }, // 1. Bullish approach
+      { open: 1.3758, high: 1.3768, low: 1.3752, close: 1.3765 }, // 2. Demand zone established
+      { open: 1.3765, high: 1.3768, low: 1.3732, close: 1.3736 }, // 3. Aggressive bearish break - Demand fails!
+      { open: 1.3736, high: 1.3742, low: 1.3715, close: 1.3720 }, // 4. Expansion down - Flip zone boundary established at 1.3755
+      { open: 1.3720, high: 1.3728, low: 1.3712, close: 1.3724 }, // 5. Consolidation (CONTEXT ENDS HERE)
+      { open: 1.3724, high: 1.3738, low: 1.3720, close: 1.3735 }, // 6. Retracement begins
+      { open: 1.3735, high: 1.3748, low: 1.3730, close: 1.3746 }, // 7. Pullback continues
+      { open: 1.3746, high: 1.3758, low: 1.3742, close: 1.3754 }, // 8. MITIGATION: Price taps the failed demand Flip boundary at 1.3755!
+      { open: 1.3754, high: 1.3760, low: 1.3738, close: 1.3740 }, // 9. Bearish rejection candle forms (Trigger Entry!)
+      { open: 1.3740, high: 1.3746, low: 1.3718, close: 1.3722 }, // 10. Expanding down
+      { open: 1.3722, high: 1.3728, low: 1.3695, close: 1.3698 }, // 11. Aggressive structural break
+      { open: 1.3698, high: 1.3704, low: 1.3675, close: 1.3678 }, // 12. Hits short Take Profit target at 1.3680!
+      { open: 1.3678, high: 1.3685, low: 1.3672, close: 1.3674 }, // 13. Consolidation
     ]
   }
 ];
@@ -529,14 +601,12 @@ export function renderSimulatorPage(container) {
       const yEnt = getY(entVal);
 
       // Shading regions
-      const isLong = entVal > slVal;
-      
-      // Target/TP Green region
-      ctx.fillStyle = isLong ? 'rgba(57, 255, 20, 0.04)' : 'rgba(255, 59, 59, 0.04)';
+      // Target/TP Green region (Always Green for profit zone)
+      ctx.fillStyle = 'rgba(57, 255, 20, 0.04)';
       ctx.fillRect(0, Math.min(yEnt, yTp), canvas.width, Math.abs(yEnt - yTp));
       
-      // Stop Loss Red region
-      ctx.fillStyle = isLong ? 'rgba(255, 59, 59, 0.04)' : 'rgba(57, 255, 20, 0.04)';
+      // Stop Loss Red region (Always Red for risk zone)
+      ctx.fillStyle = 'rgba(255, 59, 59, 0.04)';
       ctx.fillRect(0, Math.min(yEnt, ySl), canvas.width, Math.abs(yEnt - ySl));
 
       // Draw target/SL horizontal guidelines
@@ -679,8 +749,8 @@ export function renderSimulatorPage(container) {
         if (low <= sl) hitSL = true;
         if (high >= tp) hitTP = true;
       } else {
-        if (high <= tp) hitTP = true; // tp is lower for short
-        if (low >= sl) hitSL = true; // sl is higher for short
+        if (high >= sl) hitSL = true; // sl is higher for short, hit if high wicks to/above it
+        if (low <= tp) hitTP = true;  // tp is lower for short, hit if low wicks to/below it
       }
 
       if (hitSL && hitTP) {
@@ -879,7 +949,7 @@ export function renderSimulatorPage(container) {
     _objectiveListEl.replaceChildren();
 
     // Determine current milestone indices
-    const isFvgOrFlip = _activeScenario.id === 'ep9-fvg' || _activeScenario.id === 'ep14-flip';
+    const isFvgOrFlip = _activeScenario.id.includes('fvg') || _activeScenario.id.includes('flip');
     const targetStepIndex = isFvgOrFlip ? 8 : 9;
     const targetRejectionIndex = isFvgOrFlip ? 9 : 10;
     
