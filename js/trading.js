@@ -48,6 +48,7 @@ export const CONFLUENCE_OPTIONS = [
   'Top Down Analysis (HTF Bias) [Ep 11]',
   'ICT Killzones Timing [Ep 12]',
   'Liquidity Sweeps / Inducements [Ep 13]',
+  'Flip Zones / Mitigations [Ep 14]',
 ];
 
 export function getEffectiveConfluenceOptions() {
@@ -56,7 +57,7 @@ export function getEffectiveConfluenceOptions() {
   
   Object.entries(overrides).forEach(([id, lesson]) => {
     const epNum = lesson.episode !== undefined ? lesson.episode : parseInt(id.replace('ep', ''), 10);
-    if (epNum > 13 && Array.isArray(lesson.concepts)) {
+    if (epNum > 14 && Array.isArray(lesson.concepts)) {
       lesson.concepts.forEach(concept => {
         const cleanConcept = concept.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         const label = `${cleanConcept} [Ep ${epNum}]`;
