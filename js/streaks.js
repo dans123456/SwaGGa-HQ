@@ -98,28 +98,31 @@ export function getHabits() {
 
         const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
         const completedLessons = storage.get('lessons', []);
+        const overrides = storage.get('bg_unlocked_lessons', {});
+        const unlockedIds = new Set([...defaultUnlockedIds, ...Object.keys(overrides)]);
         
-        // Count how many unique custom/locked lessons the user has actually completed
-        const uniqueCustomCompleted = new Set();
+        // Count how many unique completed lessons are actually unlocked in the curriculum
+        const uniqueCompletedUnlocked = new Set();
         completedLessons.forEach(l => {
-          if (l.episodeId && !defaultUnlockedIds.includes(l.episodeId)) {
-            uniqueCustomCompleted.add(l.episodeId);
+          if (l && l.episodeId && unlockedIds.has(l.episodeId)) {
+            uniqueCompletedUnlocked.add(l.episodeId);
           }
         });
 
-        const totalCurriculumItems = 14 + uniqueCustomCompleted.size;
+        const totalCurriculumItems = uniqueCompletedUnlocked.size;
         const todayKey = localDateKey();
         const hasToday = !!h.log[todayKey];
+        const expectedPastKeys = totalCurriculumItems - (hasToday ? 1 : 0);
 
-        // Ensure the log has exactly totalCurriculumItems ending yesterday, plus today if already completed
+        // Ensure the log has exactly expectedPastKeys ending yesterday, plus today if already completed
         const pastKeys = Object.keys(h.log).filter(k => k !== todayKey);
-        if (pastKeys.length !== totalCurriculumItems || Object.keys(h.log).length > (totalCurriculumItems + (hasToday ? 1 : 0))) {
+        if (pastKeys.length !== expectedPastKeys || Object.keys(h.log).length > (expectedPastKeys + (hasToday ? 1 : 0))) {
           h.log = {};
           if (hasToday) {
             h.log[todayKey] = true;
           }
           // Fill slot keys going backwards from yesterday
-          for (let i = 0; i < totalCurriculumItems; i++) {
+          for (let i = 0; i < expectedPastKeys; i++) {
             const d = new Date();
             d.setDate(d.getDate() - 1 - i);
             const key = localDateKey(d);

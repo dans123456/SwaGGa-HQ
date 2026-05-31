@@ -288,14 +288,25 @@ export async function pullFromCloud() {
                   }
                 }
                 
-                const uniqueCustomCompleted = new Set();
+                let overrides = merged['bg_unlocked_lessons'] || localData['bg_unlocked_lessons'] || cloudData['bg_unlocked_lessons'] || {};
+                if (typeof overrides === 'string') {
+                  try {
+                    overrides = JSON.parse(overrides);
+                  } catch {
+                    overrides = {};
+                  }
+                }
+                const unlockedIds = new Set([...defaultUnlockedIds, ...Object.keys(overrides || {})]);
+                
+                // Count how many unique completed lessons are actually unlocked in the curriculum
+                const uniqueCompletedUnlocked = new Set();
                 completedLessons.forEach(l => {
-                  if (l && l.episodeId && !defaultUnlockedIds.includes(l.episodeId)) {
-                    uniqueCustomCompleted.add(l.episodeId);
+                  if (l && l.episodeId && unlockedIds.has(l.episodeId)) {
+                    uniqueCompletedUnlocked.add(l.episodeId);
                   }
                 });
                 
-                const totalCurriculumItems = 14 + uniqueCustomCompleted.size;
+                const totalCurriculumItems = uniqueCompletedUnlocked.size;
                 
                 // Construct the final log based on whether today was completed or not
                 const finalLog = {};
@@ -306,8 +317,10 @@ export async function pullFromCloud() {
                   finalLog[todayKey] = true;
                 }
                 
+                const expectedPastKeys = totalCurriculumItems - (todayCompleted ? 1 : 0);
+                
                 // Fill slot keys going backwards from yesterday
-                for (let i = 0; i < totalCurriculumItems; i++) {
+                for (let i = 0; i < expectedPastKeys; i++) {
                   const d = new Date();
                   d.setDate(d.getDate() - 1 - i);
                   const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
