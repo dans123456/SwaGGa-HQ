@@ -15,6 +15,7 @@ import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, 
 import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from './xp.js';
 import { renderCalendarPage } from './calendar.js';
 import { playSynthSound } from './audio.js';
+import { renderSimulatorPage } from './simulator.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { hash: '#calendar', label: 'Calendar', icon: '📅' },
   { hash: '#chart', label: 'Live Chart', icon: '📊' },
   { hash: '#learning', label: 'Learning', icon: '📚' },
+  { hash: '#simulator', label: 'Simulator', icon: '🎮' },
 ];
 
 let _killzonesInterval = null;
@@ -1491,7 +1493,7 @@ function buildAppShell() {
   
   main.appendChild(topbar);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -1688,6 +1690,7 @@ async function launchApp() {
   router.registerRoute('#learning', renderLearningPage);
   router.registerRoute('#streaks', renderStreaksPage);
   router.registerRoute('#calendar', renderCalendarPage);
+  router.registerRoute('#simulator', renderSimulatorPage);
 
   // Real-time XP & Level progression reactive updater
   window.addEventListener('xp-change', (e) => {
