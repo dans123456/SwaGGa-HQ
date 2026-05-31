@@ -297,12 +297,22 @@ export async function pullFromCloud() {
                 
                 const totalCurriculumItems = 14 + customCompletedCount;
                 
-                // Keep only the most recent totalCurriculumItems keys
-                const sortedKeys = Object.keys(mergedLog).sort((a, b) => new Date(b) - new Date(a));
+                // Construct the final log based on whether today was completed or not
                 const finalLog = {};
-                sortedKeys.slice(0, totalCurriculumItems).forEach(k => {
-                  finalLog[k] = mergedLog[k];
-                });
+                const todayKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+                
+                const todayCompleted = !!mergedLog[todayKey];
+                if (todayCompleted) {
+                  finalLog[todayKey] = true;
+                }
+                
+                // Fill slot keys going backwards from yesterday
+                for (let i = 0; i < totalCurriculumItems; i++) {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 1 - i);
+                  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  finalLog[key] = true;
+                }
                 
                 mergedHabits.push({
                   ...cloudH,

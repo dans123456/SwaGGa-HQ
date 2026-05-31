@@ -106,15 +106,20 @@ export function getHabits() {
           }
         });
 
-        const totalCurriculumItems = 14 + customCompletedCount;
-        const currentLogCount = Object.keys(h.log || {}).length;
+        const todayKey = localDateKey();
+        const hasToday = !!h.log[todayKey];
 
-        if (currentLogCount !== totalCurriculumItems) {
+        // Ensure the log has exactly totalCurriculumItems ending yesterday, plus today if already completed
+        const pastKeys = Object.keys(h.log).filter(k => k !== todayKey);
+        if (pastKeys.length !== totalCurriculumItems) {
           h.log = {};
-          // Fill slot keys going backwards from today to match exactly totalCurriculumItems
+          if (hasToday) {
+            h.log[todayKey] = true;
+          }
+          // Fill slot keys going backwards from yesterday
           for (let i = 0; i < totalCurriculumItems; i++) {
             const d = new Date();
-            d.setDate(d.getDate() - i);
+            d.setDate(d.getDate() - 1 - i);
             const key = localDateKey(d);
             h.log[key] = true;
           }
