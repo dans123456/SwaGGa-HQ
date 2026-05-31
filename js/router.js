@@ -1,4 +1,5 @@
 // hash-based SPA router w/ page transitions
+import storage from './storage.js';
 
 const TRANSITION_MS = 200; // keep in sync w/ CSS
 
@@ -57,6 +58,33 @@ class Router {
 
   _onRouteChange() {
     let hash = window.location.hash || this._defaultRoute;
+    
+    // Premarket Lockout Interceptor
+    if (hash === '#trading' || hash === '#simulator') {
+      const routine = storage.get('premarket_routine');
+      const today = new Date().toISOString().slice(0, 10);
+      const completed = routine && routine.date === today && routine.completed === true;
+      if (!completed) {
+        storage.set('premarket_original_target', hash);
+        hash = '#premarket-lockout';
+        window.location.hash = '#premarket-lockout';
+        return;
+      }
+    }
+
+    if (hash === '#premarket-lockout') {
+      const routine = storage.get('premarket_routine');
+      const today = new Date().toISOString().slice(0, 10);
+      const completed = routine && routine.date === today && routine.completed === true;
+      if (completed) {
+        const originalTarget = storage.get('premarket_original_target') || '#dashboard';
+        storage.remove('premarket_original_target');
+        hash = originalTarget;
+        window.location.hash = originalTarget;
+        return;
+      }
+    }
+
     if (!this._routes.has(hash)) {
       hash = this._defaultRoute;
       window.location.hash = hash;

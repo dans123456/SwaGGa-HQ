@@ -106,41 +106,50 @@ getRedirectResult(auth)
   })
   .catch((err) => {
     console.error('Redirect sign-in failed on page load:', err.code, err.message);
-    if (window.showGlobalError) {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-      let fixMsg = 'Click the <strong>Shield Icon</strong> next to the URL bar and toggle <strong>Enhanced Tracking Protection OFF</strong> for SwaGGa HQ, then refresh and try again!';
-      let errorTitle = 'Google Sign-In Blocked by Firefox!';
-
-      if (isMobile) {
-        errorTitle = 'Google Sign-In Blocked by Device Security!';
-        if (isStandalone) {
-          fixMsg = 'Mobile operating systems block cross-domain auth inside installed PWAs when served from third-party domains.<br><br>' +
-                   '✨ <strong>Solution:</strong> Open SwaGGa HQ using the official first-party Firebase URL: <br>' +
-                   '<a href="https://swagga-hq.firebaseapp.com" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a> or ' +
-                   '<a href="https://swagga-hq.web.app" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.web.app</a> ' +
-                   'in Safari or Chrome on your phone. Google Sign-In will work 100% there, and you can re-install the PWA directly from that domain!';
-        } else {
-          fixMsg = 'Mobile browsers block cross-domain cookies and storage partition access by default.<br><br>' +
-                   '✨ <strong>Solution:</strong> Open the app on the official Firebase hosting URL: <br>' +
-                   '<a href="https://swagga-hq.firebaseapp.com" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a> ' +
-                   'which runs on the first-party authentication domain, OR go to your phone\'s Settings > Safari and toggle <strong>Prevent Cross-Site Tracking OFF</strong>.';
-        }
-      } else {
-        const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-        if (!isFirefox) {
-          errorTitle = 'Google Sign-In Blocked by Browser!';
-          fixMsg = 'Your browser is blocking cross-origin storage or cookies. Disable tracking shields, Brave shields, or adblockers for this site, or run the app on the first-party hosting domain: ' +
-                   '<a href="https://swagga-hq.firebaseapp.com" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a>.';
-        }
+    
+    // Defer error check to allow cached auth persistence to resolve first
+    setTimeout(() => {
+      if (auth.currentUser || _currentUser) {
+        console.log('User is already signed in, ignoring background redirect error.');
+        return;
       }
+      
+      if (window.showGlobalError) {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+        let fixMsg = 'Click the <strong>Shield Icon</strong> next to the URL bar and toggle <strong>Enhanced Tracking Protection OFF</strong> for SwaGGa HQ, then refresh and try again!';
+        let errorTitle = 'Google Sign-In Blocked by Firefox!';
 
-      window.showGlobalError(
-        errorTitle,
-        'Firebase encountered a storage or security shield restriction.<br><strong>Error Code:</strong> ' + err.code + '<br><strong>Details:</strong> ' + err.message,
-        fixMsg
-      );
-    }
+        if (isMobile) {
+          errorTitle = 'Google Sign-In Blocked by Device Security!';
+          if (isStandalone) {
+            fixMsg = 'Mobile operating systems block cross-domain auth inside installed PWAs when served from third-party domains.<br><br>' +
+                     '✨ <strong>Solution:</strong> Open SwaGGa HQ using the official first-party Firebase URL: <br>' +
+                     '<a href="https://swagga-hq.firebaseapp.com" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a> or ' +
+                     '<a href="https://swagga-hq.web.app" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.web.app</a> ' +
+                     'in Safari or Chrome on your phone. Google Sign-In will work 100% there, and you can re-install the PWA directly from that domain!';
+          } else {
+            fixMsg = 'Mobile browsers block cross-domain cookies and storage partition access by default.<br><br>' +
+                     '✨ <strong>Solution:</strong> Open the app on the official Firebase hosting URL: <br>' +
+                     '<a href="https://swagga-hq.firebaseapp.com" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a> ' +
+                     'which runs on the first-party authentication domain, OR go to your phone\'s Settings > Safari and toggle <strong>Prevent Cross-Site Tracking OFF</strong>.';
+          }
+        } else {
+          const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+          if (!isFirefox) {
+            errorTitle = 'Google Sign-In Blocked by Browser!';
+            fixMsg = 'Your browser is blocking cross-origin storage or cookies. Disable tracking shields, Brave shields, or adblockers for this site, or run the app on the first-party hosting domain: ' +
+                     '<a href="https://swagga-hq.firebaseapp.com" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a>.';
+          }
+        }
+
+        window.showGlobalError(
+          errorTitle,
+          'Firebase encountered a storage or security shield restriction.<br><strong>Error Code:</strong> ' + err.code + '<br><strong>Details:</strong> ' + err.message,
+          fixMsg
+        );
+      }
+    }, 1000);
   });
 
 // ---- firestore sync ----
@@ -164,6 +173,8 @@ const SYNC_KEYS = [
   'daily_grades',
   'pomodoro_history',
   'notepad_text',
+  'premarket_routine',
+  'premarket_history',
 ];
 
 const NAMESPACE = 'swagga';
@@ -263,12 +274,50 @@ export async function pullFromCloud() {
             } else {
               const mergedLog = { ...(cloudH.log || {}), ...(localH.log || {}) };
               const mergedFreezes = { ...(cloudH.freezes || {}), ...(localH.freezes || {}) };
-              mergedHabits.push({
-                ...cloudH,
-                ...localH, // local overrides (custom styling)
-                log: mergedLog,
-                freezes: mergedFreezes
-              });
+              
+              if (id === 'course33') {
+                const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
+                
+                // Get the merged lessons array if already computed, else local/cloud lessons
+                let completedLessons = merged['lessons'] || localData['lessons'] || cloudData['lessons'] || [];
+                if (!Array.isArray(completedLessons)) {
+                  try {
+                    completedLessons = typeof completedLessons === 'string' ? JSON.parse(completedLessons) : [];
+                  } catch {
+                    completedLessons = [];
+                  }
+                }
+                
+                let customCompletedCount = 0;
+                completedLessons.forEach(l => {
+                  if (l && l.episodeId && !defaultUnlockedIds.includes(l.episodeId)) {
+                    customCompletedCount++;
+                  }
+                });
+                
+                const totalCurriculumItems = 14 + customCompletedCount;
+                
+                // Keep only the most recent totalCurriculumItems keys
+                const sortedKeys = Object.keys(mergedLog).sort((a, b) => new Date(b) - new Date(a));
+                const finalLog = {};
+                sortedKeys.slice(0, totalCurriculumItems).forEach(k => {
+                  finalLog[k] = mergedLog[k];
+                });
+                
+                mergedHabits.push({
+                  ...cloudH,
+                  ...localH,
+                  log: finalLog,
+                  freezes: mergedFreezes
+                });
+              } else {
+                mergedHabits.push({
+                  ...cloudH,
+                  ...localH,
+                  log: mergedLog,
+                  freezes: mergedFreezes
+                });
+              }
             }
           });
           merged[key] = mergedHabits;
@@ -337,6 +386,9 @@ export async function pullFromCloud() {
         merged[key] = localLen >= cloudLen ? local : cloud;
       } else if (key.startsWith('ba_progress_')) {
         merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);
+      } else if (['bg_unlocked_lessons', 'premarket_routine', 'premarket_history'].includes(key)) {
+        // Object deep-merge: combine local and cloud unlocked lessons / routines
+        merged[key] = { ...(cloud || {}), ...(local || {}) };
       } else {
         // default: cloud wins
         merged[key] = cloud;

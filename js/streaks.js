@@ -21,7 +21,21 @@ export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
   { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 },
-  { id: 'course33', name: 'Market Mechanics', emoji: '🪖', color: '#00d4ff', bgColor: 'rgba(0, 212, 255, 0.08)', borderColor: 'rgba(0, 212, 255, 0.25)', tagline: 'Mitigate & master market', baseStreak: 0 }
+  { 
+    id: 'course33', 
+    name: 'Market Mechanics', 
+    emoji: '🪖', 
+    color: '#00d4ff', 
+    bgColor: 'rgba(0, 212, 255, 0.08)', 
+    borderColor: 'rgba(0, 212, 255, 0.25)', 
+    tagline: 'Mitigate & master market', 
+    baseStreak: 0,
+    subTasks: [
+      { key: 'watch', label: 'Watch Lesson 📺', desc: 'Study today\'s price action' },
+      { key: 'charting', label: 'Practice Charting 📈', desc: 'Submit your homework link', special: 'tradingview' },
+      { key: 'journal', label: 'Journal Takeaways 📝', desc: 'Log summary in Learning Hub' }
+    ]
+  }
 ];
 
 // --- Data Layer ---
@@ -72,35 +86,37 @@ export function getHabits() {
       }
       // Sync Market Mechanics logs to match the number of unlocked lessons in the curriculum
       if (h.id === 'course33') {
-        const overrides = storage.get('bg_unlocked_lessons', {});
-        const defaultUnlockedCount = 14; // Ep 0 to 9, and Ep 11 to 14 are unlocked by default
-        
-        // Count user unlocked custom episodes
-        let customUnlockedCount = 0;
-        // The custom unlocked episodes are those in overrides whose ID is not one of the default unlocked ones
+        // Migrate subTasks to course33 in storage if not present
+        if (!h.subTasks) {
+          const def = DEFAULT_HABITS.find(d => d.id === 'course33');
+          if (def) {
+            h.subTasks = def.subTasks;
+            migrated = true;
+          }
+        }
+
         const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
-        Object.keys(overrides).forEach(id => {
-          if (!defaultUnlockedIds.includes(id)) {
-            customUnlockedCount++;
+        const completedLessons = storage.get('lessons', []);
+        
+        // Count how many custom/locked lessons the user has actually completed
+        let customCompletedCount = 0;
+        completedLessons.forEach(l => {
+          if (l.episodeId && !defaultUnlockedIds.includes(l.episodeId)) {
+            customCompletedCount++;
           }
         });
 
-        const totalCurriculumItems = defaultUnlockedCount + customUnlockedCount;
+        const totalCurriculumItems = 14 + customCompletedCount;
         const currentLogCount = Object.keys(h.log || {}).length;
 
-        if (totalCurriculumItems > currentLogCount) {
-          h.log = h.log || {};
-          // Backfill slot keys going backwards from today
-          for (let i = 0; i < totalCurriculumItems + 60; i++) { // search up to 60 days back to fill enough slots
+        if (currentLogCount !== totalCurriculumItems) {
+          h.log = {};
+          // Fill slot keys going backwards from today to match exactly totalCurriculumItems
+          for (let i = 0; i < totalCurriculumItems; i++) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const key = localDateKey(d);
-            if (!h.log[key]) {
-              h.log[key] = true;
-            }
-            if (Object.keys(h.log).length >= totalCurriculumItems) {
-              break;
-            }
+            h.log[key] = true;
           }
           migrated = true;
         }
@@ -116,7 +132,7 @@ function _saveHabits(habits) {
 }
 
 // Add a custom habit.
-export function addHabit(name, emoji) {
+export function addHabit(name, emoji, subTasks = []) {
   const habits = getHabits();
   const habit = {
     id: generateId(),
@@ -128,6 +144,12 @@ export function addHabit(name, emoji) {
     tagline: 'Stay consistent',
     log: {},
     freezes: {},
+    subTasks: subTasks.map(st => ({
+      key: generateId(),
+      label: sanitizeText(st.label, 80),
+      desc: sanitizeText(st.desc || '', 120),
+      special: st.special || null
+    }))
   };
   habits.push(habit);
   _saveHabits(habits);
@@ -345,6 +367,25 @@ export function renderHabitCard(habit, onToggle) {
   }
   header.appendChild(badge);
 
+  // Settings/Edit Button for habit management
+  const editBtn = el('button', 'habit-pro__edit-btn', '⚙️');
+  editBtn.style.background = 'none';
+  editBtn.style.border = 'none';
+  editBtn.style.cursor = 'pointer';
+  editBtn.style.fontSize = '1.1rem';
+  editBtn.style.opacity = '0.5';
+  editBtn.style.padding = 'var(--space-1)';
+  editBtn.style.borderRadius = 'var(--radius-sm)';
+  editBtn.style.transition = 'all 0.2s ease';
+  editBtn.style.marginLeft = 'var(--space-2)';
+  editBtn.addEventListener('mouseenter', () => { editBtn.style.opacity = '1'; editBtn.style.background = 'rgba(255,255,255,0.06)'; });
+  editBtn.addEventListener('mouseleave', () => { editBtn.style.opacity = '0.5'; editBtn.style.background = 'none'; });
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openEditHabitModal(habit, onToggle);
+  });
+  header.appendChild(editBtn);
+
   card.appendChild(header);
 
   // Stats row
@@ -368,154 +409,410 @@ export function renderHabitCard(habit, onToggle) {
 
   card.appendChild(stats);
 
-  // --- Market Mechanics Smart Homework Drawer ---
-  if (habit.id === 'course33') {
-    const currentValue = habit.log[today];
-    const isLink = typeof currentValue === 'string' && (currentValue.startsWith('http://') || currentValue.startsWith('https://'));
-
-    if (isLink) {
-      const drawer = el('div', 'course33-drawer');
-      drawer.style.margin = 'var(--space-4) 0';
-      drawer.style.padding = 'var(--space-3)';
-      drawer.style.borderRadius = 'var(--radius-md)';
-      drawer.style.background = 'rgba(0, 212, 255, 0.04)';
-      drawer.style.border = '1px solid rgba(0, 212, 255, 0.15)';
-      drawer.style.transition = 'all 0.3s ease';
-
-      // Premium link pill
-      const pillContainer = el('div', 'course33-link-pill-container');
-      pillContainer.style.display = 'flex';
-      pillContainer.style.flexDirection = 'column';
-      pillContainer.style.gap = 'var(--space-2)';
-
-      const linkPill = el('a', 'course33-link-pill');
-      linkPill.href = currentValue;
-      linkPill.target = '_blank';
-      linkPill.rel = 'noopener noreferrer';
-      linkPill.style.display = 'inline-flex';
-      linkPill.style.alignItems = 'center';
-      linkPill.style.justifyContent = 'center';
-      linkPill.style.gap = 'var(--space-2)';
-      linkPill.style.padding = '0.6rem 1rem';
-      linkPill.style.borderRadius = 'var(--radius-md)';
-      linkPill.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(0, 212, 255, 0.05) 100%)';
-      linkPill.style.border = '1px solid rgba(0, 212, 255, 0.3)';
-      linkPill.style.color = '#00d4ff';
-      linkPill.style.textDecoration = 'none';
-      linkPill.style.fontWeight = '600';
-      linkPill.style.boxShadow = 'var(--cyan-glow)';
-      linkPill.style.transition = 'all 0.3s ease';
-      
-      const linkIcon = el('span', '', '🔗');
-      const linkText = el('span', '', "View Today's Chart 📈");
-      linkPill.appendChild(linkIcon);
-      linkPill.appendChild(linkText);
-
-      // Hover effects
-      linkPill.addEventListener('mouseenter', () => {
-        linkPill.style.transform = 'translateY(-1px)';
-        linkPill.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(0, 212, 255, 0.1) 100%)';
-      });
-      linkPill.addEventListener('mouseleave', () => {
-        linkPill.style.transform = 'translateY(0)';
-        linkPill.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(0, 212, 255, 0.05) 100%)';
-      });
-
-      pillContainer.appendChild(linkPill);
-
-      const editBtn = el('button', 'btn btn-ghost btn-sm');
-      editBtn.textContent = '✏️ Change Link';
-      editBtn.style.color = 'var(--text-muted)';
-      editBtn.style.alignSelf = 'center';
-      editBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        pillContainer.replaceWith(renderInputForm(true));
-      });
-      pillContainer.appendChild(editBtn);
-
-      drawer.appendChild(pillContainer);
-      card.appendChild(drawer);
-    } else if (currentValue === true) {
-      // Auto-completed via Learning Hub (true) or marked completed.
-      // We don't render any input drawer or submit box at all!
-      // This completely addresses "why do we have to put any link there again???"
-      // Keep it beautifully clean.
+  // --- Generalized Sub-Habits / Sub-Tasks Drawer ---
+  if (habit.subTasks && habit.subTasks.length > 0) {
+    const subTasks = habit.subTasks;
+    const storageKey = habit.id === 'course33' ? `sub_habits_${today}` : `sub_habits_${habit.id}_${today}`;
+    
+    // Create the default state
+    const defaultState = {};
+    subTasks.forEach(st => {
+      defaultState[st.key] = false;
+    });
+    if (habit.id === 'course33') {
+      defaultState.link = '';
     } else {
-      // Pending link submission (done is false)
-      const drawer = el('div', 'course33-drawer');
-      drawer.style.margin = 'var(--space-4) 0';
-      drawer.style.padding = 'var(--space-3)';
-      drawer.style.borderRadius = 'var(--radius-md)';
-      drawer.style.background = 'rgba(0, 212, 255, 0.04)';
-      drawer.style.border = '1px solid rgba(0, 212, 255, 0.15)';
-      drawer.style.transition = 'all 0.3s ease';
-
-      drawer.appendChild(renderInputForm(false));
-      card.appendChild(drawer);
+      defaultState.links = {};
     }
 
-    function renderInputForm(isEdit) {
-      const formContainer = el('div', 'course33-submit-form');
-      formContainer.style.display = 'flex';
-      formContainer.style.flexDirection = 'column';
-      formContainer.style.gap = 'var(--space-2)';
+    const subHabitsState = storage.get(storageKey, defaultState);
 
-      const input = document.createElement('input');
-      input.type = 'url';
-      input.className = 'form-input';
-      input.placeholder = 'Paste TradingView / chart link... 📈';
-      input.style.fontSize = 'var(--text-sm)';
-      input.style.border = '1px solid rgba(0, 212, 255, 0.2)';
-      input.style.background = 'rgba(10, 10, 15, 0.6)';
-      input.style.color = '#fff';
-      if (isEdit && typeof currentValue === 'string') {
-        input.value = currentValue;
+    // Sync sub-habits with actual logs/achievements:
+    if (habit.id === 'course33') {
+      // Sync course33 as before:
+      const lessons = storage.get('lessons', []);
+      const todayLessonLogged = lessons.some(l => l.createdAt && l.createdAt.startsWith(today));
+      if (todayLessonLogged) {
+        subHabitsState.watch = true;
+        subHabitsState.journal = true;
+      }
+      if (done) {
+        if (typeof habit.log[today] === 'string' && habit.log[today].startsWith('http')) {
+          subHabitsState.charting = true;
+          subHabitsState.link = habit.log[today];
+        }
+      }
+      storage.set(storageKey, subHabitsState);
+    } else {
+      // General habit sync if done
+      if (done) {
+        subTasks.forEach(st => {
+          subHabitsState[st.key] = true;
+        });
+      }
+    }
+
+    const drawer = el('div', 'sub-habits-drawer');
+    const themeColor = habit.color || '#00d4ff';
+    const themeBg = habit.bgColor || 'rgba(0, 212, 255, 0.08)';
+    const themeBorder = habit.borderColor || 'rgba(0, 212, 255, 0.25)';
+
+    drawer.style.margin = 'var(--space-4) 0';
+    drawer.style.padding = 'var(--space-3)';
+    drawer.style.borderRadius = 'var(--radius-md)';
+    drawer.style.background = themeBg.replace('0.08', '0.04');
+    drawer.style.border = `1px solid ${themeBorder.replace('0.25', '0.15')}`;
+    drawer.style.transition = 'all 0.3s ease';
+
+    if (done) {
+      // Completed state: Show a progress summary
+      const summary = el('div', 'sub-habits-completed-summary');
+      summary.style.display = 'flex';
+      summary.style.flexDirection = 'column';
+      summary.style.gap = 'var(--space-2)';
+      summary.style.textAlign = 'center';
+
+      const title = el('p', '', `⚡ ${habit.name} Daily Clear!`);
+      title.style.color = themeColor;
+      title.style.fontWeight = '700';
+      title.style.fontSize = 'var(--text-sm)';
+      summary.appendChild(title);
+
+      const statsRow = el('div', '');
+      statsRow.style.fontSize = 'var(--text-xs)';
+      statsRow.style.color = 'var(--text-muted)';
+      statsRow.textContent = `Completed ${subTasks.length}/${subTasks.length} daily tasks successfully`;
+      summary.appendChild(statsRow);
+
+      // Check if we have links to display
+      if (habit.id === 'course33' && subHabitsState.link) {
+        const linkPill = el('a', 'course33-link-pill');
+        linkPill.href = subHabitsState.link;
+        linkPill.target = '_blank';
+        linkPill.rel = 'noopener noreferrer';
+        linkPill.style.display = 'inline-flex';
+        linkPill.style.alignItems = 'center';
+        linkPill.style.justifyContent = 'center';
+        linkPill.style.gap = 'var(--space-1)';
+        linkPill.style.padding = '0.4rem 0.8rem';
+        linkPill.style.borderRadius = 'var(--radius-md)';
+        linkPill.style.background = themeBg;
+        linkPill.style.border = `1px solid ${themeBorder}`;
+        linkPill.style.color = themeColor;
+        linkPill.style.textDecoration = 'none';
+        linkPill.style.fontWeight = '600';
+        linkPill.style.fontSize = 'var(--text-xs)';
+        linkPill.style.marginTop = 'var(--space-1)';
+
+        const linkIcon = el('span', '', '🔗');
+        const linkText = el('span', '', "View Today's Chart 📈");
+        linkPill.appendChild(linkIcon);
+        linkPill.appendChild(linkText);
+        summary.appendChild(linkPill);
+      } else if (subHabitsState.links) {
+        Object.entries(subHabitsState.links).forEach(([taskKey, taskLink]) => {
+          if (taskLink) {
+            const taskObj = subTasks.find(st => st.key === taskKey);
+            const linkPill = el('a', 'sub-habit-link-pill');
+            linkPill.href = taskLink;
+            linkPill.target = '_blank';
+            linkPill.rel = 'noopener noreferrer';
+            linkPill.style.display = 'inline-flex';
+            linkPill.style.alignItems = 'center';
+            linkPill.style.justifyContent = 'center';
+            linkPill.style.gap = 'var(--space-1)';
+            linkPill.style.padding = '0.4rem 0.8rem';
+            linkPill.style.borderRadius = 'var(--radius-md)';
+            linkPill.style.background = themeBg;
+            linkPill.style.border = `1px solid ${themeBorder}`;
+            linkPill.style.color = themeColor;
+            linkPill.style.textDecoration = 'none';
+            linkPill.style.fontWeight = '600';
+            linkPill.style.fontSize = 'var(--text-xs)';
+            linkPill.style.marginTop = 'var(--space-1)';
+
+            const linkIcon = el('span', '', '🔗');
+            const linkText = el('span', '', `View ${taskObj ? taskObj.label : 'Link'} 📈`);
+            linkPill.appendChild(linkIcon);
+            linkPill.appendChild(linkText);
+            summary.appendChild(linkPill);
+          }
+        });
       }
 
-      const submitBtn = el('button', 'btn btn-outline btn-sm');
-      submitBtn.textContent = 'Submit 🚀';
-      submitBtn.style.color = '#00d4ff';
-      submitBtn.style.borderColor = '#00d4ff';
-      submitBtn.style.fontWeight = '700';
+      // Add "Show checklist detail" toggle button to see the tasks even if done
+      const viewTasksBtn = el('button', '');
+      viewTasksBtn.style.background = 'none';
+      viewTasksBtn.style.border = 'none';
+      viewTasksBtn.style.color = 'var(--text-muted)';
+      viewTasksBtn.style.fontSize = 'var(--text-xs)';
+      viewTasksBtn.style.cursor = 'pointer';
+      viewTasksBtn.style.textDecoration = 'underline';
+      viewTasksBtn.style.marginTop = 'var(--space-2)';
+      viewTasksBtn.textContent = 'Show checklist detail';
+      
+      const detailsContainer = el('div');
+      detailsContainer.style.display = 'none';
+      detailsContainer.style.flexDirection = 'column';
+      detailsContainer.style.gap = 'var(--space-2)';
+      detailsContainer.style.marginTop = 'var(--space-3)';
+      detailsContainer.style.textAlign = 'left';
 
-      submitBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const linkVal = input.value.trim();
-        if (!linkVal) {
-          showNotificationToast('Please paste a valid chart link first! 📈');
-          input.focus();
-          return;
-        }
-        if (!linkVal.startsWith('http://') && !linkVal.startsWith('https://')) {
-          showNotificationToast('Link must start with http:// or https:// 🔗');
-          input.focus();
-          return;
-        }
+      subTasks.forEach(st => {
+        const item = el('div', '');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.gap = 'var(--space-2)';
+        item.style.fontSize = 'var(--text-xs)';
+        item.style.color = 'var(--text-secondary)';
 
-        const habits = getHabits();
-        const hIndex = habits.findIndex(h => h.id === 'course33');
-        if (hIndex !== -1) {
-          habits[hIndex].log[today] = linkVal;
-          _saveHabits(habits);
+        const checkMark = el('span', '', '✓');
+        checkMark.style.color = themeColor;
+        checkMark.style.fontWeight = 'bold';
+        
+        const label = el('span', '', st.label);
+        label.style.textDecoration = 'line-through';
+        label.style.opacity = '0.7';
 
-          const xpAmount = (currentValue === true) ? 5 : 15;
-          addXP('course_homework', xpAmount);
+        item.appendChild(checkMark);
+        item.appendChild(label);
+        detailsContainer.appendChild(item);
+      });
 
-          playSynthSound('fanfare');
-          triggerConfetti();
-          showNotificationToast(`Chart link submitted! +${xpAmount} XP Earned! 🚀`);
-
-          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-            if (getCurrentUser()) pushToCloud();
-          });
-
-          if (typeof onToggle === 'function') onToggle();
+      viewTasksBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (detailsContainer.style.display === 'none') {
+          detailsContainer.style.display = 'flex';
+          viewTasksBtn.textContent = 'Hide checklist detail';
+        } else {
+          detailsContainer.style.display = 'none';
+          viewTasksBtn.textContent = 'Show checklist detail';
         }
       });
 
-      formContainer.appendChild(input);
-      formContainer.appendChild(submitBtn);
-      return formContainer;
+      summary.appendChild(viewTasksBtn);
+      summary.appendChild(detailsContainer);
+
+      drawer.appendChild(summary);
+      card.appendChild(drawer);
+    } else {
+      // Interactive daily checklist
+      const checklistContainer = el('div', 'sub-habits-checklist-container');
+      checklistContainer.style.display = 'flex';
+      checklistContainer.style.flexDirection = 'column';
+      checklistContainer.style.gap = 'var(--space-3)';
+
+      const titleEl = el('p', 'checklist-title', `📋 Daily Tasks:`);
+      titleEl.style.fontSize = 'var(--text-xs)';
+      titleEl.style.fontWeight = '700';
+      titleEl.style.textTransform = 'uppercase';
+      titleEl.style.letterSpacing = '0.05em';
+      titleEl.style.color = 'var(--text-muted)';
+      titleEl.style.marginBottom = 'var(--space-1)';
+      checklistContainer.appendChild(titleEl);
+
+      subTasks.forEach(t => {
+        const item = el('div', 'checklist-item');
+        item.style.display = 'flex';
+        item.style.alignItems = 'flex-start';
+        item.style.gap = 'var(--space-3)';
+        item.style.padding = 'var(--space-2)';
+        item.style.borderRadius = 'var(--radius-md)';
+        item.style.background = 'rgba(255,255,255,0.02)';
+        item.style.border = '1px solid rgba(255,255,255,0.04)';
+        item.style.cursor = 'pointer';
+        item.style.transition = 'all 0.2s ease';
+
+        const isChecked = !!subHabitsState[t.key];
+
+        const checkWrap = el('div', '');
+        checkWrap.style.fontSize = '1.2rem';
+        checkWrap.textContent = isChecked ? '🩵' : '⬜';
+        item.appendChild(checkWrap);
+
+        const textBlock = el('div', '');
+        const label = el('p', '', t.label);
+        label.style.fontSize = 'var(--text-sm)';
+        label.style.fontWeight = '600';
+        label.style.color = isChecked ? themeColor : 'var(--text-primary)';
+        label.style.textDecoration = isChecked ? 'line-through' : 'none';
+        
+        const desc = el('p', '', t.desc || '');
+        desc.style.fontSize = 'var(--text-xs)';
+        desc.style.color = 'var(--text-muted)';
+        
+        textBlock.appendChild(label);
+        textBlock.appendChild(desc);
+        item.appendChild(textBlock);
+
+        item.addEventListener('mouseenter', () => {
+          item.style.background = 'rgba(255,255,255,0.05)';
+        });
+        item.addEventListener('mouseleave', () => {
+          item.style.background = 'rgba(255,255,255,0.02)';
+        });
+
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (t.special === 'tradingview' || (habit.id === 'course33' && t.key === 'charting')) {
+            if (isChecked) {
+              if (habit.id === 'course33') {
+                subHabitsState.charting = false;
+                subHabitsState.link = '';
+              } else {
+                subHabitsState[t.key] = false;
+                if (subHabitsState.links) delete subHabitsState.links[t.key];
+              }
+              saveChecklist();
+            } else {
+              openLinkPrompt(t.key);
+            }
+          } else {
+            subHabitsState[t.key] = !isChecked;
+            saveChecklist();
+          }
+        });
+
+        checklistContainer.appendChild(item);
+      });
+
+      function openLinkPrompt(taskKey) {
+        const inputWrap = el('div', 'sub-habit-input-prompt');
+        inputWrap.style.display = 'flex';
+        inputWrap.style.flexDirection = 'column';
+        inputWrap.style.gap = 'var(--space-2)';
+        inputWrap.style.marginTop = 'var(--space-2)';
+
+        const input = document.createElement('input');
+        input.type = 'url';
+        input.className = 'form-input';
+        input.placeholder = 'Paste link here... 📈';
+        input.style.fontSize = 'var(--text-sm)';
+        input.style.border = `1px solid ${themeBorder}`;
+        input.style.background = 'rgba(10, 10, 15, 0.6)';
+        input.style.color = '#fff';
+
+        const submitBtn = el('button', 'btn btn-outline btn-sm', 'Attach Link 🚀');
+        submitBtn.style.color = themeColor;
+        submitBtn.style.borderColor = themeColor;
+        
+        submitBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = input.value.trim();
+          if (!val || (!val.startsWith('http://') && !val.startsWith('https://'))) {
+            showNotificationToast('Please paste a valid link starting with http:// or https://');
+            return;
+          }
+          if (habit.id === 'course33') {
+            subHabitsState.charting = true;
+            subHabitsState.link = val;
+          } else {
+            subHabitsState[taskKey] = true;
+            if (!subHabitsState.links) subHabitsState.links = {};
+            subHabitsState.links[taskKey] = val;
+          }
+          saveChecklist();
+        });
+
+        inputWrap.appendChild(input);
+        inputWrap.appendChild(submitBtn);
+
+        // Replace targeted item with link prompt
+        checklistContainer.replaceChildren();
+        checklistContainer.appendChild(titleEl);
+        
+        subTasks.forEach(t => {
+          if (t.key === taskKey) {
+            checklistContainer.appendChild(inputWrap);
+          } else {
+            const item = el('div', 'checklist-item');
+            item.style.display = 'flex';
+            item.style.alignItems = 'flex-start';
+            item.style.gap = 'var(--space-3)';
+            item.style.padding = 'var(--space-2)';
+            item.style.borderRadius = 'var(--radius-md)';
+            item.style.background = 'rgba(255,255,255,0.02)';
+            item.style.border = '1px solid rgba(255,255,255,0.04)';
+            item.style.opacity = '0.5';
+
+            const checkWrap = el('div', '');
+            checkWrap.style.fontSize = '1.2rem';
+            checkWrap.textContent = subHabitsState[t.key] ? '🩵' : '⬜';
+            item.appendChild(checkWrap);
+
+            const textBlock = el('div', '');
+            const label = el('p', '', t.label);
+            label.style.fontSize = 'var(--text-sm)';
+            label.style.fontWeight = '600';
+            const desc = el('p', '', t.desc || '');
+            desc.style.fontSize = 'var(--text-xs)';
+            desc.style.color = 'var(--text-muted)';
+            textBlock.appendChild(label);
+            textBlock.appendChild(desc);
+            item.appendChild(textBlock);
+            checklistContainer.appendChild(item);
+          }
+        });
+      }
+
+      function saveChecklist() {
+        storage.set(storageKey, subHabitsState);
+        
+        // Check if all are completed
+        const allDone = subTasks.every(t => !!subHabitsState[t.key]);
+        if (allDone) {
+          const habits = getHabits();
+          const hIndex = habits.findIndex(h => h.id === habit.id);
+          if (hIndex !== -1) {
+            const finalLink = habit.id === 'course33' ? subHabitsState.link : (subHabitsState.links ? Object.values(subHabitsState.links)[0] : '');
+            habits[hIndex].log[today] = finalLink || true;
+            _saveHabits(habits);
+
+            if (habit.id === 'course33') {
+              addXP('course_homework', 15);
+              showNotificationToast('Market Mechanics Completed for Today! +15 XP! 🪖⚡');
+            } else {
+              addXP('habit', 10);
+              showNotificationToast(`${habit.emoji} ${habit.name} Completed! +10 XP! ⚡`);
+            }
+            
+            // Check streak milestones & achievements
+            checkStreakMilestones(habits[hIndex]);
+            checkAndUnlockAchievements('habit');
+
+            // Perfect day bonus check
+            const todayKey = localDateKey();
+            if (habits.length > 0 && habits.every(h => h.log[todayKey])) {
+              addXP('perfectDay', 50);
+              playSynthSound('fanfare');
+              triggerConfetti();
+              showNotificationToast('PERFECT DAY! +50 XP bonus! 🏆🔥');
+            } else {
+              playSynthSound('fanfare');
+              triggerConfetti();
+            }
+
+            import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+              if (getCurrentUser()) pushToCloud();
+            });
+          }
+        } else {
+          // Uncheck main habit if unchecked a sub-task
+          const habits = getHabits();
+          const hIndex = habits.findIndex(h => h.id === habit.id);
+          if (hIndex !== -1 && habits[hIndex].log[today]) {
+            delete habits[hIndex].log[today];
+            _saveHabits(habits);
+            import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+              if (getCurrentUser()) pushToCloud();
+            });
+          }
+        }
+        if (typeof onToggle === 'function') onToggle();
+      }
+
+      drawer.appendChild(checklistContainer);
+      card.appendChild(drawer);
     }
   }
 
@@ -531,6 +828,27 @@ export function renderHabitCard(habit, onToggle) {
   }
   toggleBtn.addEventListener('click', () => {
     const wasDone = done;
+    
+    // IF habit has subtasks, update their checked states
+    if (habit.subTasks && habit.subTasks.length > 0) {
+      const storageKey = habit.id === 'course33' ? `sub_habits_${today}` : `sub_habits_${habit.id}_${today}`;
+      const defaultState = {};
+      habit.subTasks.forEach(st => {
+        defaultState[st.key] = false;
+      });
+      if (habit.id === 'course33') {
+        defaultState.link = '';
+      } else {
+        defaultState.links = {};
+      }
+      const subHabitsState = storage.get(storageKey, defaultState);
+      
+      habit.subTasks.forEach(st => {
+        subHabitsState[st.key] = !wasDone;
+      });
+      storage.set(storageKey, subHabitsState);
+    }
+
     toggleHabit(habit.id);
     const updatedHabits = getHabits();
     const updatedHabit = updatedHabits.find(h => h.id === habit.id);
@@ -933,6 +1251,221 @@ export function renderTrophyCabinet(container) {
 
 /* ---------- Add Habit Form ---------------------------------------- */
 
+export function openEditHabitModal(habit, onSaved) {
+  // Create modal overlay
+  const overlay = el('div', 'modal-overlay');
+  const modal = el('div', 'modal');
+  modal.style.maxWidth = '500px';
+
+  const topBar = el('div', 'modal__topbar');
+  topBar.style.background = 'linear-gradient(90deg, var(--cyan), var(--purple), var(--neon-green))';
+  modal.appendChild(topBar);
+
+  const header = el('div', 'modal__header');
+  header.appendChild(el('h2', 'modal__title', `⚙️ Edit ${habit.name}`));
+  const closeBtn = el('button', 'modal__close', '✕');
+  closeBtn.addEventListener('click', () => {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 250);
+  });
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const body = el('div', 'modal__body');
+  const form = el('form', 'modal-form');
+  form.setAttribute('novalidate', '');
+
+  // 1. Name input
+  const nGroup = el('div', 'form-group');
+  nGroup.appendChild(el('label', 'form-label', 'Habit Name'));
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'form-input';
+  nameInput.value = habit.name;
+  nameInput.required = true;
+  nameInput.maxLength = 60;
+  nGroup.appendChild(nameInput);
+  form.appendChild(nGroup);
+
+  // 2. Emoji input
+  const eGroup = el('div', 'form-group');
+  eGroup.appendChild(el('label', 'form-label', 'Emoji'));
+  const emojiInput = document.createElement('input');
+  emojiInput.type = 'text';
+  emojiInput.className = 'form-input';
+  emojiInput.value = habit.emoji;
+  emojiInput.maxLength = 4;
+  eGroup.appendChild(emojiInput);
+  form.appendChild(eGroup);
+
+  // 3. Sub-Tasks Management List
+  const subTasksContainer = el('div', 'subtasks-management-container');
+  subTasksContainer.style.marginTop = 'var(--space-4)';
+  subTasksContainer.style.display = 'flex';
+  subTasksContainer.style.flexDirection = 'column';
+  subTasksContainer.style.gap = 'var(--space-2)';
+
+  subTasksContainer.appendChild(el('label', 'form-label', 'Manage Sub-Tasks'));
+  
+  const subTaskList = el('div', 'subtasks-edit-list');
+  subTaskList.style.display = 'flex';
+  subTaskList.style.flexDirection = 'column';
+  subTaskList.style.gap = 'var(--space-2)';
+  subTasksContainer.appendChild(subTaskList);
+
+  function createSubTaskRow(st = { label: '', desc: '', special: null }) {
+    const row = el('div', 'subtask-edit-row');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = 'var(--space-2)';
+
+    const labelIn = document.createElement('input');
+    labelIn.type = 'text';
+    labelIn.className = 'form-input';
+    labelIn.value = st.label;
+    labelIn.placeholder = 'Sub-task label';
+    labelIn.style.flex = '1';
+    row.appendChild(labelIn);
+
+    const descIn = document.createElement('input');
+    descIn.type = 'text';
+    descIn.className = 'form-input';
+    descIn.value = st.desc || '';
+    descIn.placeholder = 'Description (optional)';
+    descIn.style.flex = '1';
+    row.appendChild(descIn);
+
+    const specialLabel = el('label', '');
+    specialLabel.style.display = 'flex';
+    specialLabel.style.alignItems = 'center';
+    specialLabel.style.gap = '4px';
+    specialLabel.style.fontSize = 'var(--text-xs)';
+    specialLabel.style.color = 'var(--text-muted)';
+    specialLabel.style.cursor = 'pointer';
+
+    const specialCheck = document.createElement('input');
+    specialCheck.type = 'checkbox';
+    specialCheck.checked = !!st.special;
+    specialLabel.appendChild(specialCheck);
+    specialLabel.appendChild(document.createTextNode('Needs Link 🔗'));
+    row.appendChild(specialLabel);
+
+    const removeBtn = el('button', 'btn btn-outline btn-sm');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '❌';
+    removeBtn.addEventListener('click', () => {
+      row.remove();
+    });
+    row.appendChild(removeBtn);
+
+    subTaskList.appendChild(row);
+  }
+
+  // Populate existing subtasks
+  if (habit.subTasks && habit.subTasks.length > 0) {
+    habit.subTasks.forEach(st => createSubTaskRow(st));
+  }
+
+  const addSubBtn = el('button', 'btn btn-outline btn-sm', '+ Add Sub-Task');
+  addSubBtn.type = 'button';
+  addSubBtn.style.alignSelf = 'flex-start';
+  addSubBtn.style.marginTop = 'var(--space-1)';
+  addSubBtn.addEventListener('click', () => createSubTaskRow());
+  subTasksContainer.appendChild(addSubBtn);
+  form.appendChild(subTasksContainer);
+
+  // 4. Save and Cancel actions
+  const actionsRow = el('div', 'modal-actions-row');
+  actionsRow.style.display = 'flex';
+  actionsRow.style.gap = 'var(--space-3)';
+  actionsRow.style.marginTop = 'var(--space-5)';
+
+  const saveBtn = el('button', 'btn btn-primary', 'Save Changes 💾');
+  saveBtn.type = 'submit';
+  saveBtn.style.flex = '1';
+  actionsRow.appendChild(saveBtn);
+
+  // Deletion for custom habits
+  const isDefaultHabit = ['snap', 'tiktok', 'duolingo', 'course33'].includes(habit.id);
+  if (!isDefaultHabit) {
+    const deleteBtn = el('button', 'btn btn-danger', 'Delete Habit 🗑️');
+    deleteBtn.type = 'button';
+    deleteBtn.style.flex = '1';
+    deleteBtn.style.background = 'rgba(255, 71, 87, 0.15)';
+    deleteBtn.style.borderColor = 'rgba(255, 71, 87, 0.3)';
+    deleteBtn.style.color = 'var(--neon-red)';
+    deleteBtn.addEventListener('click', () => {
+      if (confirm(`Are you sure you want to permanently delete the habit "${habit.name}"?`)) {
+        const habits = getHabits();
+        const index = habits.findIndex(h => h.id === habit.id);
+        if (index !== -1) {
+          habits.splice(index, 1);
+          _saveHabits(habits);
+          
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          });
+
+          overlay.style.opacity = '0';
+          setTimeout(() => overlay.remove(), 250);
+          if (typeof onSaved === 'function') onSaved();
+          showNotificationToast(`Habit "${habit.name}" deleted! 🗑️`);
+        }
+      }
+    });
+    actionsRow.appendChild(deleteBtn);
+  }
+
+  form.appendChild(actionsRow);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const updatedName = nameInput.value.trim();
+    if (!updatedName) return;
+
+    // Read subtasks
+    const subTasks = [];
+    const rows = subTaskList.querySelectorAll('.subtask-edit-row');
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const labelVal = inputs[0].value.trim();
+      const descVal = inputs[1].value.trim();
+      const needsLink = inputs[2].checked;
+      if (labelVal) {
+        subTasks.push({
+          key: generateId(),
+          label: labelVal,
+          desc: descVal,
+          special: needsLink ? 'tradingview' : null
+        });
+      }
+    });
+
+    const habits = getHabits();
+    const index = habits.findIndex(h => h.id === habit.id);
+    if (index !== -1) {
+      habits[index].name = sanitizeText(updatedName, 60);
+      habits[index].emoji = sanitizeText(emojiInput.value.trim() || '✅', 4);
+      habits[index].subTasks = subTasks;
+      _saveHabits(habits);
+
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      });
+
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 250);
+      if (typeof onSaved === 'function') onSaved();
+      showNotificationToast(`Habit "${updatedName}" updated! 💾✨`);
+    }
+  });
+
+  body.appendChild(form);
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
 function renderAddHabitForm(container, onSaved) {
   container.replaceChildren();
   const wrapper = el('div', 'add-habit-section');
@@ -964,8 +1497,85 @@ function renderAddHabitForm(container, onSaved) {
   eGroup.appendChild(emojiInput);
   form.appendChild(eGroup);
 
+  // Sub-tasks inputs container
+  const subTasksContainer = el('div', 'subtasks-form-container');
+  subTasksContainer.style.width = '100%';
+  subTasksContainer.style.marginTop = 'var(--space-3)';
+  subTasksContainer.style.display = 'flex';
+  subTasksContainer.style.flexDirection = 'column';
+  subTasksContainer.style.gap = 'var(--space-2)';
+
+  const subTasksTitle = el('p', 'form-label', 'Sub-Tasks (Optional)');
+  subTasksTitle.style.fontWeight = '700';
+  subTasksContainer.appendChild(subTasksTitle);
+
+  const subTaskList = el('div', 'subtasks-list-inputs');
+  subTaskList.style.display = 'flex';
+  subTaskList.style.flexDirection = 'column';
+  subTaskList.style.gap = 'var(--space-2)';
+  subTasksContainer.appendChild(subTaskList);
+
+  const addSubTaskBtn = el('button', 'btn btn-outline btn-sm', '+ Add Sub-Task');
+  addSubTaskBtn.type = 'button';
+  addSubTaskBtn.style.alignSelf = 'flex-start';
+  subTasksContainer.appendChild(addSubTaskBtn);
+
+  function addSubTaskRow() {
+    const row = el('div', 'subtask-input-row');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = 'var(--space-2)';
+    row.style.width = '100%';
+
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.placeholder = 'e.g. Reply to DMs';
+    labelInput.className = 'form-input';
+    labelInput.style.flex = '1';
+    labelInput.style.fontSize = 'var(--text-sm)';
+    row.appendChild(labelInput);
+
+    const descInput = document.createElement('input');
+    descInput.type = 'text';
+    descInput.placeholder = 'Description (optional)';
+    descInput.className = 'form-input';
+    descInput.style.flex = '1';
+    descInput.style.fontSize = 'var(--text-sm)';
+    row.appendChild(descInput);
+
+    const specialLabel = el('label', '');
+    specialLabel.style.display = 'flex';
+    specialLabel.style.alignItems = 'center';
+    specialLabel.style.gap = '4px';
+    specialLabel.style.fontSize = 'var(--text-xs)';
+    specialLabel.style.color = 'var(--text-muted)';
+    specialLabel.style.cursor = 'pointer';
+
+    const specialCheck = document.createElement('input');
+    specialCheck.type = 'checkbox';
+    specialCheck.style.cursor = 'pointer';
+    specialLabel.appendChild(specialCheck);
+    specialLabel.appendChild(document.createTextNode('Needs Link 🔗'));
+    row.appendChild(specialLabel);
+
+    const removeBtn = el('button', 'btn btn-sm btn-outline');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '❌';
+    removeBtn.style.padding = '0.4rem 0.6rem';
+    removeBtn.addEventListener('click', () => {
+      row.remove();
+    });
+    row.appendChild(removeBtn);
+
+    subTaskList.appendChild(row);
+  }
+
+  addSubTaskBtn.addEventListener('click', addSubTaskRow);
+
   const submitBtn = el('button', 'btn btn-primary', 'Add Habit ✨');
   submitBtn.type = 'submit';
+
+  form.appendChild(subTasksContainer);
   form.appendChild(submitBtn);
 
   form.addEventListener('submit', (e) => {
@@ -976,8 +1586,27 @@ function renderAddHabitForm(container, onSaved) {
       nameInput.focus();
       return;
     }
-    addHabit(name, fd.get('emoji') || '✅');
+
+    // Retrieve sub-tasks from list inputs
+    const subTasks = [];
+    const rows = subTaskList.querySelectorAll('.subtask-input-row');
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const labelVal = inputs[0].value.trim();
+      const descVal = inputs[1].value.trim();
+      const needsLink = inputs[2].checked;
+      if (labelVal) {
+        subTasks.push({
+          label: labelVal,
+          desc: descVal,
+          special: needsLink ? 'tradingview' : null
+        });
+      }
+    });
+
+    addHabit(name, fd.get('emoji') || '✅', subTasks);
     form.reset();
+    subTaskList.replaceChildren(); // Clear the dynamic rows
     if (typeof onSaved === 'function') onSaved();
   });
 

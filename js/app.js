@@ -8,7 +8,7 @@ import { renderChartPage } from './trading.js';
 import { renderLearningPage, getLessons, getAssignments } from './learning.js';
 import { renderStreaksPage, getHabits, calculateStreak, initStreakNotifications } from './streaks.js';
 import { getTrades, calculateStats } from './trading.js';
-import { getTimeAgo, formatCurrency } from './utils.js';
+import { getTimeAgo, formatCurrency, triggerConfetti, showNotificationToast } from './utils.js';
 import storage from './storage.js';
 import { checkAutoAssignment } from './notifications.js';
 import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser } from './firebase-sync.js';
@@ -283,6 +283,308 @@ function renderChecklist(container, sessionKey) {
   container.appendChild(listEl);
 }
 
+// --- Pre-Market Routine & Lockout ---
+
+function renderPremarketLockoutScreen(container) {
+  container.replaceChildren();
+
+  const wrap = el('div', 'premarket-lockout-wrap');
+  
+  // Icon/Badge
+  const iconBox = el('div', 'premarket-lockout-icon-box');
+  const lockIcon = el('span', 'premarket-lockout-icon', '🔒');
+  iconBox.appendChild(lockIcon);
+  wrap.appendChild(iconBox);
+
+  // Title & Subtitle
+  wrap.appendChild(el('h1', 'premarket-lockout-title', 'PRE-MARKET ROUTINE LOCKED'));
+  wrap.appendChild(el('p', 'premarket-lockout-subtitle', 'Enforce professional trading discipline. Enacting your daily routine is required to unlock the Simulator and Trading Log pages.'));
+
+  // Checklist content
+  const card = el('div', 'premarket-routine-card lockout-card');
+  renderPremarketWidget(card, true); // True means render in lockout mode
+  wrap.appendChild(card);
+
+  container.appendChild(wrap);
+}
+
+function renderPremarketWidget(container, isLockout = false) {
+  container.replaceChildren();
+
+  const today = new Date().toISOString().slice(0, 10);
+  let routine = storage.get('premarket_routine');
+
+  // Initialize if not present or stale
+  if (!routine || routine.date !== today) {
+    routine = {
+      date: today,
+      completed: false,
+      newsChecked: false,
+      htfBias: '',
+      htfLogic: '',
+      riskChecked: false,
+      riskLimit: '',
+      rulesChecked: false
+    };
+    storage.set('premarket_routine', routine);
+  }
+
+  // Header
+  const header = el('div', 'premarket-widget-header');
+  const title = el('h3', 'premarket-widget-title');
+  title.innerHTML = routine.completed ? '🔓 Pre-Market Routine Completed' : '⚡ Pre-Market Routine Checklist';
+  header.appendChild(title);
+  
+  if (routine.completed) {
+    const badge = el('span', 'premarket-badge-complete', 'UNLOCKED');
+    header.appendChild(badge);
+  }
+  container.appendChild(header);
+
+  if (routine.completed) {
+    // Render completed premium state
+    const body = el('div', 'premarket-completed-body');
+    const p = el('p', 'premarket-completed-text');
+    p.textContent = "Discipline bonus claimed! Trading Log & Simulator unlocked. Let's execute like a professional today.";
+    body.appendChild(p);
+
+    const infoRow = el('div', 'premarket-completed-info');
+    infoRow.appendChild(el('span', 'premarket-info-item', `🗺️ Bias: ${routine.htfBias.toUpperCase()}`));
+    infoRow.appendChild(el('span', 'premarket-info-item', `🛡️ Max Drawdown: ${routine.riskLimit}`));
+    body.appendChild(infoRow);
+
+    const btn = el('button', 'btn btn-secondary btn-sm', '🔄 Re-enter Routine Details');
+    btn.style.marginTop = 'var(--space-3)';
+    btn.addEventListener('click', () => {
+      playSynthSound('click');
+      routine.completed = false;
+      storage.set('premarket_routine', routine);
+      renderPremarketWidget(container, isLockout);
+    });
+    body.appendChild(btn);
+    container.appendChild(body);
+    return;
+  }
+
+  // Else, render the interactive checklist
+  const form = el('form', 'premarket-form');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+  });
+
+  // Step 1: News Check
+  const step1 = el('div', 'premarket-step');
+  const step1Header = el('div', 'premarket-step-header');
+  const step1Checkbox = document.createElement('input');
+  step1Checkbox.type = 'checkbox';
+  step1Checkbox.id = 'premarket-news-check';
+  step1Checkbox.checked = routine.newsChecked;
+  step1Checkbox.addEventListener('change', () => {
+    routine.newsChecked = step1Checkbox.checked;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+  step1Header.appendChild(step1Checkbox);
+  
+  const step1Label = el('label', 'premarket-step-label', 'Step 1: Check Economic News Calendar 📰');
+  step1Label.setAttribute('for', 'premarket-news-check');
+  step1Header.appendChild(step1Label);
+  step1.appendChild(step1Header);
+
+  const step1Desc = el('p', 'premarket-step-desc');
+  step1Desc.innerHTML = 'Review high-impact USD or currency-specific news events scheduled for today. ';
+  
+  const calendarLink = el('span', 'premarket-link', 'View Economic Calendar Widget ➔');
+  calendarLink.style.cursor = 'pointer';
+  calendarLink.style.color = 'var(--cyan)';
+  calendarLink.style.fontSize = '12px';
+  calendarLink.style.fontWeight = '700';
+  calendarLink.addEventListener('click', () => {
+    playSynthSound('click');
+    // Scroll to the Volatility News Feed widget on dashboard or redirect
+    if (isLockout) {
+      router.navigate('#dashboard');
+      setTimeout(() => {
+        const newsWidget = document.querySelector('.news-panel');
+        if (newsWidget) newsWidget.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    } else {
+      const newsWidget = document.querySelector('.news-panel');
+      if (newsWidget) newsWidget.scrollIntoView({ behavior: 'smooth' });
+    }
+    step1Checkbox.checked = true;
+    routine.newsChecked = true;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+  step1Desc.appendChild(calendarLink);
+  step1.appendChild(step1Desc);
+  form.appendChild(step1);
+
+  // Step 2: HTF Bias
+  const step2 = el('div', 'premarket-step');
+  const step2Label = el('label', 'premarket-step-label block', 'Step 2: Establish HTF Directional Bias (D1/H4) 🗺️');
+  step2Label.style.display = 'block';
+  step2Label.style.marginBottom = 'var(--space-2)';
+  step2.appendChild(step2Label);
+  
+  const htfSegment = el('div', 'premarket-segment-control');
+  const biases = [
+    { key: 'bullish', label: '🐂 Bullish', color: 'var(--neon-green)' },
+    { key: 'bearish', label: '🐻 Bearish', color: 'var(--neon-red)' },
+    { key: 'consolidating', label: '🦀 Range', color: 'var(--text-secondary)' }
+  ];
+  
+  biases.forEach(b => {
+    const btn = el('button', `segment-btn${routine.htfBias === b.key ? ' active' : ''}`, b.label);
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      playSynthSound('click');
+      routine.htfBias = b.key;
+      storage.set('premarket_routine', routine);
+      htfSegment.querySelectorAll('.segment-btn').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      validateForm();
+    });
+    htfSegment.appendChild(btn);
+  });
+  step2.appendChild(htfSegment);
+
+  const biasInput = document.createElement('input');
+  biasInput.type = 'text';
+  biasInput.className = 'form-input premarket-text-input';
+  biasInput.placeholder = 'Provide a brief explanation of your HTF narrative bias...';
+  biasInput.value = routine.htfLogic || '';
+  biasInput.addEventListener('input', () => {
+    routine.htfLogic = biasInput.value;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+  step2.appendChild(biasInput);
+  form.appendChild(step2);
+
+  // Step 3: Drawdown Limit Plan
+  const step3 = el('div', 'premarket-step');
+  const step3Label = el('label', 'premarket-step-label block', 'Step 3: Establish Max Risk Drawdown Limit 🛡️');
+  step3Label.style.display = 'block';
+  step3Label.style.marginBottom = 'var(--space-2)';
+  step3.appendChild(step3Label);
+  
+  const riskInput = document.createElement('input');
+  riskInput.type = 'text';
+  riskInput.className = 'form-input premarket-text-input';
+  riskInput.placeholder = 'e.g. 1% max daily loss, 2 losses max and stop...';
+  riskInput.value = routine.riskLimit || '';
+  riskInput.addEventListener('input', () => {
+    routine.riskLimit = riskInput.value;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+  step3.appendChild(riskInput);
+  form.appendChild(step3);
+
+  // Step 4: Mindset Checklist
+  const step4 = el('div', 'premarket-step');
+  const step4Label = el('label', 'premarket-step-label block', 'Step 4: Check Off Mindset & Daily Rules 🧠');
+  step4Label.style.display = 'block';
+  step4Label.style.marginBottom = 'var(--space-2)';
+  step4.appendChild(step4Label);
+  
+  const rulesText = storage.get('notepad_text', '') || '';
+  const rulesList = rulesText.split('\n').map(r => r.replace(/^[-*•\s]+/, '').trim()).filter(Boolean);
+  const defaultRules = [
+    "I will not overtrade or revenge trade.",
+    "I will only enter trades at high-probability session killzones.",
+    "I will follow my risk management rules perfectly."
+  ];
+  const rulesToUse = rulesList.length > 0 ? rulesList : defaultRules;
+
+  const rulesListContainer = el('div', 'premarket-rules-checklist');
+  let checkedRulesCount = 0;
+
+  rulesToUse.forEach((rule, idx) => {
+    const row = el('div', 'premarket-rule-row');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `premarket-rule-${idx}`;
+    checkbox.addEventListener('change', () => {
+      updateRulesChecked();
+    });
+    row.appendChild(checkbox);
+
+    const label = el('label', 'premarket-rule-label', rule);
+    label.setAttribute('for', `premarket-rule-${idx}`);
+    row.appendChild(label);
+
+    rulesListContainer.appendChild(row);
+  });
+  step4.appendChild(rulesListContainer);
+  form.appendChild(step4);
+
+  // Unlock button
+  const submitBtn = el('button', 'btn btn-primary btn-block premarket-submit-btn', '🔓 Complete Routine & Unlock Pages');
+  submitBtn.type = 'submit';
+  submitBtn.disabled = true;
+  submitBtn.addEventListener('click', () => {
+    if (submitBtn.disabled) return;
+    playSynthSound('success');
+    triggerConfetti();
+
+    // 1. Mark as complete
+    routine.completed = true;
+    storage.set('premarket_routine', routine);
+
+    // 2. Add history log
+    const history = storage.get('premarket_history', {});
+    history[today] = { ...routine, completedAt: new Date().toISOString() };
+    storage.set('premarket_history', history);
+
+    // 3. Award XP (+20 discipline bonus)
+    addXP(20, 'Pre-Market Discipline Bonus');
+    showNotificationToast('Pre-Market Routine Completed! +20 XP! 🔓🪖');
+
+    // 4. Sync with cloud
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
+
+    // 5. Navigate to original target or re-render widget
+    const originalTarget = storage.get('premarket_original_target') || '#dashboard';
+    storage.remove('premarket_original_target');
+    
+    if (isLockout) {
+      router.navigate(originalTarget);
+    } else {
+      renderPremarketWidget(container, isLockout);
+    }
+  });
+  form.appendChild(submitBtn);
+
+  container.appendChild(form);
+
+  // Form validator function
+  function validateForm() {
+    const isStep1 = routine.newsChecked;
+    const isStep2 = routine.htfBias !== undefined && routine.htfBias !== '' && routine.htfLogic && routine.htfLogic.trim() !== '';
+    const isStep3 = routine.riskLimit && routine.riskLimit.trim() !== '';
+    const isStep4 = checkedRulesCount === rulesToUse.length;
+
+    const allValid = isStep1 && isStep2 && isStep3 && isStep4;
+    submitBtn.disabled = !allValid;
+  }
+
+  function updateRulesChecked() {
+    checkedRulesCount = 0;
+    rulesToUse.forEach((_, idx) => {
+      const elCheck = document.getElementById(`premarket-rule-${idx}`);
+      if (elCheck && elCheck.checked) {
+        checkedRulesCount++;
+      }
+    });
+    validateForm();
+  }
+}
+
 // --- Dashboard ---
 
 function renderDashboard(container) {
@@ -497,6 +799,11 @@ function renderDashboard(container) {
     rankXpFooter.appendChild(el('span', 'rank-xp-next', `Next: ${prog.nextEmoji} ${prog.nextTitle}`));
   }
   rankPanel.appendChild(rankXpFooter);
+  // Pre-Market Routine Checklist Widget
+  const premarketWidget = el('div', 'overview-panel premarket-routine-card');
+  renderPremarketWidget(premarketWidget);
+  panelsCol.appendChild(premarketWidget);
+
   panelsCol.appendChild(rankPanel);
 
   // 2. Combined Performance Overview
@@ -1493,7 +1800,7 @@ function buildAppShell() {
   
   main.appendChild(topbar);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -1739,6 +2046,7 @@ async function launchApp() {
   router.registerRoute('#streaks', renderStreaksPage);
   router.registerRoute('#calendar', renderCalendarPage);
   router.registerRoute('#simulator', renderSimulatorPage);
+  router.registerRoute('#premarket-lockout', renderPremarketLockoutScreen);
 
   // Real-time XP & Level progression reactive updater
   window.addEventListener('xp-change', (e) => {
@@ -1797,7 +2105,15 @@ function init() {
     setTimeout(async () => {
       if (user && !_appLaunched) {
         // Signed in — sync from cloud then launch
-        await syncNow();
+        try {
+          // Add a 2.5-second timeout to sync on startup so a slow network never blocks the UI launch!
+          await Promise.race([
+            syncNow(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 2500))
+          ]);
+        } catch (err) {
+          console.warn('Initial cloud sync timed out or failed, proceeding with local data:', err);
+        }
         launchApp();
       } else if (!_appLaunched) {
         // No session found — transition loader to show login buttons smoothly!

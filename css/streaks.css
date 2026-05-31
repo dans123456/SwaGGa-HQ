@@ -689,3 +689,41 @@
   100% { transform: translateY(-3px); }
 }
 
+/* ── Sub-Habits Form & Modal Management ────────────────────── */
+.subtasks-form-container, .subtasks-management-container {
+  width: 100%;
+  margin-top: var(--space-4);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.subtask-input-row, .subtask-edit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  animation: fadeIn 0.2s ease;
+}
+
+.subtask-input-row .form-input, .subtask-edit-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.sub-habits-drawer {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sub-habit-link-pill, .course33-link-pill {
+  transition: all 0.2s ease;
+}
+
+.sub-habit-link-pill:hover, .course33-link-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+
