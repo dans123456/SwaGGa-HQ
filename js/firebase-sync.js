@@ -55,29 +55,37 @@ export async function signInWithGoogle() {
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (err) {
-    console.warn('Popup sign-in failed, trying redirect fallback...', err.code, err.message);
+    console.error('Google Sign-In failed:', err.code, err.message);
     
-    const isPopupOrStorageError = 
-      err.code === 'auth/popup-blocked' ||
-      err.code === 'auth/popup-closed-by-user' ||
-      err.code === 'auth/cancelled-popup-request' ||
-      err.code === 'auth/web-storage-unsupported' ||
-      err.code === 'auth/operation-not-allowed' ||
-      err.code === 'auth/internal-error' ||
-      err.message?.toLowerCase().includes('popup') ||
-      err.message?.toLowerCase().includes('cookie') ||
-      err.message?.toLowerCase().includes('storage') ||
-      err.message?.toLowerCase().includes('tracking');
+    if (window.showGlobalError) {
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+      let fixMsg = 'Click the <strong>Shield Icon</strong> 🛡️ next to the URL bar and toggle <strong>Enhanced Tracking Protection OFF</strong> for SwaGGa HQ, then refresh and try again!';
+      let errorTitle = 'Google Sign-In Blocked by Browser Security!';
 
-    if (isPopupOrStorageError) {
-      console.log('Redirecting to Google instead...');
-      try {
-        await signInWithRedirect(auth, provider);
-        return { redirecting: true };
-      } catch (redirectErr) {
-        console.error('Redirect sign-in failed:', redirectErr.code, redirectErr.message);
-        return null;
+      if (isMobile) {
+        if (isStandalone) {
+          fixMsg = 'Mobile operating systems block cross-domain auth inside installed PWAs when served from third-party domains.<br><br>' +
+                   '✨ <strong>Solution:</strong> Open SwaGGa HQ using the official first-party Firebase URL: <br>' +
+                   '<a href="https://swagga-hq.firebaseapp.com" style="color: #00d4ff; font-weight: 700; text-decoration: underline;">https://swagga-hq.firebaseapp.com</a> in your phone\'s Safari or Chrome browser. Sign-in will work 100% there, and you can re-install the PWA directly from that domain!';
+        } else {
+          fixMsg = 'Mobile browsers block cross-domain cookies and storage partition access by default.<br><br>' +
+                   '✨ <strong>Solution:</strong> Go to your phone\'s settings for your browser (e.g., Settings > Safari) and toggle <strong>Prevent Cross-Site Tracking OFF</strong>, or sign in using a desktop browser.';
+        }
+      } else {
+        const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+        if (isFirefox) {
+          errorTitle = 'Google Sign-In Blocked by Firefox!';
+          fixMsg = 'Firefox\'s Enhanced Tracking Protection blocks cross-origin cookies required by Google Auth.<br><br>' +
+                   '🛡️ <strong>To Fix:</strong> Click the <strong>Shield Icon</strong> next to the URL address bar, toggle <strong>Enhanced Tracking Protection OFF</strong> for this site, and refresh!';
+        }
       }
+
+      window.showGlobalError(
+        errorTitle,
+        'Firebase encountered a storage or security shield restriction.<br><strong>Error Code:</strong> ' + err.code + '<br><strong>Details:</strong> ' + err.message,
+        fixMsg
+      );
     }
     return null;
   }
