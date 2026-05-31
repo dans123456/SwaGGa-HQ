@@ -136,6 +136,69 @@ export function renderSimulatorPage(container) {
   workspace.style.gap = 'var(--space-4)';
   layout.appendChild(workspace);
 
+  // --- Beginner Quick Start Guide Card ---
+  const guideCard = el('div', 'overview-panel sim-guide-card glass-card');
+  guideCard.style.padding = 'var(--space-4)';
+  guideCard.style.border = '1px solid rgba(168, 85, 247, 0.15)';
+  
+  const guideHeader = el('div', '');
+  guideHeader.style.display = 'flex';
+  guideHeader.style.justifyContent = 'space-between';
+  guideHeader.style.alignItems = 'center';
+  guideHeader.style.cursor = 'pointer';
+
+  const guideTitle = el('h4', '', '📖 How to Play Guide (Beginner Friendly)');
+  guideTitle.style.fontSize = 'var(--text-sm)';
+  guideTitle.style.fontFamily = 'var(--font-heading)';
+  guideTitle.style.fontWeight = '700';
+  guideTitle.style.color = 'var(--purple)';
+  guideHeader.appendChild(guideTitle);
+
+  const toggleIcon = el('span', '', '▼');
+  toggleIcon.style.fontSize = '12px';
+  toggleIcon.style.color = 'var(--text-muted)';
+  guideHeader.appendChild(toggleIcon);
+  guideCard.appendChild(guideHeader);
+
+  const guideBody = el('div', 'sim-guide-body');
+  guideBody.style.display = 'none'; // collapsed by default
+  guideBody.style.marginTop = 'var(--space-3)';
+  guideBody.style.borderTop = '1px solid rgba(255,255,255,0.06)';
+  guideBody.style.paddingTop = 'var(--space-3)';
+
+  const stepsList = el('ol', '');
+  stepsList.style.paddingLeft = 'var(--space-4)';
+  stepsList.style.display = 'flex';
+  stepsList.style.flexDirection = 'column';
+  stepsList.style.gap = 'var(--space-2)';
+  stepsList.style.fontSize = 'var(--text-xs)';
+  stepsList.style.color = 'var(--text-secondary)';
+  stepsList.style.lineHeight = '1.5';
+
+  const steps = [
+    'Choose a curriculum scenario from the dropdown on the left and read the details description box.',
+    'Click "Step Candle" or "Auto Play" to watch historical candles print candle-by-candle on the vector chart.',
+    'Set your Stop Loss and Take Profit prices in the control panel to see the red/green risk corridors adjust on the chart.',
+    'When price taps into your zone and prints a rejection candle, click "Buy Long" or "Sell Short" to open a virtual trade.',
+    'Auto-play or step through to resolution—the game will automatically count your simulated Win/Loss stats!'
+  ];
+
+  steps.forEach(stepText => {
+    const li = el('li', '', stepText);
+    stepsList.appendChild(li);
+  });
+  guideBody.appendChild(stepsList);
+  guideCard.appendChild(guideBody);
+
+  guideHeader.addEventListener('click', () => {
+    const isCollapsed = guideBody.style.display === 'none';
+    guideBody.style.display = isCollapsed ? 'block' : 'none';
+    toggleIcon.textContent = isCollapsed ? '▲' : '▼';
+    playSynthSound('click');
+  });
+
+  workspace.appendChild(guideCard);
+
   container.appendChild(layout);
 
   // --- Populate Control Panel Panels ---
