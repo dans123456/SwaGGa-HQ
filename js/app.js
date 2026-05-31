@@ -2007,7 +2007,7 @@ function showLoginScreen(isCheckingSession = false) {
     spinner.style.borderTopColor = 'var(--cyan)';
     spinner.style.animation = 'spin 1s infinite linear';
 
-    const loaderText = el('span', '', '⚡ Authenticating secure session...');
+    const loaderText = el('span', 'login-loader-text', '⚡ Authenticating secure session...');
     loaderText.style.fontSize = 'var(--text-xs)';
     loaderText.style.fontFamily = 'var(--font-heading)';
     loaderText.style.fontWeight = '600';
@@ -2101,6 +2101,14 @@ function init() {
 
   // When auth state resolves, either launch app or stay on login
   onAuthChange(async (user) => {
+    if (user && !_appLaunched) {
+      const textEl = document.querySelector('.login-loader-text');
+      if (textEl) {
+        textEl.textContent = '⚡ Authenticated secure session! Syncing cloud...';
+        textEl.style.color = '#39ff14'; // Neon Green
+        textEl.style.textShadow = '0 0 10px rgba(57, 255, 20, 0.4)';
+      }
+    }
     // Give a brief delay for a premium visual feedback loop
     setTimeout(async () => {
       if (user && !_appLaunched) {
