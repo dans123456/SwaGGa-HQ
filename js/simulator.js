@@ -654,7 +654,7 @@ export function renderSimulatorPage(container) {
 
     if (_historyIndex >= _activeScenario.candles.length) {
       stopAutoplay();
-      alert('Scenario finished! Click "Restart Scenario" to try again.');
+      showNotificationToast('Scenario finished! Click "Restart Scenario" to try again. 🏁', '🏁');
       return;
     }
 
@@ -708,17 +708,29 @@ export function renderSimulatorPage(container) {
     const tpPrice = Number(tpInput.value);
 
     if (!slPrice || !tpPrice) {
-      alert('Please set Stop Loss and Take Profit levels first!');
+      showNotificationToast('Please set Stop Loss and Take Profit levels first! 🎯', '⚠️');
       return;
     }
 
     // Risk validation
     if (direction === 'long') {
-      if (slPrice >= entryPrice) { alert('Stop Loss must be below Entry Price for Long buys!'); return; }
-      if (tpPrice <= entryPrice) { alert('Take Profit must be above Entry Price for Long buys!'); return; }
+      if (slPrice >= entryPrice) {
+        showNotificationToast('Stop Loss must be below Entry Price for Long buys! 📉', '⚠️');
+        return;
+      }
+      if (tpPrice <= entryPrice) {
+        showNotificationToast('Take Profit must be above Entry Price for Long buys! 📈', '⚠️');
+        return;
+      }
     } else {
-      if (slPrice <= entryPrice) { alert('Stop Loss must be above Entry Price for Short sells!'); return; }
-      if (tpPrice >= entryPrice) { alert('Take Profit must be below Entry Price for Short sells!'); return; }
+      if (slPrice <= entryPrice) {
+        showNotificationToast('Stop Loss must be above Entry Price for Short sells! 📈', '⚠️');
+        return;
+      }
+      if (tpPrice >= entryPrice) {
+        showNotificationToast('Take Profit must be below Entry Price for Short sells! 📉', '⚠️');
+        return;
+      }
     }
 
     _activePosition = {
