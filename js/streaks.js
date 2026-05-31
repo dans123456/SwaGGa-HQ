@@ -70,11 +70,22 @@ export function getHabits() {
         h.name = 'Market Mechanics';
         migrated = true;
       }
-      // Sync Market Mechanics logs to match the number of logged lessons + custom unlocked lessons
+      // Sync Market Mechanics logs to match the number of unlocked lessons in the curriculum
       if (h.id === 'course33') {
-        const lessons = storage.get('lessons', []);
         const overrides = storage.get('bg_unlocked_lessons', {});
-        const totalCurriculumItems = lessons.length + Object.keys(overrides).length;
+        const defaultUnlockedCount = 14; // Ep 0 to 9, and Ep 11 to 14 are unlocked by default
+        
+        // Count user unlocked custom episodes
+        let customUnlockedCount = 0;
+        // The custom unlocked episodes are those in overrides whose ID is not one of the default unlocked ones
+        const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
+        Object.keys(overrides).forEach(id => {
+          if (!defaultUnlockedIds.includes(id)) {
+            customUnlockedCount++;
+          }
+        });
+
+        const totalCurriculumItems = defaultUnlockedCount + customUnlockedCount;
         const currentLogCount = Object.keys(h.log || {}).length;
 
         if (totalCurriculumItems > currentLogCount) {
@@ -357,20 +368,20 @@ export function renderHabitCard(habit, onToggle) {
 
   card.appendChild(stats);
 
-  // --- 33-Day Course Smart Homework Drawer ---
+  // --- Market Mechanics Smart Homework Drawer ---
   if (habit.id === 'course33') {
-    const drawer = el('div', 'course33-drawer');
-    drawer.style.margin = 'var(--space-4) 0';
-    drawer.style.padding = 'var(--space-3)';
-    drawer.style.borderRadius = 'var(--radius-md)';
-    drawer.style.background = 'rgba(0, 212, 255, 0.04)';
-    drawer.style.border = '1px solid rgba(0, 212, 255, 0.15)';
-    drawer.style.transition = 'all 0.3s ease';
-
     const currentValue = habit.log[today];
     const isLink = typeof currentValue === 'string' && (currentValue.startsWith('http://') || currentValue.startsWith('https://'));
 
     if (isLink) {
+      const drawer = el('div', 'course33-drawer');
+      drawer.style.margin = 'var(--space-4) 0';
+      drawer.style.padding = 'var(--space-3)';
+      drawer.style.borderRadius = 'var(--radius-md)';
+      drawer.style.background = 'rgba(0, 212, 255, 0.04)';
+      drawer.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+      drawer.style.transition = 'all 0.3s ease';
+
       // Premium link pill
       const pillContainer = el('div', 'course33-link-pill-container');
       pillContainer.style.display = 'flex';
@@ -423,30 +434,24 @@ export function renderHabitCard(habit, onToggle) {
       pillContainer.appendChild(editBtn);
 
       drawer.appendChild(pillContainer);
+      card.appendChild(drawer);
     } else if (currentValue === true) {
-      // Auto-completed via Learning Hub but no link yet
-      const loggedMsg = el('div', 'course33-logged-msg');
-      loggedMsg.style.display = 'flex';
-      loggedMsg.style.flexDirection = 'column';
-      loggedMsg.style.gap = 'var(--space-2)';
-      loggedMsg.style.textAlign = 'center';
-
-      const text = el('p', '', 'Lesson Logged in Learning Hub! 📚');
-      text.style.color = 'var(--neon-green)';
-      text.style.fontWeight = '600';
-      loggedMsg.appendChild(text);
-
-      const subText = el('p', '', 'Upgrade your day by attaching a chart link below!');
-      subText.style.fontSize = 'var(--text-xs)';
-      subText.style.color = 'var(--text-muted)';
-      loggedMsg.appendChild(subText);
-
-      loggedMsg.appendChild(renderInputForm(false));
-
-      drawer.appendChild(loggedMsg);
+      // Auto-completed via Learning Hub (true) or marked completed.
+      // We don't render any input drawer or submit box at all!
+      // This completely addresses "why do we have to put any link there again???"
+      // Keep it beautifully clean.
     } else {
-      // Pending link submission
+      // Pending link submission (done is false)
+      const drawer = el('div', 'course33-drawer');
+      drawer.style.margin = 'var(--space-4) 0';
+      drawer.style.padding = 'var(--space-3)';
+      drawer.style.borderRadius = 'var(--radius-md)';
+      drawer.style.background = 'rgba(0, 212, 255, 0.04)';
+      drawer.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+      drawer.style.transition = 'all 0.3s ease';
+
       drawer.appendChild(renderInputForm(false));
+      card.appendChild(drawer);
     }
 
     function renderInputForm(isEdit) {
@@ -512,8 +517,6 @@ export function renderHabitCard(habit, onToggle) {
       formContainer.appendChild(submitBtn);
       return formContainer;
     }
-
-    card.appendChild(drawer);
   }
 
   // Action buttons
