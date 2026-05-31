@@ -34,6 +34,7 @@ try {
 // ---- auth ----
 
 let _currentUser = null;
+let _authInitialized = false;
 const _authListeners = [];
 
 export function getCurrentUser() {
@@ -42,8 +43,11 @@ export function getCurrentUser() {
 
 export function onAuthChange(callback) {
   _authListeners.push(callback);
-
-  callback(_currentUser);
+  
+  // Only call immediately if Firebase has finished its initial auth check
+  if (_authInitialized) {
+    callback(_currentUser);
+  }
 }
 
 export async function signInWithGoogle() {
@@ -89,6 +93,7 @@ export async function firebaseSignOut() {
 
 onAuthStateChanged(auth, (user) => {
   _currentUser = user || null;
+  _authInitialized = true;
   _authListeners.forEach(cb => cb(_currentUser));
 });
 

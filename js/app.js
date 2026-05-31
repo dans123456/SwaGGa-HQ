@@ -1792,13 +1792,9 @@ function init() {
   showLoginScreen(true);
 
   // When auth state resolves, either launch app or stay on login
-  let authResolved = false;
   onAuthChange(async (user) => {
-    if (authResolved) return;
-    
     // Give a brief delay for a premium visual feedback loop
     setTimeout(async () => {
-      authResolved = true;
       if (user && !_appLaunched) {
         // Signed in — sync from cloud then launch
         await syncNow();
