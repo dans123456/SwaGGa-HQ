@@ -99,15 +99,15 @@ export function getHabits() {
         const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
         const completedLessons = storage.get('lessons', []);
         
-        // Count how many custom/locked lessons the user has actually completed
-        let customCompletedCount = 0;
+        // Count how many unique custom/locked lessons the user has actually completed
+        const uniqueCustomCompleted = new Set();
         completedLessons.forEach(l => {
           if (l.episodeId && !defaultUnlockedIds.includes(l.episodeId)) {
-            customCompletedCount++;
+            uniqueCustomCompleted.add(l.episodeId);
           }
         });
 
-        const totalCurriculumItems = 14 + customCompletedCount;
+        const totalCurriculumItems = 14 + uniqueCustomCompleted.size;
         const todayKey = localDateKey();
         const hasToday = !!h.log[todayKey];
 

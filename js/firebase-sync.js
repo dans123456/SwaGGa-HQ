@@ -288,14 +288,14 @@ export async function pullFromCloud() {
                   }
                 }
                 
-                let customCompletedCount = 0;
+                const uniqueCustomCompleted = new Set();
                 completedLessons.forEach(l => {
                   if (l && l.episodeId && !defaultUnlockedIds.includes(l.episodeId)) {
-                    customCompletedCount++;
+                    uniqueCustomCompleted.add(l.episodeId);
                   }
                 });
                 
-                const totalCurriculumItems = 14 + customCompletedCount;
+                const totalCurriculumItems = 14 + uniqueCustomCompleted.size;
                 
                 // Construct the final log based on whether today was completed or not
                 const finalLog = {};
