@@ -106,6 +106,7 @@ export function getHabits() {
           }
         });
 
+        const totalCurriculumItems = 14 + customCompletedCount;
         const todayKey = localDateKey();
         const hasToday = !!h.log[todayKey];
 
