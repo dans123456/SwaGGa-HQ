@@ -1,7 +1,7 @@
 // SwaGGa HQ — Streak Tracking Module (Redesigned)
 
 import storage from './storage.js';
-import { generateId, sanitizeText, triggerConfetti } from './utils.js';
+import { generateId, sanitizeText, triggerConfetti, showNotificationToast } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 
@@ -21,6 +21,7 @@ export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
   { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 },
+  { id: 'course33', name: '33-Day Course', emoji: '🪖', color: '#00d4ff', bgColor: 'rgba(0, 212, 255, 0.08)', borderColor: 'rgba(0, 212, 255, 0.25)', tagline: 'Mitigate & master market', baseStreak: 0 }
 ];
 
 // --- Data Layer ---
@@ -34,6 +35,17 @@ export function getHabits() {
   } else {
     // Migration: add baseStreak if missing, initialize log/freezes if null, and enforce correct duolingo base
     let migrated = false;
+
+    // Check if course33 is missing altogether and push it!
+    const hasCourse = habits.some(h => h.id === 'course33');
+    if (!hasCourse) {
+      const defCourse = DEFAULT_HABITS.find(d => d.id === 'course33');
+      if (defCourse) {
+        habits.push({ ...defCourse, log: {}, freezes: {} });
+        migrated = true;
+      }
+    }
+
     habits.forEach(h => {
       if (!h.log) {
         h.log = {};
@@ -315,6 +327,165 @@ export function renderHabitCard(habit, onToggle) {
   stats.appendChild(totalStat);
 
   card.appendChild(stats);
+
+  // --- 33-Day Course Smart Homework Drawer ---
+  if (habit.id === 'course33') {
+    const drawer = el('div', 'course33-drawer');
+    drawer.style.margin = 'var(--space-4) 0';
+    drawer.style.padding = 'var(--space-3)';
+    drawer.style.borderRadius = 'var(--radius-md)';
+    drawer.style.background = 'rgba(0, 212, 255, 0.04)';
+    drawer.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+    drawer.style.transition = 'all 0.3s ease';
+
+    const currentValue = habit.log[today];
+    const isLink = typeof currentValue === 'string' && (currentValue.startsWith('http://') || currentValue.startsWith('https://'));
+
+    if (isLink) {
+      // Premium link pill
+      const pillContainer = el('div', 'course33-link-pill-container');
+      pillContainer.style.display = 'flex';
+      pillContainer.style.flexDirection = 'column';
+      pillContainer.style.gap = 'var(--space-2)';
+
+      const linkPill = el('a', 'course33-link-pill');
+      linkPill.href = currentValue;
+      linkPill.target = '_blank';
+      linkPill.rel = 'noopener noreferrer';
+      linkPill.style.display = 'inline-flex';
+      linkPill.style.alignItems = 'center';
+      linkPill.style.justifyContent = 'center';
+      linkPill.style.gap = 'var(--space-2)';
+      linkPill.style.padding = '0.6rem 1rem';
+      linkPill.style.borderRadius = 'var(--radius-md)';
+      linkPill.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(0, 212, 255, 0.05) 100%)';
+      linkPill.style.border = '1px solid rgba(0, 212, 255, 0.3)';
+      linkPill.style.color = '#00d4ff';
+      linkPill.style.textDecoration = 'none';
+      linkPill.style.fontWeight = '600';
+      linkPill.style.boxShadow = 'var(--cyan-glow)';
+      linkPill.style.transition = 'all 0.3s ease';
+      
+      const linkIcon = el('span', '', '🔗');
+      const linkText = el('span', '', "View Today's Chart 📈");
+      linkPill.appendChild(linkIcon);
+      linkPill.appendChild(linkText);
+
+      // Hover effects
+      linkPill.addEventListener('mouseenter', () => {
+        linkPill.style.transform = 'translateY(-1px)';
+        linkPill.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(0, 212, 255, 0.1) 100%)';
+      });
+      linkPill.addEventListener('mouseleave', () => {
+        linkPill.style.transform = 'translateY(0)';
+        linkPill.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(0, 212, 255, 0.05) 100%)';
+      });
+
+      pillContainer.appendChild(linkPill);
+
+      const editBtn = el('button', 'btn btn-ghost btn-sm');
+      editBtn.textContent = '✏️ Change Link';
+      editBtn.style.color = 'var(--text-muted)';
+      editBtn.style.alignSelf = 'center';
+      editBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        pillContainer.replaceWith(renderInputForm(true));
+      });
+      pillContainer.appendChild(editBtn);
+
+      drawer.appendChild(pillContainer);
+    } else if (currentValue === true) {
+      // Auto-completed via Learning Hub but no link yet
+      const loggedMsg = el('div', 'course33-logged-msg');
+      loggedMsg.style.display = 'flex';
+      loggedMsg.style.flexDirection = 'column';
+      loggedMsg.style.gap = 'var(--space-2)';
+      loggedMsg.style.textAlign = 'center';
+
+      const text = el('p', '', 'Lesson Logged in Learning Hub! 📚');
+      text.style.color = 'var(--neon-green)';
+      text.style.fontWeight = '600';
+      loggedMsg.appendChild(text);
+
+      const subText = el('p', '', 'Upgrade your day by attaching a chart link below!');
+      subText.style.fontSize = 'var(--text-xs)';
+      subText.style.color = 'var(--text-muted)';
+      loggedMsg.appendChild(subText);
+
+      loggedMsg.appendChild(renderInputForm(false));
+
+      drawer.appendChild(loggedMsg);
+    } else {
+      // Pending link submission
+      drawer.appendChild(renderInputForm(false));
+    }
+
+    function renderInputForm(isEdit) {
+      const formContainer = el('div', 'course33-submit-form');
+      formContainer.style.display = 'flex';
+      formContainer.style.flexDirection = 'column';
+      formContainer.style.gap = 'var(--space-2)';
+
+      const input = document.createElement('input');
+      input.type = 'url';
+      input.className = 'form-input';
+      input.placeholder = 'Paste TradingView / chart link... 📈';
+      input.style.fontSize = 'var(--text-sm)';
+      input.style.border = '1px solid rgba(0, 212, 255, 0.2)';
+      input.style.background = 'rgba(10, 10, 15, 0.6)';
+      input.style.color = '#fff';
+      if (isEdit && typeof currentValue === 'string') {
+        input.value = currentValue;
+      }
+
+      const submitBtn = el('button', 'btn btn-outline btn-sm');
+      submitBtn.textContent = 'Submit 🚀';
+      submitBtn.style.color = '#00d4ff';
+      submitBtn.style.borderColor = '#00d4ff';
+      submitBtn.style.fontWeight = '700';
+
+      submitBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const linkVal = input.value.trim();
+        if (!linkVal) {
+          showNotificationToast('Please paste a valid chart link first! 📈');
+          input.focus();
+          return;
+        }
+        if (!linkVal.startsWith('http://') && !linkVal.startsWith('https://')) {
+          showNotificationToast('Link must start with http:// or https:// 🔗');
+          input.focus();
+          return;
+        }
+
+        const habits = getHabits();
+        const hIndex = habits.findIndex(h => h.id === 'course33');
+        if (hIndex !== -1) {
+          habits[hIndex].log[today] = linkVal;
+          _saveHabits(habits);
+
+          const xpAmount = (currentValue === true) ? 5 : 15;
+          addXP('course_homework', xpAmount);
+
+          playSynthSound('fanfare');
+          triggerConfetti();
+          showNotificationToast(`Chart link submitted! +${xpAmount} XP Earned! 🚀`);
+
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          });
+
+          if (typeof onToggle === 'function') onToggle();
+        }
+      });
+
+      formContainer.appendChild(input);
+      formContainer.appendChild(submitBtn);
+      return formContainer;
+    }
+
+    card.appendChild(drawer);
+  }
 
   // Action buttons
   const actionRow = el('div', 'habit-pro__action');
