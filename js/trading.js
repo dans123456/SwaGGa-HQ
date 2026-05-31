@@ -50,6 +50,25 @@ export const CONFLUENCE_OPTIONS = [
   'Liquidity Sweeps / Inducements [Ep 13]',
 ];
 
+export function getEffectiveConfluenceOptions() {
+  const options = [...CONFLUENCE_OPTIONS];
+  const overrides = storage.get('bg_unlocked_lessons', {});
+  
+  Object.entries(overrides).forEach(([id, lesson]) => {
+    const epNum = lesson.episode !== undefined ? lesson.episode : parseInt(id.replace('ep', ''), 10);
+    if (epNum > 13 && Array.isArray(lesson.concepts)) {
+      lesson.concepts.forEach(concept => {
+        const cleanConcept = concept.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        const label = `${cleanConcept} [Ep ${epNum}]`;
+        if (!options.includes(label)) {
+          options.push(label);
+        }
+      });
+    }
+  });
+  return options;
+}
+
 const STORAGE_KEY = 'trades';
 
 const TV_SYMBOL_MAP = {
@@ -789,7 +808,7 @@ export function renderTradeForm(container, onSaved) {
   const confFieldset = el('fieldset', 'confluence-fieldset');
   const confLegend = el('legend', '', 'Confluences');
   confFieldset.appendChild(confLegend);
-  CONFLUENCE_OPTIONS.forEach((c) => {
+  getEffectiveConfluenceOptions().forEach((c) => {
     const wrapper = el('label', 'form-check');
     const cb = document.createElement('input');
     cb.type = 'checkbox';

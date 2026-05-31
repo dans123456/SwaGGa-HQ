@@ -131,8 +131,21 @@ export function saveAssignment(assignment) {
 export function getConceptLibrary() {
   const lessons = getLessons();
   const conceptSet = new Set();
+  
+  // Scans logged lessons
   lessons.forEach((l) => { if (Array.isArray(l.concepts)) l.concepts.forEach((c) => conceptSet.add(c)); });
+  
+  // Scans static curriculum
   BRAH_GOH_CURRICULUM.filter(ep => !ep.locked).forEach((ep) => { ep.concepts.forEach((c) => conceptSet.add(c)); });
+  
+  // Scans unlocked custom overrides
+  const overrides = storage.get('bg_unlocked_lessons', {});
+  Object.values(overrides).forEach(lesson => {
+    if (Array.isArray(lesson.concepts)) {
+      lesson.concepts.forEach(c => conceptSet.add(c));
+    }
+  });
+  
   return [...conceptSet];
 }
 
