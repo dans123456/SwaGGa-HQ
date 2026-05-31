@@ -1593,7 +1593,51 @@ function buildAppShell() {
 
 // --- Login Screen ---
 
-function showLoginScreen() {
+let _loginInteractiveArea = null;
+
+function transitionToLoginButtons(interactiveArea) {
+  interactiveArea.replaceChildren();
+
+  // Google Sign-In button
+  const googleBtn = el('button', 'login-google-btn animate-fade-in');
+  const gIcon = el('span', 'login-google-btn__icon', '🔐');
+  const gText = el('span', 'login-google-btn__text', 'Sign in with Google');
+  googleBtn.appendChild(gIcon);
+  googleBtn.appendChild(gText);
+
+  googleBtn.addEventListener('click', async () => {
+    try {
+      gText.textContent = 'Signing in...';
+      googleBtn.disabled = true;
+      googleBtn.classList.add('login-google-btn--loading');
+      const res = await signInWithGoogle();
+      if (res && res.redirecting) {
+        gText.textContent = 'Redirecting to Google...';
+        return; // Redirect is in progress, keep disabled
+      }
+      if (!res) {
+        gText.textContent = 'Sign in with Google';
+        googleBtn.disabled = false;
+        googleBtn.classList.remove('login-google-btn--loading');
+      }
+    } catch (err) {
+      console.error('Google sign in button failed:', err);
+      gText.textContent = 'Sign in with Google';
+      googleBtn.disabled = false;
+      googleBtn.classList.remove('login-google-btn--loading');
+    }
+  });
+  interactiveArea.appendChild(googleBtn);
+
+  // Offline fallback
+  const skipBtn = el('button', 'login-skip animate-fade-in', 'Use offline — data syncs when you sign in later');
+  skipBtn.addEventListener('click', () => {
+    launchApp();
+  });
+  interactiveArea.appendChild(skipBtn);
+}
+
+function showLoginScreen(isCheckingSession = false) {
   const appRoot = document.getElementById('app');
   appRoot.replaceChildren();
 
@@ -1632,46 +1676,50 @@ function showLoginScreen() {
   });
   card.appendChild(features);
 
-  // Google Sign-In button
-  const googleBtn = el('button', 'login-google-btn');
-  const gIcon = el('span', 'login-google-btn__icon', '🔐');
-  const gText = el('span', 'login-google-btn__text', 'Sign in with Google');
-  googleBtn.appendChild(gIcon);
-  googleBtn.appendChild(gText);
+  // Interactive Area
+  const interactiveArea = el('div', 'login-interactive-area');
+  interactiveArea.style.width = '100%';
+  interactiveArea.style.display = 'flex';
+  interactiveArea.style.flexDirection = 'column';
+  interactiveArea.style.alignItems = 'center';
+  interactiveArea.style.gap = 'var(--space-4)';
+  interactiveArea.style.marginTop = 'var(--space-6)';
 
-  googleBtn.addEventListener('click', async () => {
-    try {
-      gText.textContent = 'Signing in...';
-      googleBtn.disabled = true;
-      googleBtn.classList.add('login-google-btn--loading');
-      const res = await signInWithGoogle();
-      if (res && res.redirecting) {
-        gText.textContent = 'Redirecting to Google...';
-        return; // Redirect is in progress, keep disabled
-      }
-      if (!res) {
-        gText.textContent = 'Sign in with Google';
-        googleBtn.disabled = false;
-        googleBtn.classList.remove('login-google-btn--loading');
-      }
-    } catch (err) {
-      console.error('Google sign in button failed:', err);
-      gText.textContent = 'Sign in with Google';
-      googleBtn.disabled = false;
-      googleBtn.classList.remove('login-google-btn--loading');
-    }
-  });
-  card.appendChild(googleBtn);
+  if (isCheckingSession) {
+    const loader = el('div', 'login-session-loader');
+    loader.style.display = 'flex';
+    loader.style.flexDirection = 'column';
+    loader.style.alignItems = 'center';
+    loader.style.gap = 'var(--space-3)';
 
-  // Offline fallback
-  const skipBtn = el('button', 'login-skip', 'Use offline — data syncs when you sign in later');
-  skipBtn.addEventListener('click', () => {
-    launchApp();
-  });
-  card.appendChild(skipBtn);
+    const spinner = el('div', 'login-spinner');
+    spinner.style.width = '36px';
+    spinner.style.height = '36px';
+    spinner.style.borderRadius = '50%';
+    spinner.style.border = '2px solid rgba(0, 212, 255, 0.1)';
+    spinner.style.borderTopColor = 'var(--cyan)';
+    spinner.style.animation = 'spin 1s infinite linear';
 
+    const loaderText = el('span', '', '⚡ Authenticating secure session...');
+    loaderText.style.fontSize = 'var(--text-xs)';
+    loaderText.style.fontFamily = 'var(--font-heading)';
+    loaderText.style.fontWeight = '600';
+    loaderText.style.color = 'var(--cyan)';
+    loaderText.style.letterSpacing = '0.05em';
+    loaderText.style.animation = 'pulse 2s infinite ease-in-out';
+
+    loader.appendChild(spinner);
+    loader.appendChild(loaderText);
+    interactiveArea.appendChild(loader);
+  } else {
+    transitionToLoginButtons(interactiveArea);
+  }
+
+  card.appendChild(interactiveArea);
   screen.appendChild(card);
   appRoot.appendChild(screen);
+
+  _loginInteractiveArea = interactiveArea;
 }
 
 // --- App Launch (after Login Or Skip) ---
@@ -1740,16 +1788,28 @@ function init() {
   const savedTheme = storage.get('theme', 'dark');
   document.documentElement.setAttribute('data-theme', savedTheme);
 
-  // Show login screen first
-  showLoginScreen();
+  // Show login screen in checking state first
+  showLoginScreen(true);
 
   // When auth state resolves, either launch app or stay on login
+  let authResolved = false;
   onAuthChange(async (user) => {
-    if (user && !_appLaunched) {
-      // Signed in — sync from cloud then launch
-      await syncNow();
-      launchApp();
-    }
+    if (authResolved) return;
+    
+    // Give a brief delay for a premium visual feedback loop
+    setTimeout(async () => {
+      authResolved = true;
+      if (user && !_appLaunched) {
+        // Signed in — sync from cloud then launch
+        await syncNow();
+        launchApp();
+      } else if (!_appLaunched) {
+        // No session found — transition loader to show login buttons smoothly!
+        if (_loginInteractiveArea) {
+          transitionToLoginButtons(_loginInteractiveArea);
+        }
+      }
+    }, 800); // 800ms brief loading to feel highly professional
   });
 }
 
