@@ -5,7 +5,7 @@
  */
 
 import storage from './storage.js';
-import { formatCurrency, generateId } from './utils.js';
+import { formatCurrency, generateId, showNotificationToast } from './utils.js';
 import { playSynthSound } from './audio.js';
 import { addXP } from './xp.js';
 
@@ -95,6 +95,7 @@ let _simBalance = 10000;
 let _activePosition = null; // { direction, entry, size, sl, tp, openIndex }
 let _autoPlayInterval = null;
 let _tradeLog = [];
+let _objectiveListEl = null;
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -161,7 +162,13 @@ export function renderSimulatorPage(container) {
   guideCard.appendChild(guideHeader);
 
   const guideBody = el('div', 'sim-guide-body');
-  guideBody.style.display = 'none'; // collapsed by default
+  const seenGuide = storage.get('sim_guide_seen', false);
+  if (!seenGuide) {
+    guideBody.style.display = 'block';
+    toggleIcon.textContent = '▲';
+  } else {
+    guideBody.style.display = 'none';
+  }
   guideBody.style.marginTop = 'var(--space-3)';
   guideBody.style.borderTop = '1px solid rgba(255,255,255,0.06)';
   guideBody.style.paddingTop = 'var(--space-3)';
@@ -194,6 +201,7 @@ export function renderSimulatorPage(container) {
     const isCollapsed = guideBody.style.display === 'none';
     guideBody.style.display = isCollapsed ? 'block' : 'none';
     toggleIcon.textContent = isCollapsed ? '▲' : '▼';
+    storage.set('sim_guide_seen', true);
     playSynthSound('click');
   });
 
@@ -237,6 +245,29 @@ export function renderSimulatorPage(container) {
   descText.style.lineHeight = '1.4';
   descBox.appendChild(descText);
   controlPanel.appendChild(descBox);
+
+  // 1.5 Objectives Stepper Checklist Card
+  const objectiveBox = el('div', 'sim-objective-box glass-card');
+  objectiveBox.style.padding = 'var(--space-4)';
+  objectiveBox.style.border = '1px solid rgba(57, 255, 20, 0.15)'; // subtle green neon
+  objectiveBox.style.background = 'rgba(255, 255, 255, 0.01)';
+  
+  const objTitle = el('h4', '', '🎯 Mission Objectives');
+  objTitle.style.fontSize = 'var(--text-xs)';
+  objTitle.style.fontWeight = '800';
+  objTitle.style.color = 'var(--neon-green)';
+  objTitle.style.marginBottom = 'var(--space-2)';
+  objTitle.style.fontFamily = 'var(--font-heading)';
+  objTitle.style.textTransform = 'uppercase';
+  objTitle.style.letterSpacing = '0.05em';
+  objectiveBox.appendChild(objTitle);
+  
+  _objectiveListEl = el('div', 'sim-objective-list');
+  _objectiveListEl.style.display = 'flex';
+  _objectiveListEl.style.flexDirection = 'column';
+  _objectiveListEl.style.gap = 'var(--space-2)';
+  objectiveBox.appendChild(_objectiveListEl);
+  controlPanel.appendChild(objectiveBox);
 
   // 2. Simulated Account stats
   const statsBox = el('div', 'sim-stats-box glass-card');
@@ -615,6 +646,7 @@ export function renderSimulatorPage(container) {
     stopAutoplay();
 
     drawChart();
+    updateObjectivesUI();
   }
 
   function advanceOneCandle() {
@@ -665,6 +697,7 @@ export function renderSimulatorPage(container) {
     }
 
     drawChart();
+    updateObjectivesUI();
   }
 
   function openPosition(direction) {
@@ -709,6 +742,7 @@ export function renderSimulatorPage(container) {
 
     updateActivePositionUI();
     drawChart();
+    updateObjectivesUI();
   }
 
   function updateActivePositionUI() {
@@ -816,6 +850,7 @@ export function renderSimulatorPage(container) {
     stopAutoplay();
     updateLogList();
     drawChart();
+    updateObjectivesUI();
   }
 
   function stopAutoplay() {
@@ -824,6 +859,99 @@ export function renderSimulatorPage(container) {
       _autoPlayInterval = null;
       playBtn.textContent = '▶ Auto Play';
     }
+  }
+
+  function updateObjectivesUI() {
+    if (!_objectiveListEl || !_activeScenario) return;
+
+    _objectiveListEl.replaceChildren();
+
+    // Determine current milestone indices
+    const isFvgOrFlip = _activeScenario.id === 'ep9-fvg' || _activeScenario.id === 'ep14-flip';
+    const targetStepIndex = isFvgOrFlip ? 8 : 9;
+    const targetRejectionIndex = isFvgOrFlip ? 9 : 10;
+    
+    // Step 1: Step to Mitigation candle
+    const step1Done = _historyIndex >= targetStepIndex;
+    const step1Active = _historyIndex < targetStepIndex;
+    
+    // Step 2: Spot Rejection
+    const step2Done = _historyIndex >= targetRejectionIndex;
+    const step2Active = _historyIndex === targetStepIndex;
+    
+    // Step 3: Place Order
+    const hasTradeLog = _tradeLog.some(t => t.scenario === _activeScenario.title);
+    const step3Done = _activePosition !== null || hasTradeLog;
+    const step3Active = _historyIndex >= targetRejectionIndex && _activePosition === null && !hasTradeLog;
+    
+    // Step 4: Win Scenario
+    const step4Done = hasTradeLog;
+    const step4Active = _activePosition !== null;
+
+    const objectives = [
+      {
+        text: `Step Candle to Candle ${targetStepIndex} (${isFvgOrFlip ? 'Fill FVG / Mitigate Flip' : 'Mitigate Order Block'})`,
+        done: step1Done,
+        active: step1Active
+      },
+      {
+        text: `Wait for Candle ${targetRejectionIndex} Rejection Trigger`,
+        done: step2Done,
+        active: step2Active
+      },
+      {
+        text: 'Execute Buy Long / Sell Short order',
+        done: step3Done,
+        active: step3Active
+      },
+      {
+        text: 'Step to resolution & hit TP target!',
+        done: step4Done,
+        active: step4Active
+      }
+    ];
+
+    objectives.forEach(obj => {
+      const item = el('div', '');
+      item.style.display = 'flex';
+      item.style.alignItems = 'start';
+      item.style.gap = '8px';
+      item.style.fontSize = '11px';
+      item.style.lineHeight = '1.4';
+      
+      const bullet = el('span', '');
+      bullet.style.fontWeight = '700';
+      
+      if (obj.done) {
+        bullet.textContent = '✓';
+        bullet.style.color = 'var(--neon-green)';
+        item.appendChild(bullet);
+        
+        const txt = el('span', '', obj.text);
+        txt.style.color = 'var(--text-muted)';
+        txt.style.textDecoration = 'line-through';
+        item.appendChild(txt);
+      } else if (obj.active) {
+        bullet.textContent = '👉';
+        bullet.style.color = 'var(--cyan)';
+        item.appendChild(bullet);
+        
+        const txt = el('span', '', obj.text);
+        txt.style.color = 'var(--cyan)';
+        txt.style.fontWeight = '600';
+        item.appendChild(txt);
+      } else {
+        bullet.textContent = '○';
+        bullet.style.color = 'rgba(255,255,255,0.2)';
+        item.appendChild(bullet);
+        
+        const txt = el('span', '', obj.text);
+        txt.style.color = 'rgba(255,255,255,0.3)';
+        item.appendChild(txt);
+      }
+      
+      _objectiveListEl.appendChild(item);
+    });
   }
 
   // --- Add Event Listeners ---

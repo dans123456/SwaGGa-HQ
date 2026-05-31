@@ -210,3 +210,26 @@ export function triggerConfetti() {
 
   draw();
 }
+
+// Global Notification Toast helper
+export function showNotificationToast(message, iconChar = '⚡') {
+  const toast = document.createElement('div');
+  toast.className = 'freeze-toast';
+  
+  const icon = document.createElement('span');
+  icon.textContent = iconChar + ' ';
+  toast.appendChild(icon);
+  
+  toast.appendChild(document.createTextNode(message));
+  document.body.appendChild(toast);
+
+  // Force layout reflow
+  toast.offsetHeight;
+
+  toast.classList.add('freeze-toast--visible');
+
+  setTimeout(() => {
+    toast.classList.remove('freeze-toast--visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}

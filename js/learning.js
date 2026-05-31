@@ -1,7 +1,7 @@
 // SwaGGa HQ — Learning Hub Module (Redesigned)
 
 import storage from './storage.js';
-import { generateId, formatDate, sanitizeText } from './utils.js';
+import { generateId, formatDate, sanitizeText, showNotificationToast } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 
@@ -2560,25 +2560,7 @@ function openBaLogPopup(lesson, onSaved) {
   body.appendChild(form);
 }
 
-function showNotificationToast(message) {
-  const toast = document.createElement('div');
-  toast.className = 'freeze-toast';
-  const icon = document.createElement('span');
-  icon.textContent = '❄️ ';
-  toast.appendChild(icon);
-  toast.appendChild(document.createTextNode(message));
-  document.body.appendChild(toast);
 
-  // Force layout reflow
-  toast.offsetHeight;
-
-  toast.classList.add('freeze-toast--visible');
-
-  setTimeout(() => {
-    toast.classList.remove('freeze-toast--visible');
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
-}
 
 // --- 3d Glassmorphic Flashcards System ---
 
