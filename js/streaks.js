@@ -21,7 +21,7 @@ export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
   { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 },
-  { id: 'course33', name: '33-Day Course', emoji: '🪖', color: '#00d4ff', bgColor: 'rgba(0, 212, 255, 0.08)', borderColor: 'rgba(0, 212, 255, 0.25)', tagline: 'Mitigate & master market', baseStreak: 0 }
+  { id: 'course33', name: 'Market Mechanics', emoji: '🪖', color: '#00d4ff', bgColor: 'rgba(0, 212, 255, 0.08)', borderColor: 'rgba(0, 212, 255, 0.25)', tagline: 'Mitigate & master market', baseStreak: 0 }
 ];
 
 // --- Data Layer ---
@@ -64,6 +64,35 @@ export function getHabits() {
       if (h.id === 'duolingo' && h.baseStreak !== 44) {
         h.baseStreak = 44;
         migrated = true;
+      }
+      // Migrate course33 name to Market Mechanics
+      if (h.id === 'course33' && h.name !== 'Market Mechanics') {
+        h.name = 'Market Mechanics';
+        migrated = true;
+      }
+      // Sync Market Mechanics logs to match the number of logged lessons + custom unlocked lessons
+      if (h.id === 'course33') {
+        const lessons = storage.get('lessons', []);
+        const overrides = storage.get('bg_unlocked_lessons', {});
+        const totalCurriculumItems = lessons.length + Object.keys(overrides).length;
+        const currentLogCount = Object.keys(h.log || {}).length;
+
+        if (totalCurriculumItems > currentLogCount) {
+          h.log = h.log || {};
+          // Backfill slot keys going backwards from today
+          for (let i = 0; i < totalCurriculumItems + 60; i++) { // search up to 60 days back to fill enough slots
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = localDateKey(d);
+            if (!h.log[key]) {
+              h.log[key] = true;
+            }
+            if (Object.keys(h.log).length >= totalCurriculumItems) {
+              break;
+            }
+          }
+          migrated = true;
+        }
       }
     });
     if (migrated) _saveHabits(habits);

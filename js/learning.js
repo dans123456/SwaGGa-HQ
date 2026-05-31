@@ -119,7 +119,7 @@ export function saveLessonEntry(lessonData) {
 
       if (courseHabit && !courseHabit.log[todayKey]) {
         toggleHabit('course33', todayKey);
-        showNotificationToast('33-Day Course Habit Auto-Ticked! 🪖🔥');
+        showNotificationToast('Market Mechanics Habit Auto-Ticked! 🪖🔥');
         
         // Sync to cloud
         import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
@@ -1229,6 +1229,31 @@ function openUnlockPopup(ep, curriculumContainer) {
       videoUrl: urlInput.value.trim(),
     };
     storage.set('bg_unlocked_lessons', overrides);
+
+    // Auto-tick the Market Mechanics habit!
+    try {
+      import('./streaks.js').then(({ getHabits, toggleHabit }) => {
+        const habits = getHabits();
+        const courseHabit = habits.find(h => h.id === 'course33');
+        const dt = new Date();
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const todayKey = `${y}-${m}-${day}`;
+
+        if (courseHabit && !courseHabit.log[todayKey]) {
+          toggleHabit('course33', todayKey);
+          showNotificationToast('Market Mechanics Habit Auto-Ticked! 🪖🔥');
+          
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Error auto-ticking course33:', e);
+    }
+
     close();
     renderCurriculumLog(curriculumContainer);
   });
