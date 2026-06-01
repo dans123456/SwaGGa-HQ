@@ -245,7 +245,9 @@ function saveChecklistState(sessionKey, state) {
 
 function renderChecklist(container, sessionKey) {
   container.replaceChildren();
-  const list = PREP_CHECKLISTS[sessionKey] || PREP_CHECKLISTS['General'];
+  const list = Object.prototype.hasOwnProperty.call(PREP_CHECKLISTS, sessionKey)
+    ? PREP_CHECKLISTS[sessionKey]
+    : PREP_CHECKLISTS['General'];
   const savedState = getChecklistState(sessionKey);
 
   const title = el('h4', 'prep-checklist__title', `📝 ${sessionKey} Session Prep`);
@@ -258,11 +260,13 @@ function renderChecklist(container, sessionKey) {
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'prep-item__checkbox';
-    cb.checked = !!savedState[idx];
+    cb.checked = !!(savedState && Object.prototype.hasOwnProperty.call(savedState, idx) && savedState[idx]);
     
     cb.addEventListener('change', () => {
       const currentState = getChecklistState(sessionKey);
-      currentState[idx] = cb.checked;
+      if (idx !== '__proto__' && idx !== 'constructor' && idx !== 'prototype') {
+        currentState[idx] = cb.checked;
+      }
       saveChecklistState(sessionKey, currentState);
       if (cb.checked) {
         li.classList.add('prep-item--completed');
@@ -1120,7 +1124,7 @@ const ACHIEVEMENTS = [
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      if (!habits.every(h => h.log && h.log[key])) return false;
+      if (!habits.every(h => h.log && Object.prototype.hasOwnProperty.call(h.log, key) && h.log[key])) return false;
     }
     return true;
   }},
@@ -1273,7 +1277,7 @@ function openAchievementDetail(a) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (habits.every(h => h.log && h.log[key])) consec++;
+        if (habits.every(h => h.log && Object.prototype.hasOwnProperty.call(h.log, key) && h.log[key])) consec++;
         else break;
       }
     }
@@ -1397,7 +1401,7 @@ function renderWeeklyRecap() {
   let totalCheckins = 0;
   habits.forEach(h => {
     weekKeys.forEach(key => {
-      if (h.log && h.log[key]) totalCheckins++;
+      if (h.log && Object.prototype.hasOwnProperty.call(h.log, key) && h.log[key]) totalCheckins++;
     });
   });
 
@@ -1416,7 +1420,7 @@ function renderWeeklyRecap() {
     let score = 0;
     score += allTrades.filter(t => (t.date || t.createdAt || '').slice(0, 10) === key).length * 2;
     score += allLessons.filter(l => (l.createdAt || l.date || '').slice(0, 10) === key).length * 2;
-    habits.forEach(h => { if (h.log && h.log[key]) score++; });
+    habits.forEach(h => { if (h.log && Object.prototype.hasOwnProperty.call(h.log, key) && h.log[key]) score++; });
     if (score > bestDayScore) { bestDayScore = score; bestDay = key; }
   });
   const bestDayName = new Date(bestDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' });
@@ -1583,7 +1587,7 @@ function showXPToast(amount, action) {
     quiz: 'Finished Quiz',
     perfectDay: 'Perfect Day Streak!'
   };
-  const label = labels[action] || action;
+  const label = Object.prototype.hasOwnProperty.call(labels, action) ? labels[action] : action;
 
   toast.appendChild(el('span', 'xp-toast__icon', '⚡'));
   toast.appendChild(el('span', 'xp-toast__text', `+${amount} XP (${label})`));
