@@ -6,6 +6,7 @@ import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, Google
 import { getFirestore, doc, setDoc, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { BRAH_GOH_CURRICULUM } from './learning.js';
+import storage from './storage.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDkP_yFI1t8runQ06hSdElaHtKskT8Cbzk",
@@ -289,7 +290,14 @@ export async function pullFromCloud() {
                 let totalCurriculumItems = 0;
                 try {
                   if (BRAH_GOH_CURRICULUM && Array.isArray(BRAH_GOH_CURRICULUM)) {
-                    totalCurriculumItems = BRAH_GOH_CURRICULUM.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
+                    const overrides = storage.get('bg_unlocked_lessons', {});
+                    const effectiveCurriculum = BRAH_GOH_CURRICULUM.map(ep => {
+                      if (overrides[ep.id]) {
+                        return { ...ep, ...overrides[ep.id], locked: false };
+                      }
+                      return ep;
+                    });
+                    totalCurriculumItems = effectiveCurriculum.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
                   }
                 } catch (_) {
                   // Fallback: use default unlocked count

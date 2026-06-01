@@ -105,7 +105,14 @@ export function getHabits() {
         
         let totalCurriculumItems = 0;
         if (curriculumRef && Array.isArray(curriculumRef)) {
-          totalCurriculumItems = curriculumRef.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
+          const overrides = storage.get('bg_unlocked_lessons', {});
+          const effectiveCurriculum = curriculumRef.map(ep => {
+            if (overrides[ep.id]) {
+              return { ...ep, ...overrides[ep.id], locked: false };
+            }
+            return ep;
+          });
+          totalCurriculumItems = effectiveCurriculum.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
         } else {
           // Fallback: count from lessons localStorage + overrides if curriculum not available
           const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
