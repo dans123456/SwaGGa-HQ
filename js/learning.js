@@ -2617,6 +2617,7 @@ function openBaLogPopup(lesson, onSaved) {
 const FLASHCARD_TERMS = [
   {
     id: 'bos',
+    category: 'smc',
     concept: 'BOS',
     title: 'Break of Structure',
     definition: 'A continuation signal where price breaks past a previous swing high (in an uptrend) or swing low (in a downtrend), validating the trend direction.',
@@ -2624,6 +2625,7 @@ const FLASHCARD_TERMS = [
   },
   {
     id: 'choch',
+    category: 'smc',
     concept: 'CHOCH',
     title: 'Change of Character',
     definition: 'The first signal of a potential trend reversal. It occurs when price breaks the opposite swing point (e.g., a swing low in a bullish trend).',
@@ -2631,6 +2633,7 @@ const FLASHCARD_TERMS = [
   },
   {
     id: 'fvg',
+    category: 'smc',
     concept: 'FVG',
     title: 'Fair Value Gap',
     definition: 'A 3-candle imbalance. Forms when candle 1\'s wick and candle 3\'s wick do not overlap, leaving a visual "void" that price tends to retrace and fill.',
@@ -2638,6 +2641,7 @@ const FLASHCARD_TERMS = [
   },
   {
     id: 'sweep',
+    category: 'smc',
     concept: 'Sweep',
     title: 'Liquidity Sweep',
     definition: 'A raid where price briefly breaks a key level (e.g., previous highs/lows) to trigger stop-losses and engineering liquidity, before rapidly reversing.',
@@ -2645,6 +2649,7 @@ const FLASHCARD_TERMS = [
   },
   {
     id: 'ote',
+    category: 'smc',
     concept: 'OTE',
     title: 'Optimal Trade Entry',
     definition: 'The high-probability Fibonacci retracement window located strictly between the 61.8% and 78.6% levels, ideal for entering high-confluence setups.',
@@ -2652,6 +2657,7 @@ const FLASHCARD_TERMS = [
   },
   {
     id: 'ob',
+    category: 'smc',
     concept: 'OB',
     title: 'Order Block',
     definition: 'The last opposite candle before a strong impulse leg. It represents where institutions placed massive block orders, acting as high-confluence support/resistance.',
@@ -2659,17 +2665,115 @@ const FLASHCARD_TERMS = [
   },
   {
     id: 'idm',
+    category: 'smc',
     concept: 'IDM',
     title: 'Inducement',
     definition: 'A minor swing high or low that acts as a trap. It entices early retail traders to buy or sell, building liquidity for smart money to sweep.',
     emoji: '🪤'
   },
   {
+    id: 'flipzone',
+    category: 'smc',
+    concept: 'Flip Zone',
+    title: 'Failed zones',
+    definition: 'A zone where supply fails and flips into demand, or demand fails and flips into supply, showing transition of institutional order flow.',
+    emoji: '🔁'
+  },
+  {
+    id: 'liquidity',
+    category: 'smc',
+    concept: 'Liquidity',
+    title: 'Resting Orders',
+    definition: 'Clusters of stop losses or pending orders lying above key highs or below key lows, acting as the primary fuel for price movements.',
+    emoji: '💧'
+  },
+  {
+    id: 'premium',
+    category: 'smc',
+    concept: 'Premium',
+    title: 'Overvalued Zone',
+    definition: 'The upper half of a price range (above the 50% equilibrium mark), indicating expensive prices where shorts should be favored.',
+    emoji: '💰'
+  },
+  {
+    id: 'discount',
+    category: 'smc',
+    concept: 'Discount',
+    title: 'Undervalued Zone',
+    definition: 'The lower half of a price range (below the 50% equilibrium mark), indicating cheap prices where longs should be favored.',
+    emoji: '🏷️'
+  },
+  {
+    id: 'pip',
+    category: 'forex',
+    concept: 'Pip',
+    title: 'Percentage in Point',
+    definition: 'The standard fourth decimal place unit of measure used in forex to represent the smallest change in price value.',
+    emoji: '🪙'
+  },
+  {
+    id: 'leverage',
+    category: 'forex',
+    concept: 'Leverage',
+    title: 'Gearing Capital',
+    definition: 'A broker feature allowing traders to control massive market volumes using a small percentage of actual account collateral.',
+    emoji: '⚙️'
+  },
+  {
+    id: 'killzones',
+    category: 'forex',
+    concept: 'Killzones',
+    title: 'Timing Windows',
+    definition: 'Core session hours (London, NY, London Close) when high-impact liquidity spikes produce high-probability trading setups.',
+    emoji: '⏰'
+  },
+  {
+    id: 'london',
+    category: 'forex',
+    concept: 'London Session',
+    title: 'London Killzone',
+    definition: 'Active 2:00 AM - 5:00 AM NY time. Typically sees high volatility and often sets the high or low of the daily trading range.',
+    emoji: '🇬🇧'
+  },
+  {
+    id: 'newyork',
+    category: 'forex',
+    concept: 'NY Session',
+    title: 'New York Killzone',
+    definition: 'Active 7:00 AM - 10:00 AM NY time. Highly volatile due to economic news releases and intersection with London trading.',
+    emoji: '🇺🇸'
+  },
+  {
+    id: 'rr',
+    category: 'forex',
+    concept: 'Risk:Reward',
+    title: 'Gauging Returns',
+    definition: 'The ratio comparing what you risk on a trade to your potential gain, determining long-term consistency viability.',
+    emoji: '⚖️'
+  },
+  {
     id: 'mindset',
+    category: 'psychology',
     concept: 'Mindset',
     title: 'Trading Mindset',
     definition: 'Boss Ackah\'s core psychology: acquiring a powerful professional skill through commitment, emotional control, and not letting the lure of money cloud the mind.',
     emoji: '🕯️'
+  },
+  {
+    id: 'revenge',
+    category: 'psychology',
+    concept: 'Revenge Trading',
+    title: 'Emotional Overtrading',
+    definition: 'The urge to enter trades immediately after a loss to win back capital, ignoring setups and rules in an emotional state.',
+    emoji: '🔥'
+  },
+  {
+    id: 'discipline',
+    category: 'psychology',
+    concept: 'Discipline',
+    title: 'Adhering to Rules',
+    definition: 'Executing trades exactly according to rules, checklists, and position sizing models regardless of current emotions.',
+    emoji: '🧘'
   }
 ];
 
@@ -2677,106 +2781,211 @@ export function renderFlashcards(container) {
   container.replaceChildren();
 
   // Read mastered terms
-  const mastered = storage.get('mastered_terms', []);
-  const masteredCount = mastered.length;
+  let mastered = storage.get('mastered_terms', []);
   const totalCount = FLASHCARD_TERMS.length;
-  const percent = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0;
 
   const section = el('div', 'flashcards-section');
 
   // Header & Mastery Progress bar
   const headerRow = el('div', 'flashcards-header');
-  const title = el('h2', 'section-title', '🎴 3D Concept Flashcards');
+  const title = el('h2', 'section-title', '🎴 Interactive Concept Flashcards');
   headerRow.appendChild(title);
 
   const progressContainer = el('div', 'flashcards-progress-wrap');
-  const progressLabel = el('span', 'flashcards-progress-label', `🧩 Mastery: ${masteredCount}/${totalCount} (${percent}%)`);
+  const progressLabel = el('span', 'flashcards-progress-label');
   progressContainer.appendChild(progressLabel);
 
   const barTrack = el('div', 'flashcards-progress-track');
   const barFill = el('div', 'flashcards-progress-fill');
-  barFill.style.width = `${percent}%`;
   barTrack.appendChild(barFill);
   progressContainer.appendChild(barTrack);
   headerRow.appendChild(progressContainer);
-  
   section.appendChild(headerRow);
+
+  // Update progress bar function
+  function updateProgress() {
+    mastered = storage.get('mastered_terms', []);
+    const masteredCount = mastered.length;
+    const percent = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0;
+    progressLabel.textContent = `🧩 Mastery: ${masteredCount}/${totalCount} (${percent}%)`;
+    barFill.style.width = `${percent}%`;
+  }
+  updateProgress();
+
+  // Search & Filter Panel Container
+  const filterPanel = el('div', 'flashcards-filter-panel');
+  filterPanel.style.display = 'flex';
+  filterPanel.style.flexDirection = 'column';
+  filterPanel.style.gap = 'var(--space-3)';
+  filterPanel.style.marginBottom = 'var(--space-4)';
+
+  // Search input
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = '🔍 Search flashcards (e.g. FVG, pip, revenge)...';
+  searchInput.className = 'form-input';
+  searchInput.style.width = '100%';
+  filterPanel.appendChild(searchInput);
+
+  // Categories buttons row
+  const tabsRow = el('div', 'flashcard-tabs-row');
+  tabsRow.style.display = 'flex';
+  tabsRow.style.gap = 'var(--space-2)';
+  tabsRow.style.flexWrap = 'wrap';
+
+  const categories = [
+    { id: 'all', label: 'All' },
+    { id: 'mastered', label: '✅ Mastered' },
+    { id: 'unmastered', label: '❌ Unmastered' },
+    { id: 'smc', label: 'Smart Money (SMC)' },
+    { id: 'forex', label: 'Forex Basics' },
+    { id: 'psychology', label: 'Trading Psychology' }
+  ];
+
+  let activeCategory = 'all';
+  let searchQuery = '';
+
+  const tabButtons = {};
+  categories.forEach(cat => {
+    const btn = el('button', `btn btn-sm btn-outline${cat.id === activeCategory ? ' active' : ''}`, cat.label);
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      Object.values(tabButtons).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeCategory = cat.id;
+      rebuildGrid();
+    });
+    tabButtons[cat.id] = btn;
+    tabsRow.appendChild(btn);
+  });
+  filterPanel.appendChild(tabsRow);
+  section.appendChild(filterPanel);
 
   // Cards Grid
   const grid = el('div', 'flashcards-grid');
-  
-  FLASHCARD_TERMS.forEach(item => {
-    const isMastered = mastered.includes(item.id);
-    
-    // Outer Perspective container
-    const cardWrap = el('div', 'flashcard-container');
-    
-    // Card itself
-    const card = el('div', 'flashcard-card');
-    
-    // Inner wrapper
-    const cardInner = el('div', 'flashcard-inner');
-    
-    // FRONT Side
-    const front = el('div', 'flashcard-front');
-    front.appendChild(el('span', 'flashcard-front__emoji', item.emoji));
-    front.appendChild(el('h3', 'flashcard-front__concept', item.concept));
-    front.appendChild(el('span', 'flashcard-front__title', item.title));
-    front.appendChild(el('span', 'flashcard-front__hint', '👇 Click to Flip'));
-    
-    // BACK Side
-    const back = el('div', 'flashcard-back');
-    back.appendChild(el('h4', 'flashcard-back__title', item.title));
-    back.appendChild(el('p', 'flashcard-back__def', item.definition));
-    
-    // Mastered Checkbox Button (prevents flip bubble)
-    const masterBtn = el('button', `btn btn-sm flashcard-back__btn${isMastered ? ' active' : ''}`);
-    masterBtn.textContent = isMastered ? '✅ Mastered!' : '🧩 Mark Mastered';
-    masterBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // prevent card flip
-      
-      let currentMastered = storage.get('mastered_terms', []);
-      if (currentMastered.includes(item.id)) {
-        currentMastered = currentMastered.filter(id => id !== item.id);
-        masterBtn.textContent = '🧩 Mark Mastered';
-        masterBtn.classList.remove('active');
-      } else {
-        currentMastered.push(item.id);
-        masterBtn.textContent = '✅ Mastered!';
-        masterBtn.classList.add('active');
-        
-        // Show notification toast
-        showNotificationToast(`🧩 Mastered term: ${item.concept}! Keep it up! ⚡`);
-      }
-      
-      storage.set('mastered_terms', currentMastered);
-      
-      // Update sync immediately
-      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-        if (getCurrentUser()) pushToCloud();
-      });
-      
-      // Re-render flashcard progress bar
-      const updatedPercent = Math.round((currentMastered.length / totalCount) * 100);
-      progressLabel.textContent = `🧩 Mastery: ${currentMastered.length}/${totalCount} (${updatedPercent}%)`;
-      barFill.style.width = `${updatedPercent}%`;
-    });
-    back.appendChild(masterBtn);
-    
-    cardInner.appendChild(front);
-    cardInner.appendChild(back);
-    card.appendChild(cardInner);
-    
-    // Click card to flip
-    card.addEventListener('click', () => {
-      card.classList.toggle('flipped');
-    });
-    
-    cardWrap.appendChild(card);
-    grid.appendChild(cardWrap);
-  });
-  
   section.appendChild(grid);
+
+  function rebuildGrid() {
+    grid.replaceChildren();
+    mastered = storage.get('mastered_terms', []);
+
+    const filtered = FLASHCARD_TERMS.filter(item => {
+      // 1. Category check
+      if (activeCategory === 'mastered' && !mastered.includes(item.id)) return false;
+      if (activeCategory === 'unmastered' && mastered.includes(item.id)) return false;
+      if (['smc', 'forex', 'psychology'].includes(activeCategory) && item.category !== activeCategory) return false;
+
+      // 2. Search check
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesConcept = item.concept.toLowerCase().includes(query);
+        const matchesTitle = item.title.toLowerCase().includes(query);
+        const matchesDef = item.definition.toLowerCase().includes(query);
+        if (!matchesConcept && !matchesTitle && !matchesDef) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      const emptyMsg = el('p', 'flashcards-empty-msg', 'No matching flashcards found. Try another search or category!');
+      emptyMsg.style.color = 'var(--text-muted)';
+      emptyMsg.style.gridColumn = '1 / -1';
+      emptyMsg.style.textAlign = 'center';
+      emptyMsg.style.padding = 'var(--space-6) 0';
+      grid.appendChild(emptyMsg);
+      return;
+    }
+
+    filtered.forEach(item => {
+      const isMastered = mastered.includes(item.id);
+      const cardWrap = el('div', 'flashcard-container');
+      const card = el('div', 'flashcard-card');
+      const cardInner = el('div', 'flashcard-inner');
+
+      // FRONT
+      const front = el('div', 'flashcard-front');
+      front.appendChild(el('span', 'flashcard-front__emoji', item.emoji));
+      front.appendChild(el('h3', 'flashcard-front__concept', item.concept));
+      front.appendChild(el('span', 'flashcard-front__title', item.title));
+      
+      const badge = el('span', `flashcard-category-badge cat-${item.category}`, item.category.toUpperCase());
+      badge.style.fontSize = '8px';
+      badge.style.padding = '2px 6px';
+      badge.style.borderRadius = '4px';
+      badge.style.position = 'absolute';
+      badge.style.top = '10px';
+      badge.style.right = '10px';
+      if (item.category === 'smc') {
+        badge.style.background = 'rgba(0, 212, 255, 0.1)';
+        badge.style.border = '1px solid rgba(0, 212, 255, 0.3)';
+        badge.style.color = 'var(--cyan)';
+      } else if (item.category === 'forex') {
+        badge.style.background = 'rgba(168, 85, 247, 0.1)';
+        badge.style.border = '1px solid rgba(168, 85, 247, 0.3)';
+        badge.style.color = 'var(--purple)';
+      } else {
+        badge.style.background = 'rgba(57, 255, 20, 0.1)';
+        badge.style.border = '1px solid rgba(57, 255, 20, 0.3)';
+        badge.style.color = 'var(--neon-green)';
+      }
+      front.appendChild(badge);
+
+      front.appendChild(el('span', 'flashcard-front__hint', '👇 Click to Flip'));
+
+      // BACK
+      const back = el('div', 'flashcard-back');
+      back.appendChild(el('h4', 'flashcard-back__title', item.title));
+      back.appendChild(el('p', 'flashcard-back__def', item.definition));
+
+      const masterBtn = el('button', `btn btn-sm flashcard-back__btn${isMastered ? ' active' : ''}`);
+      masterBtn.textContent = isMastered ? '✅ Mastered!' : '🧩 Mark Mastered';
+      masterBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // prevent flip bubble
+        
+        let currentMastered = storage.get('mastered_terms', []);
+        if (currentMastered.includes(item.id)) {
+          currentMastered = currentMastered.filter(id => id !== item.id);
+          masterBtn.textContent = '🧩 Mark Mastered';
+          masterBtn.classList.remove('active');
+        } else {
+          currentMastered.push(item.id);
+          masterBtn.textContent = '✅ Mastered!';
+          masterBtn.classList.add('active');
+          showNotificationToast(`🧩 Mastered term: ${item.concept}! Keep it up! ⚡`);
+        }
+        storage.set('mastered_terms', currentMastered);
+        
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
+        updateProgress();
+        
+        // If we are currently in "Mastered" or "Unmastered" tab, rebuild grid immediately to filter it out
+        if (activeCategory === 'mastered' || activeCategory === 'unmastered') {
+          rebuildGrid();
+        }
+      });
+      back.appendChild(masterBtn);
+
+      cardInner.appendChild(front);
+      cardInner.appendChild(back);
+      card.appendChild(cardInner);
+
+      card.addEventListener('click', () => {
+        card.classList.toggle('flipped');
+      });
+
+      cardWrap.appendChild(card);
+      grid.appendChild(cardWrap);
+    });
+  }
+
+  searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value.trim();
+    rebuildGrid();
+  });
+
+  rebuildGrid();
   container.appendChild(section);
 }
 

@@ -19,6 +19,9 @@ const SIM_SCENARIOS = [
     optimalDirection: 'long',
     initialBalance: 10000,
     historyCount: 7, // Show first 7 candles initially
+    zones: [
+      { type: 'ob', name: '🛡️ Bullish Order Block (Demand Zone)', priceMin: 1.0815, priceMax: 1.0820, color: 'rgba(57, 255, 20, 0.04)', strokeColor: '#39ff14', startCandle: 2, endCandle: 9 }
+    ],
     candles: [
       { open: 1.0820, high: 1.0828, low: 1.0818, close: 1.0825 }, // 1. Base consolidation
       { open: 1.0825, high: 1.0830, low: 1.0822, close: 1.0824 }, // 2. Inside bar
@@ -45,6 +48,9 @@ const SIM_SCENARIOS = [
     optimalDirection: 'short',
     initialBalance: 10000,
     historyCount: 6,
+    zones: [
+      { type: 'ob', name: '🛡️ Bearish Order Block (Supply Zone)', priceMin: 1.0915, priceMax: 1.0922, color: 'rgba(255, 59, 59, 0.04)', strokeColor: '#ff3b3b', startCandle: 1, endCandle: 8 }
+    ],
     candles: [
       { open: 1.0920, high: 1.0925, low: 1.0915, close: 1.0918 }, // 1. Base consolidation
       { open: 1.0918, high: 1.0922, low: 1.0912, close: 1.0921 }, // 2. Minor up wick sweep before drop
@@ -69,6 +75,9 @@ const SIM_SCENARIOS = [
     optimalDirection: 'long',
     initialBalance: 10000,
     historyCount: 6,
+    zones: [
+      { type: 'fvg', name: '🧩 Bullish Fair Value Gap (FVG)', priceMin: 1.2588, priceMax: 1.2630, color: 'rgba(0, 212, 255, 0.04)', strokeColor: '#00d4ff', startCandle: 2, endCandle: 8 }
+    ],
     candles: [
       { open: 1.2580, high: 1.2590, low: 1.2578, close: 1.2585 }, // 1. Quiet pre-news range
       { open: 1.2585, high: 1.2588, low: 1.2572, close: 1.2574 }, // 2. Quiet down bar (Candle 1 of FVG)
@@ -93,6 +102,9 @@ const SIM_SCENARIOS = [
     optimalDirection: 'short',
     initialBalance: 10000,
     historyCount: 6,
+    zones: [
+      { type: 'fvg', name: '🧩 Bearish Fair Value Gap (FVG)', priceMin: 1.2605, priceMax: 1.2645, color: 'rgba(0, 212, 255, 0.04)', strokeColor: '#00d4ff', startCandle: 2, endCandle: 8 }
+    ],
     candles: [
       { open: 1.2650, high: 1.2658, low: 1.2642, close: 1.2648 }, // 1. Quiet pre-news range
       { open: 1.2648, high: 1.2655, low: 1.2645, close: 1.2652 }, // 2. Quiet up bar (Candle 1 of FVG)
@@ -117,6 +129,9 @@ const SIM_SCENARIOS = [
     optimalDirection: 'long',
     initialBalance: 10000,
     historyCount: 7,
+    zones: [
+      { type: 'flip', name: '🔁 Broken Supply ➔ Demand Flip Zone', priceMin: 1.3665, priceMax: 1.3672, color: 'rgba(168, 85, 247, 0.04)', strokeColor: '#a855f7', startCandle: 3, endCandle: 8 }
+    ],
     candles: [
       { open: 1.3650, high: 1.3665, low: 1.3648, close: 1.3660 }, // 1. Bullish approach
       { open: 1.3660, high: 1.3672, low: 1.3655, close: 1.3670 }, // 2. Taps into supply zone
@@ -141,6 +156,9 @@ const SIM_SCENARIOS = [
     optimalDirection: 'short',
     initialBalance: 10000,
     historyCount: 6,
+    zones: [
+      { type: 'flip', name: '🔁 Broken Demand ➔ Supply Flip Zone', priceMin: 1.3750, priceMax: 1.3758, color: 'rgba(168, 85, 247, 0.04)', strokeColor: '#a855f7', startCandle: 2, endCandle: 8 }
+    ],
     candles: [
       { open: 1.3750, high: 1.3762, low: 1.3748, close: 1.3758 }, // 1. Bullish approach
       { open: 1.3758, high: 1.3768, low: 1.3752, close: 1.3765 }, // 2. Demand zone established
@@ -396,6 +414,38 @@ export function renderSimulatorPage(container) {
   paramBox.style.flexDirection = 'column';
   paramBox.style.gap = 'var(--space-3)';
 
+  // SMC Indicator Overlay Toggle
+  const indicatorGroup = el('div', 'form-group');
+  indicatorGroup.style.display = 'flex';
+  indicatorGroup.style.alignItems = 'center';
+  indicatorGroup.style.gap = 'var(--space-2)';
+  indicatorGroup.style.background = 'rgba(0, 212, 255, 0.03)';
+  indicatorGroup.style.border = '1px solid rgba(0, 212, 255, 0.1)';
+  indicatorGroup.style.padding = 'var(--space-2) var(--space-3)';
+  indicatorGroup.style.borderRadius = 'var(--radius-md)';
+  indicatorGroup.style.marginTop = 'var(--space-1)';
+  indicatorGroup.style.marginBottom = 'var(--space-1)';
+
+  const indicatorToggle = document.createElement('input');
+  indicatorToggle.type = 'checkbox';
+  indicatorToggle.id = 'sim-indicator-toggle';
+  indicatorToggle.checked = storage.get('sim_indicator_enabled', true);
+  indicatorToggle.addEventListener('change', () => {
+    storage.set('sim_indicator_enabled', indicatorToggle.checked);
+    drawChart();
+  });
+  
+  const indicatorLabel = el('label', 'form-label', '🔌 SMC Indicator Overlays');
+  indicatorLabel.setAttribute('for', 'sim-indicator-toggle');
+  indicatorLabel.style.margin = '0';
+  indicatorLabel.style.cursor = 'pointer';
+  indicatorLabel.style.fontSize = 'var(--text-xs)';
+  indicatorLabel.style.fontWeight = '700';
+
+  indicatorGroup.appendChild(indicatorToggle);
+  indicatorGroup.appendChild(indicatorLabel);
+  paramBox.appendChild(indicatorGroup);
+
   const slGroup = el('div', 'form-group');
   slGroup.appendChild(el('label', 'form-label', '🎯 Stop Loss Level'));
   const slInput = document.createElement('input');
@@ -635,6 +685,38 @@ export function renderSimulatorPage(container) {
       ctx.stroke();
 
       ctx.setLineDash([]); // Reset line dash
+    }
+
+    // Draw SMC Indicator Overlays if enabled
+    const indicatorChecked = storage.get('sim_indicator_enabled', true);
+    if (indicatorChecked && _activeScenario && _activeScenario.zones) {
+      _activeScenario.zones.forEach(zone => {
+        if (_visibleCandles.length > zone.startCandle) {
+          const yMin = getY(zone.priceMin);
+          const yMax = getY(zone.priceMax);
+          const xStart = getX(zone.startCandle);
+          const endIdx = Math.min(zone.endCandle, _visibleCandles.length - 1);
+          const xEnd = getX(endIdx);
+
+          if (xEnd >= xStart) {
+            // Draw shading
+            ctx.fillStyle = zone.color;
+            ctx.fillRect(xStart, Math.min(yMin, yMax), xEnd - xStart, Math.abs(yMin - yMax));
+
+            // Draw dashed border
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = zone.strokeColor;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(xStart, Math.min(yMin, yMax), xEnd - xStart, Math.abs(yMin - yMax));
+            ctx.setLineDash([]);
+
+            // Draw label
+            ctx.fillStyle = zone.strokeColor;
+            ctx.font = 'bold 8px var(--font-heading), Inter, sans-serif';
+            ctx.fillText(zone.name, xStart + 8, Math.min(yMin, yMax) + 14);
+          }
+        }
+      });
     }
 
     // Draw Japanese Candlesticks
