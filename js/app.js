@@ -550,7 +550,7 @@ function renderPremarketWidget(container, isLockout = false) {
 
     // 5. Navigate to original target or re-render widget
     const originalTarget = storage.get('premarket_original_target') || '#dashboard';
-    storage.remove('premarket_original_target');
+    storage.delete('premarket_original_target');
     
     if (isLockout) {
       router.navigate(originalTarget);

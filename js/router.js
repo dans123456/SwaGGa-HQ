@@ -78,7 +78,7 @@ class Router {
       const completed = routine && routine.date === today && routine.completed === true;
       if (completed) {
         const originalTarget = storage.get('premarket_original_target') || '#dashboard';
-        storage.remove('premarket_original_target');
+        storage.delete('premarket_original_target');
         hash = originalTarget;
         window.location.hash = originalTarget;
         return;
