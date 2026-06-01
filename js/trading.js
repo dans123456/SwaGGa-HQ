@@ -13,6 +13,7 @@ import {
   sanitizeText,
 } from './utils.js';
 import { addXP } from './xp.js';
+import { playSynthSound } from './audio.js';
 
 // --- Constants ---
 
@@ -126,6 +127,28 @@ export function getTrades() {
   return storage.get(STORAGE_KEY, []);
 }
 
+function parseDrawdownLimit(limitStr) {
+  if (!limitStr) return null;
+  const cleaned = limitStr.trim();
+  // Check for percentage
+  const pctMatch = cleaned.match(/([\d.]+)\s*%/);
+  if (pctMatch) {
+    const val = parseFloat(pctMatch[1]);
+    if (!isNaN(val)) {
+      return { type: 'percent', value: val };
+    }
+  }
+  // Check for currency/number
+  const cashMatch = cleaned.match(/(?:\$)\s*([\d.]+)/) || cleaned.match(/([\d.]+)/);
+  if (cashMatch) {
+    const val = parseFloat(cashMatch[1]);
+    if (!isNaN(val)) {
+      return { type: 'cash', value: val };
+    }
+  }
+  return null;
+}
+
 // Persists a new trade to local storage and updates setup quality
 export function saveTrade(tradeData) {
   const trades = getTrades();
@@ -152,6 +175,39 @@ export function saveTrade(tradeData) {
   };
   trades.push(trade);
   storage.set(STORAGE_KEY, trades);
+
+  // Check for Revenge Trading Cool-down Lockout or Max Daily Drawdown breach
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayTrades = trades.filter(t => t.date === todayStr || (t.createdAt && t.createdAt.slice(0, 10) === todayStr));
+  const todayNetPnL = todayTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+
+  let isBreached = false;
+  const routine = storage.get('premarket_routine');
+  if (routine && routine.riskLimit) {
+    const limit = parseDrawdownLimit(routine.riskLimit);
+    if (limit) {
+      if (limit.type === 'percent') {
+        const lossPct = (-todayNetPnL / (tradeData.balanceUsed || 10000)) * 100;
+        if (todayNetPnL < 0 && lossPct >= limit.value) {
+          isBreached = true;
+        }
+      } else if (limit.type === 'cash') {
+        if (todayNetPnL < 0 && -todayNetPnL >= limit.value) {
+          isBreached = true;
+        }
+      }
+    }
+  }
+
+  if (tradeData.executionMindset === 'revenge' || isBreached) {
+    const expiryTime = Date.now() + 15 * 60 * 1000; // 15 minutes lockout
+    storage.set('cooldown_expiry', expiryTime);
+    playSynthSound('fail');
+    setTimeout(() => {
+      window.location.hash = '#cooldown-lockout';
+    }, 800);
+  }
+
   return trade;
 }
 
@@ -953,6 +1009,23 @@ export function renderTradeForm(container, onSaved) {
     }
   });
 
+  // ---- Execution Mindset ----
+  const mindsetSelect = document.createElement('select');
+  mindsetSelect.name = 'executionMindset';
+  mindsetSelect.required = true;
+  
+  const mindsetOptions = [
+    { value: 'professional', label: '🧘 Professional (Indifferent / followed plan)' },
+    { value: 'anxious', label: '⚠️ Anxious / Impatient (Felt FOMO / rushed)' },
+    { value: 'revenge', label: '❌ Revenge / Frustrated (Traded out of anger)' }
+  ];
+  mindsetOptions.forEach(optData => {
+    const opt = el('option', '', optData.label);
+    opt.value = optData.value;
+    mindsetSelect.appendChild(opt);
+  });
+  form.appendChild(formGroup('Execution Mindset (Ep 16)', mindsetSelect));
+
   // ---- Notes ----
   const notes = document.createElement('textarea');
   notes.name = 'notes';
@@ -1121,6 +1194,7 @@ export function renderTradeForm(container, onSaved) {
       screenshot: fd.get('screenshot') || '',
       balanceUsed: Number(balInput.value) || 10000,
       riskPct: Number(pctInput.value) || 1.0,
+      executionMindset: fd.get('executionMindset') || 'professional',
     };
 
     saveTrade(tradeData);

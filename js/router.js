@@ -59,6 +59,21 @@ class Router {
   _onRouteChange() {
     let hash = window.location.hash || this._defaultRoute;
     
+    // Cooldown Lockout Interceptor
+    const cooldownExpiry = storage.get('cooldown_expiry', 0);
+    const isCooldownActive = cooldownExpiry > Date.now();
+    if (isCooldownActive) {
+      if (hash === '#trading' || hash === '#simulator') {
+        hash = '#cooldown-lockout';
+        window.location.hash = '#cooldown-lockout';
+        return;
+      }
+    } else if (hash === '#cooldown-lockout') {
+      hash = '#trading';
+      window.location.hash = '#trading';
+      return;
+    }
+
     // Premarket Lockout Interceptor
     if (hash === '#trading' || hash === '#simulator') {
       const routine = storage.get('premarket_routine');

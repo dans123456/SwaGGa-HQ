@@ -287,6 +287,87 @@ function renderChecklist(container, sessionKey) {
   container.appendChild(listEl);
 }
 
+// --- Revenge Trading Cooldown Lockout (Episode 16 Upgrade) ---
+
+const EP16_QUOTES = [
+  "Losses are just business operating costs. Professionals are indifferent to them.",
+  "If you trade for entertainment, you will pay for it. Trade only when you have an edge.",
+  "Revenge trading is an emotional response to a loss. Accept the loss and walk away.",
+  "95% of traders fail because they lack the emotional independence to execute their plan.",
+  "Adrenaline is the enemy of consistency. A good trade should feel boring.",
+  "Do not chase the market. Let the market come to your zones.",
+  "Your job is not to win every trade. Your job is to execute your edge perfectly."
+];
+
+function renderCooldownLockoutScreen(container) {
+  container.replaceChildren();
+
+  const wrap = el('div', 'cooldown-lockout-wrap');
+
+  // Title
+  wrap.appendChild(el('h1', 'cooldown-lockout-title', 'REVENGE TRADING COOLDOWN'));
+  wrap.appendChild(el('p', 'cooldown-lockout-subtitle', 'Take a deep breath. SwaGGa HQ has locked execution access to enforce emotional independence.'));
+
+  // Countdown timer element
+  const timerContainer = el('div', 'cooldown-timer-container');
+  const timerVal = el('span', 'cooldown-timer-val', '15:00');
+  timerContainer.appendChild(timerVal);
+  wrap.appendChild(timerContainer);
+
+  // Breathing Guide Circle
+  const breatheCircleOuter = el('div', 'breathe-circle-outer');
+  const breatheCircleInner = el('div', 'breathe-circle-inner');
+  const breatheText = el('span', 'breathe-text', 'Inhale...');
+  breatheCircleInner.appendChild(breatheText);
+  breatheCircleOuter.appendChild(breatheCircleInner);
+  wrap.appendChild(breatheCircleOuter);
+
+  // Quote Card
+  const quoteCard = el('div', 'cooldown-quote-card glass-card');
+  const randomQuote = EP16_QUOTES[Math.floor(Math.random() * EP16_QUOTES.length)];
+  const quoteText = el('p', 'cooldown-quote-text', `"${randomQuote}"`);
+  const quoteAuthor = el('p', 'cooldown-quote-author', '— Brah Goh, Episode 16');
+  quoteCard.appendChild(quoteText);
+  quoteCard.appendChild(quoteAuthor);
+  wrap.appendChild(quoteCard);
+
+  container.appendChild(wrap);
+
+  // Breathing text animation switcher
+  let isInhale = true;
+  breatheText.textContent = 'Inhale...';
+  const breatheInterval = setInterval(() => {
+    if (!document.contains(breatheText)) {
+      clearInterval(breatheInterval);
+      return;
+    }
+    isInhale = !isInhale;
+    breatheText.textContent = isInhale ? 'Inhale...' : 'Exhale...';
+  }, 4000);
+
+  // Timer tick interval
+  const timerInterval = setInterval(() => {
+    if (!document.contains(timerVal)) {
+      clearInterval(timerInterval);
+      return;
+    }
+    const expiry = storage.get('cooldown_expiry', 0);
+    const remaining = expiry - Date.now();
+    
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      clearInterval(breatheInterval);
+      storage.delete('cooldown_expiry');
+      window.location.hash = '#trading';
+      return;
+    }
+    
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    timerVal.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, 1000);
+}
+
 // --- Pre-Market Routine & Lockout ---
 
 function renderPremarketLockoutScreen(container) {
@@ -1907,7 +1988,7 @@ function buildAppShell() {
   focusBanner.style.display = 'none';
   main.appendChild(focusBanner);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -2155,6 +2236,7 @@ async function launchApp() {
   router.registerRoute('#calendar', renderCalendarPage);
   router.registerRoute('#simulator', renderSimulatorPage);
   router.registerRoute('#premarket-lockout', renderPremarketLockoutScreen);
+  router.registerRoute('#cooldown-lockout', renderCooldownLockoutScreen);
 
   // Real-time XP & Level progression reactive updater
   window.addEventListener('xp-change', (e) => {

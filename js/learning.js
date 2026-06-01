@@ -25,7 +25,7 @@ export const BRAH_GOH_CURRICULUM = [
   { id: 'ep13', episode: 13, title: 'Liquidity Concepts & Inducements', concepts: ['liquidity', 'inducement', 'liquidity-sweeps', 'retail-traps'], description: 'How smart money engineers traps to lure retail traders into early entries and sweep stop-losses for liquidity.', videoUrl: 'https://youtu.be/TthzSVTzWoE?si=4W_vBI8GGpg--REU' },
   { id: 'ep14', episode: 14, title: 'Flip Zones Strategy', concepts: ['supply-to-demand-flip', 'demand-to-supply-flip', 'failed-zone-mitigation', 'order-flow-transition'], description: 'How supply turns to demand and demand to supply. Spotting failed zone mitigations and identifying key flip zones to time clean structural reversals.', videoUrl: 'https://youtu.be/mdR4xijBaKE?si=vlJ3kGj5qUu0KnRh' },
   { id: 'ep15', episode: 15, title: 'Lesson 15', concepts: [], description: 'Lesson 15 — Brah Goh Market Mechanics series.', videoUrl: 'https://youtu.be/8ZfPIVt4IBs?si=ZVDxJGkZHt-dXrc7' },
-  { id: 'ep16', episode: 16, title: 'Lesson 16', concepts: [], description: '', locked: true },
+  { id: 'ep16', episode: 16, title: 'Why 95% of Traders Fail', concepts: ['emotional-independence', 'discipline', 'revenge-trading', 'consistency-over-excitement'], description: 'Brad Goh details why 95% of retail traders fail: not because the market is rigged, but because they trade for entertainment, cannot handle the pain of losing, and lack the emotional independence to execute their edge consistently.', videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
   { id: 'ep17', episode: 17, title: 'Lesson 17', concepts: [], description: '', locked: true },
   { id: 'ep18', episode: 18, title: 'Lesson 18', concepts: [], description: '', locked: true },
   { id: 'ep19', episode: 19, title: 'Lesson 19', concepts: [], description: '', locked: true },
@@ -72,6 +72,9 @@ const QUIZ_BANK = [
   { concept: 'new-york-killzone',   q: 'The New York Killzone is generally active during:',             choices: ['7:00 AM – 10:00 AM NY Time', '2:00 AM – 5:00 AM NY Time', '8:00 PM – 12:00 AM NY Time', '10:00 AM – 12:00 PM NY Time'], answer: 0 },
   { concept: 'inducement',         q: 'In SMC, an inducement (IDM) is defined as:',                    choices: ['A deliberate market trap to lure retail traders and build liquidity', 'An bonus payment from your broker', 'A candlestick patterns that is always green', 'A type of trailing stop loss'], answer: 0 },
   { concept: 'liquidity-sweeps',   q: 'A liquidity sweep occurs when price:',                          choices: ['Clears stop-losses above/below swing points before reversing', 'Moves sideways in low volume consolidation', 'Stays exactly at a key Fibonacci level', 'Breaks out with no retracement'], answer: 0 },
+  { concept: 'emotional-independence', q: 'What is "emotional independence" in trading?',             choices: ['Not caring about the outcome of any single trade', 'Trading without checking the news', 'Using a small leverage', 'Never taking a stop loss'], answer: 0 },
+  { concept: 'revenge-trading',    q: 'How does Brah Goh suggest stopping revenge trading?',           choices: ['Walking away and implementing a hard cooldown lockout', 'Increasing risk to win it back faster', 'Switching to a different currency pair', 'Adding more technical indicators'], answer: 0 },
+  { concept: 'consistency-over-excitement', q: 'Trading for entertainment is a sign of:',              choices: ['A retail/gambling mindset', 'A professional trading career', 'High emotional intelligence', 'An optimized edge'], answer: 0 },
 ];
 
 const OPEN_ENDED_TEMPLATES = [

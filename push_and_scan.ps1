@@ -5,7 +5,7 @@ Write-Host "🛡️  Running Semgrep Security Scan for SwaGGa HQ..." -Foreground
 Write-Host "===================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$filesToScan = @("js/app.js", "js/calendar.js")
+$filesToScan = @("js/app.js", "js/calendar.js", "js/learning.js", "js/trading.js", "js/router.js")
 
 foreach ($file in $filesToScan) {
     if (Test-Path $file) {
@@ -66,7 +66,7 @@ Write-Host "===================================================" -ForegroundColo
 Write-Host ""
 
 git add .
-git commit -m "feat: implement P&L calendar heatmap, focus mindset banner, and resolve security findings"
+git commit -m "feat: implement Brah Goh Episode 16 premium upgrades - mindset cooldown lockout"
 git push
 
 Write-Host ""
