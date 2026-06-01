@@ -87,10 +87,12 @@ export function getHabits() {
       }
       // Sync Market Mechanics logs to match the number of unlocked lessons in the curriculum
       if (h.id === 'course33') {
-        // Migrate subTasks to course33 in storage if not present
-        if (!h.subTasks) {
-          const def = DEFAULT_HABITS.find(d => d.id === 'course33');
-          if (def) {
+        // Enforce/sync subTasks of course33 to DEFAULT_HABITS
+        const def = DEFAULT_HABITS.find(d => d.id === 'course33');
+        if (def) {
+          const currentKeys = (h.subTasks || []).map(st => st.key).join(',');
+          const defKeys = def.subTasks.map(st => st.key).join(',');
+          if (currentKeys !== defKeys) {
             h.subTasks = def.subTasks;
             migrated = true;
           }

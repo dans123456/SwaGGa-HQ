@@ -319,7 +319,11 @@ export async function pullFromCloud() {
                   ...cloudH,
                   ...localH,
                   log: finalLog,
-                  freezes: mergedFreezes
+                  freezes: mergedFreezes,
+                  subTasks: [
+                    { key: 'watch', label: 'Watch Lesson 📺', desc: 'Study today\'s price action' },
+                    { key: 'journal', label: 'Journal Takeaways 📝', desc: 'Log summary in Learning Hub' }
+                  ]
                 });
               } else {
                 mergedHabits.push({
