@@ -324,7 +324,8 @@ function renderPremarketWidget(container, isLockout = false) {
       htfLogic: '',
       riskChecked: false,
       riskLimit: '',
-      rulesChecked: false
+      rulesChecked: false,
+      focusRule: ''
     };
     storage.set('premarket_routine', routine);
   }
@@ -349,8 +350,11 @@ function renderPremarketWidget(container, isLockout = false) {
     body.appendChild(p);
 
     const infoRow = el('div', 'premarket-completed-info');
-    infoRow.appendChild(el('span', 'premarket-info-item', `🗺️ Bias: ${routine.htfBias.toUpperCase()}`));
-    infoRow.appendChild(el('span', 'premarket-info-item', `🛡️ Max Drawdown: ${routine.riskLimit}`));
+    infoRow.appendChild(el('span', 'premarket-info-item', `🗺️ Bias: ${routine.htfBias ? routine.htfBias.toUpperCase() : '—'}`));
+    infoRow.appendChild(el('span', 'premarket-info-item', `🛡️ Max Drawdown: ${routine.riskLimit || '—'}`));
+    if (routine.focusRule) {
+      infoRow.appendChild(el('span', 'premarket-info-item', `🎯 Focus: ${routine.focusRule}`));
+    }
     body.appendChild(infoRow);
 
     const btn = el('button', 'btn btn-secondary btn-sm', '🔄 Re-enter Routine Details');
@@ -359,6 +363,7 @@ function renderPremarketWidget(container, isLockout = false) {
       playSynthSound('click');
       routine.completed = false;
       storage.set('premarket_routine', routine);
+      updateFocusBanner();
       renderPremarketWidget(container, isLockout);
     });
     body.appendChild(btn);
@@ -521,6 +526,80 @@ function renderPremarketWidget(container, isLockout = false) {
   step4.appendChild(rulesListContainer);
   form.appendChild(step4);
 
+  // Step 5: Focus Rule
+  const step5 = el('div', 'premarket-step');
+  const step5Label = el('label', 'premarket-step-label block', 'Step 5: Set Daily Mindset Focus Rule 🎯');
+  step5Label.style.display = 'block';
+  step5Label.style.marginBottom = 'var(--space-2)';
+  step5.appendChild(step5Label);
+
+  const focusSelect = document.createElement('select');
+  focusSelect.className = 'form-select premarket-select-input';
+  focusSelect.style.width = '100%';
+  focusSelect.style.marginBottom = 'var(--space-2)';
+  focusSelect.style.background = 'var(--bg-glass)';
+  focusSelect.style.color = 'var(--text-primary)';
+  focusSelect.style.border = '1px solid var(--gray-border)';
+  focusSelect.style.padding = 'var(--space-2) var(--space-3)';
+  focusSelect.style.borderRadius = 'var(--radius-md)';
+  
+  const options = [
+    { value: '', text: '— Choose daily focus rule —' },
+    { value: 'Patience: Wait for valid session killzone timing', text: '⏱️ Patience: Wait for valid session killzone timing' },
+    { value: 'Risk: Cap max risk per trade at 1% strictly', text: '🛡️ Risk: Cap max risk per trade at 1% strictly' },
+    { value: 'Execution: Wait for FVG mitigation & CHOCH confirmation', text: '⚡ Execution: Wait for FVG mitigation & CHOCH confirmation' },
+    { value: 'Mindset: Accept losses as information, do not revenge trade', text: '🧠 Mindset: Accept losses as information, do not revenge trade' },
+    { value: 'Discipline: Stop trading after 2 losses or daily target reached', text: '⚖️ Discipline: Stop trading after 2 losses or daily target reached' },
+    { value: 'custom', text: '✍️ Custom Focus Rule (write below)...' }
+  ];
+
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.text;
+    focusSelect.appendChild(opt);
+  });
+
+  const focusInput = document.createElement('input');
+  focusInput.type = 'text';
+  focusInput.className = 'form-input premarket-text-input';
+  focusInput.placeholder = 'Write your custom daily mindset focus rule...';
+  focusInput.style.display = 'none';
+
+  if (routine.focusRule) {
+    const matched = options.find(o => o.value === routine.focusRule && o.value !== '');
+    if (matched) {
+      focusSelect.value = routine.focusRule;
+    } else {
+      focusSelect.value = 'custom';
+      focusInput.style.display = 'block';
+      focusInput.value = routine.focusRule;
+    }
+  }
+
+  focusSelect.addEventListener('change', () => {
+    playSynthSound('click');
+    if (focusSelect.value === 'custom') {
+      focusInput.style.display = 'block';
+      routine.focusRule = focusInput.value;
+    } else {
+      focusInput.style.display = 'none';
+      routine.focusRule = focusSelect.value;
+    }
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+
+  focusInput.addEventListener('input', () => {
+    routine.focusRule = focusInput.value;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+
+  step5.appendChild(focusSelect);
+  step5.appendChild(focusInput);
+  form.appendChild(step5);
+
   // Unlock button
   const submitBtn = el('button', 'btn btn-primary btn-block premarket-submit-btn', '🔓 Complete Routine & Unlock Pages');
   submitBtn.type = 'submit';
@@ -548,6 +627,8 @@ function renderPremarketWidget(container, isLockout = false) {
       if (getCurrentUser()) pushToCloud();
     });
 
+    updateFocusBanner();
+
     // 5. Navigate to original target or re-render widget
     const originalTarget = storage.get('premarket_original_target') || '#dashboard';
     storage.delete('premarket_original_target');
@@ -568,8 +649,9 @@ function renderPremarketWidget(container, isLockout = false) {
     const isStep2 = routine.htfBias !== undefined && routine.htfBias !== '' && routine.htfLogic && routine.htfLogic.trim() !== '';
     const isStep3 = routine.riskLimit && routine.riskLimit.trim() !== '';
     const isStep4 = checkedRulesCount === rulesToUse.length;
+    const isStep5 = routine.focusRule && routine.focusRule.trim() !== '';
 
-    const allValid = isStep1 && isStep2 && isStep3 && isStep4;
+    const allValid = isStep1 && isStep2 && isStep3 && isStep4 && isStep5;
     submitBtn.disabled = !allValid;
   }
 
@@ -1549,6 +1631,30 @@ function showLevelUpModal(oldLvl, newLvl) {
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 }
+export function updateFocusBanner() {
+  const banner = document.getElementById('focus-banner');
+  if (!banner) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const routine = storage.get('premarket_routine');
+  const completed = routine && routine.date === today && routine.completed === true;
+  const ruleText = routine && routine.focusRule;
+
+  if (completed && ruleText && ruleText.trim() !== '') {
+    banner.replaceChildren();
+    banner.style.display = 'flex';
+    
+    const icon = el('span', 'focus-banner-icon', '🧠');
+    const title = el('span', 'focus-banner-title', 'Daily Focus:');
+    const content = el('span', 'focus-banner-content', ruleText);
+    
+    banner.appendChild(icon);
+    banner.appendChild(title);
+    banner.appendChild(content);
+  } else {
+    banner.style.display = 'none';
+    banner.replaceChildren();
+  }
+}
 
 // --- Build App Shell ---
 
@@ -1791,6 +1897,12 @@ function buildAppShell() {
   
   main.appendChild(topbar);
 
+  // Focus Banner Ticker
+  const focusBanner = el('div', 'focus-banner');
+  focusBanner.id = 'focus-banner';
+  focusBanner.style.display = 'none';
+  main.appendChild(focusBanner);
+
   const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
@@ -2029,6 +2141,7 @@ async function launchApp() {
   _appLaunched = true;
 
   buildAppShell();
+  updateFocusBanner();
 
   router.registerRoute('#dashboard', renderDashboard);
   router.registerRoute('#trading', renderTradingPage);

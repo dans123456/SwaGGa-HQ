@@ -107,6 +107,14 @@ export function renderCalendarPage(container) {
         const trIndicator = el('span', `calendar-day-indicator calendar-day-indicator--trade ${netPnL > 0 ? 'text-green' : netPnL < 0 ? 'text-red' : 'text-gray'}`);
         trIndicator.textContent = `${netPnL >= 0 ? '+' : ''}${formatCurrency(netPnL)}`;
         indicators.appendChild(trIndicator);
+
+        if (netPnL > 0) {
+          dayCell.classList.add('calendar-day--profit');
+        } else if (netPnL < 0) {
+          dayCell.classList.add('calendar-day--loss');
+        } else {
+          dayCell.classList.add('calendar-day--breakeven');
+        }
       }
 
       const checkedHabits = habits.filter(h => h.log && h.log[dateKey]);
