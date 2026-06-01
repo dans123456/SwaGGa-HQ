@@ -24,7 +24,7 @@ export const BRAH_GOH_CURRICULUM = [
   { id: 'ep12', episode: 12, title: 'ICT Killzones', concepts: ['killzones', 'session-timing', 'london-killzone', 'new-york-killzone'], description: 'Understanding session timing and high-volume windows. Exact times for Asian, London, New York, and London Close sessions.', videoUrl: 'https://youtu.be/uLw-qdpV3uk?si=elqDijw5R0RU4MCK' },
   { id: 'ep13', episode: 13, title: 'Liquidity Concepts & Inducements', concepts: ['liquidity', 'inducement', 'liquidity-sweeps', 'retail-traps'], description: 'How smart money engineers traps to lure retail traders into early entries and sweep stop-losses for liquidity.', videoUrl: 'https://youtu.be/TthzSVTzWoE?si=4W_vBI8GGpg--REU' },
   { id: 'ep14', episode: 14, title: 'Flip Zones Strategy', concepts: ['supply-to-demand-flip', 'demand-to-supply-flip', 'failed-zone-mitigation', 'order-flow-transition'], description: 'How supply turns to demand and demand to supply. Spotting failed zone mitigations and identifying key flip zones to time clean structural reversals.', videoUrl: 'https://youtu.be/mdR4xijBaKE?si=vlJ3kGj5qUu0KnRh' },
-  { id: 'ep15', episode: 15, title: 'Lesson 15', concepts: [], description: '', locked: true },
+  { id: 'ep15', episode: 15, title: 'Lesson 15', concepts: [], description: 'Lesson 15 — Brah Goh Market Mechanics series.', videoUrl: 'https://youtu.be/8ZfPIVt4IBs?si=ZVDxJGkZHt-dXrc7' },
   { id: 'ep16', episode: 16, title: 'Lesson 16', concepts: [], description: '', locked: true },
   { id: 'ep17', episode: 17, title: 'Lesson 17', concepts: [], description: '', locked: true },
   { id: 'ep18', episode: 18, title: 'Lesson 18', concepts: [], description: '', locked: true },
