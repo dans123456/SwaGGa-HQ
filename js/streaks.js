@@ -5,7 +5,6 @@ import { generateId, sanitizeText, triggerConfetti, showNotificationToast } from
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import router from './router.js';
-import { BRAH_GOH_CURRICULUM } from './learning.js';
 
 // --- Constants ---
 
@@ -22,21 +21,7 @@ function localDateKey(d) {
 export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
-  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 },
-  { 
-    id: 'course33', 
-    name: 'Market Mechanics', 
-    emoji: '🪖', 
-    color: '#00d4ff', 
-    bgColor: 'rgba(0, 212, 255, 0.08)', 
-    borderColor: 'rgba(0, 212, 255, 0.25)', 
-    tagline: 'Mitigate & master market', 
-    baseStreak: 0,
-    subTasks: [
-      { key: 'watch', label: 'Watch Lesson 📺', desc: 'Study today\'s price action' },
-      { key: 'journal', label: 'Journal Takeaways 📝', desc: 'Log summary in Learning Hub' }
-    ]
-  }
+  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 }
 ];
 
 // --- Data Layer ---
@@ -51,14 +36,11 @@ export function getHabits() {
     // Migration: add baseStreak if missing, initialize log/freezes if null, and enforce correct duolingo base
     let migrated = false;
 
-    // Check if course33 is missing altogether and push it!
-    const hasCourse = habits.some(h => h.id === 'course33');
-    if (!hasCourse) {
-      const defCourse = DEFAULT_HABITS.find(d => d.id === 'course33');
-      if (defCourse) {
-        habits.push({ ...defCourse, log: {}, freezes: {} });
-        migrated = true;
-      }
+    // Remove course33 if present (user requested to delete it)
+    const courseIndex = habits.findIndex(h => h.id === 'course33');
+    if (courseIndex !== -1) {
+      habits.splice(courseIndex, 1);
+      migrated = true;
     }
 
     habits.forEach(h => {
@@ -79,66 +61,6 @@ export function getHabits() {
       if (h.id === 'duolingo' && h.baseStreak !== 44) {
         h.baseStreak = 44;
         migrated = true;
-      }
-      // Migrate course33 name to Market Mechanics
-      if (h.id === 'course33' && h.name !== 'Market Mechanics') {
-        h.name = 'Market Mechanics';
-        migrated = true;
-      }
-      // Sync Market Mechanics logs to match the number of unlocked lessons in the curriculum
-      if (h.id === 'course33') {
-        // Enforce/sync subTasks of course33 to DEFAULT_HABITS
-        const def = DEFAULT_HABITS.find(d => d.id === 'course33');
-        if (def) {
-          const currentKeys = (h.subTasks || []).map(st => st.key).join(',');
-          const defKeys = def.subTasks.map(st => st.key).join(',');
-          if (currentKeys !== defKeys) {
-            h.subTasks = def.subTasks;
-            migrated = true;
-          }
-        }
-
-        // Count directly from the curriculum: episodes that are unlocked and have real content
-        // This is always accurate regardless of localStorage state
-        let curriculumRef;
-        try { curriculumRef = BRAH_GOH_CURRICULUM; } catch (_) { curriculumRef = null; }
-        
-        let totalCurriculumItems = 0;
-        if (curriculumRef && Array.isArray(curriculumRef)) {
-          const overrides = storage.get('bg_unlocked_lessons', {});
-          const effectiveCurriculum = curriculumRef.map(ep => {
-            if (overrides[ep.id]) {
-              return { ...ep, ...overrides[ep.id], locked: false };
-            }
-            return ep;
-          });
-          totalCurriculumItems = effectiveCurriculum.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
-        } else {
-          // Fallback: count from lessons localStorage + overrides if curriculum not available
-          const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
-          const overrides = storage.get('bg_unlocked_lessons', {});
-          totalCurriculumItems = defaultUnlockedIds.length + Object.keys(overrides).length;
-        }
-        const todayKey = localDateKey();
-        const hasToday = !!h.log[todayKey];
-        const expectedPastKeys = totalCurriculumItems - (hasToday ? 1 : 0);
-
-        // Ensure the log has exactly expectedPastKeys ending yesterday, plus today if already completed
-        const pastKeys = Object.keys(h.log).filter(k => k !== todayKey);
-        if (pastKeys.length !== expectedPastKeys || Object.keys(h.log).length > (expectedPastKeys + (hasToday ? 1 : 0))) {
-          h.log = {};
-          if (hasToday) {
-            h.log[todayKey] = true;
-          }
-          // Fill slot keys going backwards from yesterday
-          for (let i = 0; i < expectedPastKeys; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() - 1 - i);
-            const key = localDateKey(d);
-            h.log[key] = true;
-          }
-          migrated = true;
-        }
       }
     });
     if (migrated) _saveHabits(habits);
@@ -874,26 +796,16 @@ export function renderHabitCard(habit, onToggle) {
     toggleBtn.style.color = '#0a0a0f';
   }
   toggleBtn.addEventListener('click', () => {
-    if (habit.id === 'course33') {
-      playSynthSound('click');
-      showNotificationToast("Please upload your new lesson notes in the Learning Hub to tick this habit! 📚🪖");
-      router.navigate('#learning');
-      return;
-    }
     const wasDone = done;
     
     // IF habit has subtasks, update their checked states
     if (habit.subTasks && habit.subTasks.length > 0) {
-      const storageKey = habit.id === 'course33' ? `sub_habits_${today}` : `sub_habits_${habit.id}_${today}`;
+      const storageKey = `sub_habits_${habit.id}_${today}`;
       const defaultState = {};
       habit.subTasks.forEach(st => {
         defaultState[st.key] = false;
       });
-      if (habit.id === 'course33') {
-        defaultState.link = '';
-      } else {
-        defaultState.links = {};
-      }
+      defaultState.links = {};
       const subHabitsState = storage.get(storageKey, defaultState);
       
       habit.subTasks.forEach(st => {

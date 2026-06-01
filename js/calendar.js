@@ -75,7 +75,6 @@ export function renderCalendarPage(container) {
     const lessons = getLessons();
     const habits = getHabits();
     const dailyGrades = storage.get('daily_grades', {});
-    const pomoHistory = storage.get('pomodoro_history', {});
 
     for (let i = 0; i < firstDayIndex; i++) {
       daysGrid.appendChild(el('div', 'calendar-day calendar-day--empty'));
@@ -137,12 +136,7 @@ export function renderCalendarPage(container) {
         indicators.appendChild(lsIndicator);
       }
 
-      const pomoCount = Number(pomoHistory[dateKey]) || 0;
-      if (pomoCount > 0) {
-        const pomoIndicator = el('span', 'calendar-day-indicator calendar-day-indicator--pomo');
-        pomoIndicator.textContent = `🍅 ${pomoCount} Block${pomoCount > 1 ? 's' : ''}`;
-        indicators.appendChild(pomoIndicator);
-      }
+      const pomoCount = 0;
 
       dayCell.appendChild(indicators);
 

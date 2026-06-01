@@ -2165,7 +2165,6 @@ export function renderLearningPage(container) {
   container.appendChild(el('h1', 'page-title', '📚 Learning Hub'));
 
   const dailyTipContainer = el('div');
-  const pomodoroContainer = el('div');
   const flashcardsContainer = el('div');
   const milestonesContainer = el('div');
   const actionContainer = el('div');
@@ -2174,9 +2173,8 @@ export function renderLearningPage(container) {
   const curriculumContainer = el('div');
   const baCurriculumContainer = el('div');
 
-  // Order: Daily Tip → Pomodoro → Flashcards → Milestones → Actions → Mentors → Assignments → Curriculum
+  // Order: Daily Tip → Flashcards → Milestones → Actions → Mentors → Assignments → Curriculum
   container.appendChild(dailyTipContainer);
-  container.appendChild(pomodoroContainer);
   container.appendChild(flashcardsContainer);
   container.appendChild(milestonesContainer);
   container.appendChild(actionContainer);
@@ -2187,7 +2185,6 @@ export function renderLearningPage(container) {
 
   function refresh() {
     renderDailyTip(dailyTipContainer);
-    renderPomodoroTimer(pomodoroContainer);
     renderFlashcards(flashcardsContainer);
     renderMilestones(milestonesContainer);
     renderActionBar(actionContainer, refresh);
@@ -2780,246 +2777,4 @@ export function renderFlashcards(container) {
   container.appendChild(section);
 }
 
-// --- Pomodoro Focus Timer ---
 
-// Module-level Pomodoro state (survives tab switches!)
-let _pomoState = {
-  duration: 25 * 60, // default 25 minutes
-  timeLeft: 25 * 60,
-  isRunning: false,
-  timerId: null,
-  mode: 'focus', // 'focus', 'short', 'long'
-  completedToday: 0,
-  lastUpdatedDate: new Date().toDateString()
-};
-
-function initPomoData() {
-  const saved = storage.get('pomodoro_data', null);
-  const todayStr = new Date().toDateString();
-  
-  if (saved) {
-    _pomoState.completedToday = saved.date === todayStr ? (saved.completedToday || 0) : 0;
-    _pomoState.lastUpdatedDate = saved.date || todayStr;
-  } else {
-    _pomoState.completedToday = 0;
-    _pomoState.lastUpdatedDate = todayStr;
-  }
-}
-
-function savePomoData() {
-  storage.set('pomodoro_data', {
-    completedToday: _pomoState.completedToday,
-    date: _pomoState.lastUpdatedDate
-  });
-
-  // Log focus block completion historically under pomodoro_history
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  const dateKey = `${y}-${m}-${d}`;
-
-  const history = storage.get('pomodoro_history', {});
-  history[dateKey] = _pomoState.completedToday;
-  storage.set('pomodoro_history', history);
-
-  // Sync to Firestore immediately upon focus block completion
-  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-    if (getCurrentUser()) pushToCloud();
-  });
-}
-
-function formatPomoTime(secs) {
-  const m = String(Math.floor(secs / 60)).padStart(2, '0');
-  const s = String(secs % 60).padStart(2, '0');
-  return `${m}:${s}`;
-}
-
-export function renderPomodoroTimer(container) {
-  container.replaceChildren();
-  initPomoData();
-
-  const card = el('div', 'overview-panel pomodoro-card');
-  
-  // Left: SVG Progress Ring
-  const ringCol = el('div', 'pomodoro-ring-col');
-  
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', 'pomodoro-svg');
-  svg.setAttribute('viewBox', '0 0 120 120');
-
-  const circleTrack = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circleTrack.setAttribute('class', 'pomodoro-circle-track');
-  circleTrack.setAttribute('cx', '60');
-  circleTrack.setAttribute('cy', '60');
-  circleTrack.setAttribute('r', '50');
-  svg.appendChild(circleTrack);
-
-  const circleFill = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circleFill.setAttribute('class', `pomodoro-circle-fill pomodoro-circle-fill--${_pomoState.mode}`);
-  circleFill.setAttribute('cx', '60');
-  circleFill.setAttribute('cy', '60');
-  circleFill.setAttribute('r', '50');
-  
-  const c = 314.16; // Circumference = 2 * PI * r = 2 * 3.14159 * 50
-  circleFill.style.strokeDasharray = `${c}`;
-  const progressRatio = _pomoState.timeLeft / _pomoState.duration;
-  circleFill.style.strokeDashoffset = `${c - (progressRatio * c)}`;
-  svg.appendChild(circleFill);
-  ringCol.appendChild(svg);
-
-  // Time Text in the center
-  const timeDisplay = el('span', 'pomodoro-time-text', formatPomoTime(_pomoState.timeLeft));
-  ringCol.appendChild(timeDisplay);
-  card.appendChild(ringCol);
-
-  // Right: Controls & Modes
-  const controlsCol = el('div', 'pomodoro-controls-col');
-  
-  const title = el('h3', 'pomodoro-title', '⏱️ ICT Pomodoro Timer');
-  controlsCol.appendChild(title);
-
-  // Mode buttons row
-  const modesRow = el('div', 'pomodoro-modes-row');
-  const modes = [
-    { id: 'focus', label: '🎯 Focus (25m)', duration: 25 * 60 },
-    { id: 'short', label: '☕ Short (5m)', duration: 5 * 60 },
-    { id: 'long', label: '🌴 Long (15m)', duration: 15 * 60 }
-  ];
-
-  modes.forEach(m => {
-    const btn = el('button', `pomodoro-mode-btn${_pomoState.mode === m.id ? ' active' : ''}`, m.label);
-    btn.addEventListener('click', () => {
-      if (_pomoState.isRunning) {
-        clearInterval(_pomoState.timerId);
-        _pomoState.isRunning = false;
-      }
-      _pomoState.mode = m.id;
-      _pomoState.duration = m.duration;
-      _pomoState.timeLeft = m.duration;
-      
-      timeDisplay.textContent = formatPomoTime(_pomoState.timeLeft);
-      circleFill.style.strokeDashoffset = '0';
-      circleFill.className.baseVal = `pomodoro-circle-fill pomodoro-circle-fill--${m.id}`;
-      
-      modesRow.querySelectorAll('.pomodoro-mode-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      playBtn.textContent = '▶ Start';
-    });
-    modesRow.appendChild(btn);
-  });
-  controlsCol.appendChild(modesRow);
-
-  // Action Buttons Row (Start / Pause, Reset)
-  const actionsRow = el('div', 'pomodoro-actions-row');
-  
-  const playBtn = el('button', 'btn btn-primary pomodoro-action-btn', _pomoState.isRunning ? '⏸ Pause' : '▶ Start');
-  const resetBtn = el('button', 'btn btn-outline pomodoro-action-btn', '🔄 Reset');
-
-  playBtn.addEventListener('click', () => {
-    if (_pomoState.isRunning) {
-      clearInterval(_pomoState.timerId);
-      _pomoState.isRunning = false;
-      playBtn.textContent = '▶ Start';
-    } else {
-      _pomoState.isRunning = true;
-      playBtn.textContent = '⏸ Pause';
-      
-      _pomoState.timerId = setInterval(() => {
-        _pomoState.timeLeft--;
-        
-        // Update DOM in real-time
-        timeDisplay.textContent = formatPomoTime(_pomoState.timeLeft);
-        const ratio = _pomoState.timeLeft / _pomoState.duration;
-        circleFill.style.strokeDashoffset = `${c - (ratio * c)}`;
-        
-        // If finished
-        if (_pomoState.timeLeft <= 0) {
-          clearInterval(_pomoState.timerId);
-          _pomoState.isRunning = false;
-          playBtn.textContent = '▶ Start';
-          
-          handleTimerCompletion();
-        }
-      }, 1000);
-    }
-  });
-
-  resetBtn.addEventListener('click', () => {
-    if (_pomoState.isRunning) {
-      clearInterval(_pomoState.timerId);
-      _pomoState.isRunning = false;
-    }
-    _pomoState.timeLeft = _pomoState.duration;
-    timeDisplay.textContent = formatPomoTime(_pomoState.timeLeft);
-    circleFill.style.strokeDashoffset = '0';
-    playBtn.textContent = '▶ Start';
-  });
-
-  actionsRow.appendChild(playBtn);
-  actionsRow.appendChild(resetBtn);
-  controlsCol.appendChild(actionsRow);
-
-  // Tally
-  const tally = el('div', 'pomodoro-tally');
-  tally.appendChild(el('span', 'pomodoro-tally-icon', '🍅'));
-  const tallyCount = el('span', 'pomodoro-tally-text');
-  tallyCount.textContent = `Completed focus sessions today: ${_pomoState.completedToday} / 4`;
-  tally.appendChild(tallyCount);
-  controlsCol.appendChild(tally);
-
-  card.appendChild(controlsCol);
-  container.appendChild(card);
-}
-
-function handleTimerCompletion() {
-  const isFocus = _pomoState.mode === 'focus';
-  
-  if (isFocus) {
-    _pomoState.completedToday++;
-    _pomoState.lastUpdatedDate = new Date().toDateString();
-    savePomoData();
-
-    // 1. Award XP (+30 XP)
-    addXP('quiz', 30); // Award study completion XP
-
-    // 2. Play Audio Bell
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
-      osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-      osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 1.2);
-    } catch (e) {
-      // Audio not supported or blocked
-    }
-
-    // 3. Show Confetti!
-    import('./utils.js').then(({ triggerConfetti }) => {
-      triggerConfetti();
-    });
-
-    // 4. Show Notification Toast
-    showNotificationToast('🍅 Study Block Finished! Earned +30 XP! ❄️');
-
-    // 5. Push immediately to Cloud backup
-    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-      if (getCurrentUser()) pushToCloud();
-    });
-  } else {
-    showNotificationToast('☕ Break over! Time to get back to work! 🎯');
-  }
-
-  // Reload the widget to display updated tally count
-  const container = document.querySelector('.pomodoro-card')?.parentElement;
-  if (container) {
-    renderPomodoroTimer(container);
-  }
-}

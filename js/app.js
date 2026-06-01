@@ -1076,10 +1076,6 @@ const ACHIEVEMENTS = [
       }
     }
     return maxStreak >= 5;
-  }},
-  { id: 'absolute-discipline', emoji: '🍅', name: 'Focus Master', desc: 'Complete 4 Pomodoro blocks in one day', check: () => {
-    const pData = storage.get('pomodoro_data', null);
-    return pData && pData.completedToday >= 4;
   }}
 ];
 
@@ -1251,11 +1247,6 @@ function openAchievementDetail(a) {
     currentVal = maxRun;
     targetVal = 5;
     labelText = `${currentVal} / ${targetVal} consecutive wins`;
-  } else if (a.id === 'absolute-discipline') {
-    const pData = storage.get('pomodoro_data', null);
-    currentVal = pData ? pData.completedToday || 0 : 0;
-    targetVal = 4;
-    labelText = `${currentVal} / ${targetVal} focus blocks completed today`;
   }
 
   const pct = Math.min((currentVal / targetVal) * 100, 100);
