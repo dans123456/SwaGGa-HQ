@@ -346,7 +346,8 @@ export function renderHabitCard(habit, onToggle) {
   let done = !!habit.log[today];
   if (habit.id === 'course33') {
     const lessonsList = storage.get('lessons', []);
-    done = lessonsList.some(l => l.createdAt && l.createdAt.startsWith(today));
+    const todayLessonLogged = lessonsList.some(l => l.createdAt && l.createdAt.startsWith(today));
+    done = done || todayLessonLogged;
   }
   const streak = calculateStreak(habit.id);
   const best = getBestStreak(habit.id);
@@ -477,15 +478,9 @@ export function renderHabitCard(habit, onToggle) {
       // Sync course33 as before:
       const lessons = storage.get('lessons', []);
       const todayLessonLogged = lessons.some(l => l.createdAt && l.createdAt.startsWith(today));
-      if (todayLessonLogged) {
+      if (todayLessonLogged || done) {
         subHabitsState.watch = true;
         subHabitsState.journal = true;
-      }
-      if (done) {
-        if (typeof habit.log[today] === 'string' && habit.log[today].startsWith('http')) {
-          subHabitsState.charting = true;
-          subHabitsState.link = habit.log[today];
-        }
       }
       storage.set(storageKey, subHabitsState);
     } else {
