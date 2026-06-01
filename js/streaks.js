@@ -34,7 +34,6 @@ export const DEFAULT_HABITS = [
     baseStreak: 0,
     subTasks: [
       { key: 'watch', label: 'Watch Lesson 📺', desc: 'Study today\'s price action' },
-      { key: 'charting', label: 'Practice Charting 📈', desc: 'Submit your homework link', special: 'tradingview' },
       { key: 'journal', label: 'Journal Takeaways 📝', desc: 'Log summary in Learning Hub' }
     ]
   }
