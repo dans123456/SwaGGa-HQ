@@ -5,6 +5,7 @@ import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, Google
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { BRAH_GOH_CURRICULUM } from './learning.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDkP_yFI1t8runQ06hSdElaHtKskT8Cbzk",
@@ -284,37 +285,16 @@ export async function pullFromCloud() {
               const mergedFreezes = { ...(cloudH.freezes || {}), ...(localH.freezes || {}) };
               
               if (id === 'course33') {
-                const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
-                
-                // Get the merged lessons array if already computed, else local/cloud lessons
-                let completedLessons = merged['lessons'] || localData['lessons'] || cloudData['lessons'] || [];
-                if (!Array.isArray(completedLessons)) {
-                  try {
-                    completedLessons = typeof completedLessons === 'string' ? JSON.parse(completedLessons) : [];
-                  } catch {
-                    completedLessons = [];
+                // Count directly from curriculum: unlocked episodes with real content
+                let totalCurriculumItems = 0;
+                try {
+                  if (BRAH_GOH_CURRICULUM && Array.isArray(BRAH_GOH_CURRICULUM)) {
+                    totalCurriculumItems = BRAH_GOH_CURRICULUM.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
                   }
+                } catch (_) {
+                  // Fallback: use default unlocked count
+                  totalCurriculumItems = 14;
                 }
-                
-                let overrides = merged['bg_unlocked_lessons'] || localData['bg_unlocked_lessons'] || cloudData['bg_unlocked_lessons'] || {};
-                if (typeof overrides === 'string') {
-                  try {
-                    overrides = JSON.parse(overrides);
-                  } catch {
-                    overrides = {};
-                  }
-                }
-                const unlockedIds = new Set([...defaultUnlockedIds, ...Object.keys(overrides || {})]);
-                
-                // Count how many unique completed lessons are actually unlocked in the curriculum
-                const uniqueCompletedUnlocked = new Set();
-                completedLessons.forEach(l => {
-                  if (l && l.episodeId && unlockedIds.has(l.episodeId)) {
-                    uniqueCompletedUnlocked.add(l.episodeId);
-                  }
-                });
-                
-                const totalCurriculumItems = uniqueCompletedUnlocked.size;
                 
                 // Construct the final log based on whether today was completed or not
                 const finalLog = {};

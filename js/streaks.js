@@ -5,6 +5,7 @@ import { generateId, sanitizeText, triggerConfetti, showNotificationToast } from
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import router from './router.js';
+import { BRAH_GOH_CURRICULUM } from './learning.js';
 
 // --- Constants ---
 
@@ -96,20 +97,20 @@ export function getHabits() {
           }
         }
 
-        const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
-        const completedLessons = storage.get('lessons', []);
-        const overrides = storage.get('bg_unlocked_lessons', {});
-        const unlockedIds = new Set([...defaultUnlockedIds, ...Object.keys(overrides)]);
+        // Count directly from the curriculum: episodes that are unlocked and have real content
+        // This is always accurate regardless of localStorage state
+        let curriculumRef;
+        try { curriculumRef = BRAH_GOH_CURRICULUM; } catch (_) { curriculumRef = null; }
         
-        // Count how many unique completed lessons are actually unlocked in the curriculum
-        const uniqueCompletedUnlocked = new Set();
-        completedLessons.forEach(l => {
-          if (l && l.episodeId && unlockedIds.has(l.episodeId)) {
-            uniqueCompletedUnlocked.add(l.episodeId);
-          }
-        });
-
-        const totalCurriculumItems = uniqueCompletedUnlocked.size;
+        let totalCurriculumItems = 0;
+        if (curriculumRef && Array.isArray(curriculumRef)) {
+          totalCurriculumItems = curriculumRef.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
+        } else {
+          // Fallback: count from lessons localStorage + overrides if curriculum not available
+          const defaultUnlockedIds = ['ep0', 'ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6', 'ep7', 'ep8', 'ep9', 'ep11', 'ep12', 'ep13', 'ep14'];
+          const overrides = storage.get('bg_unlocked_lessons', {});
+          totalCurriculumItems = defaultUnlockedIds.length + Object.keys(overrides).length;
+        }
         const todayKey = localDateKey();
         const hasToday = !!h.log[todayKey];
         const expectedPastKeys = totalCurriculumItems - (hasToday ? 1 : 0);
