@@ -391,6 +391,16 @@
 .pnl-value--positive { color: var(--neon-green); }
 .pnl-value--negative { color: var(--neon-red); }
 
+.pnl-positive { color: var(--neon-green) !important; }
+.pnl-negative { color: var(--neon-red) !important; }
+.pnl-neutral { color: #f59e0b !important; } /* Gold / warning tone */
+
+.guardrails-fieldset {
+  margin-top: var(--space-4);
+  border: 1px solid rgba(0, 212, 255, 0.15) !important;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.05);
+}
+
 /* Table pagination */
 .trade-table-footer {
   display: flex;

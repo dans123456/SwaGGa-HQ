@@ -1061,6 +1061,13 @@ function openUnlockPopup(ep, curriculumContainer) {
   const form = el('form', 'modal-form');
   form.setAttribute('novalidate', '');
 
+  // Prevent Enter key submissions unless from the submit button
+  form.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.type !== 'submit') {
+      e.preventDefault();
+    }
+  });
+
   // Instruction
   body.appendChild(el('p', 'unlock-hint', 'Paste the YouTube video link and the lesson details will be generated automatically.'));
 
@@ -1085,6 +1092,13 @@ function openUnlockPopup(ep, curriculumContainer) {
   const fetchBtn = el('button', 'btn btn-outline', '🔍 Fetch Video Info');
   fetchBtn.type = 'button';
 
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      fetchBtn.click();
+    }
+  });
+
   let fetchedTitle = '';
   let fetchedConcepts = [];
 
@@ -1095,13 +1109,57 @@ function openUnlockPopup(ep, curriculumContainer) {
     return text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   }
 
-  function renderTagEditor() {
-    tagEditorContainer.replaceChildren();
+  // Persistent Elements for Tag Editor
+  tagEditorContainer.appendChild(el('p', 'unlock-preview-label', '🏷️ CURATE CONCEPTS FOR ASSIGNMENTS & JOURNAL:'));
 
-    tagEditorContainer.appendChild(el('p', 'unlock-preview-label', '🏷️ CURATE CONCEPTS FOR ASSIGNMENTS & JOURNAL:'));
+  const tagList = el('div', 'concept-tags');
+  tagList.style.marginBottom = 'var(--space-3)';
+  tagEditorContainer.appendChild(tagList);
 
-    const tagList = el('div', 'concept-tags');
-    tagList.style.marginBottom = 'var(--space-3)';
+  const inputRow = el('div', '');
+  inputRow.style.display = 'flex';
+  inputRow.style.gap = 'var(--space-2)';
+  inputRow.style.alignItems = 'center';
+
+  const addInput = document.createElement('input');
+  addInput.type = 'text';
+  addInput.className = 'form-input';
+  addInput.placeholder = 'Add custom concept (e.g. silver-bullet)';
+  addInput.style.flex = '1';
+  addInput.style.fontSize = 'var(--text-sm)';
+  addInput.style.padding = '0.5rem 0.75rem';
+
+  const addBtn = el('button', 'btn btn-outline', '+ Add');
+  addBtn.type = 'button';
+  addBtn.style.padding = '0.5rem 1rem';
+  addBtn.style.fontSize = 'var(--text-sm)';
+
+  const handleAdd = () => {
+    const val = addInput.value.trim();
+    if (!val) return;
+    const slug = slugifyConcept(val);
+    if (slug && !fetchedConcepts.includes(slug)) {
+      fetchedConcepts.push(slug);
+      renderTagsOnly();
+    }
+    addInput.value = '';
+    addInput.focus(); // Keep focus!
+  };
+
+  addBtn.addEventListener('click', handleAdd);
+  addInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAdd();
+    }
+  });
+
+  inputRow.appendChild(addInput);
+  inputRow.appendChild(addBtn);
+  tagEditorContainer.appendChild(inputRow);
+
+  function renderTagsOnly() {
+    tagList.replaceChildren();
 
     if (fetchedConcepts.length === 0) {
       const emptyHint = el('p', 'unlock-preview-sub', 'No concept tags added yet. Type a concept below to add one.');
@@ -1123,56 +1181,13 @@ function openUnlockPopup(ep, curriculumContainer) {
         delBtn.addEventListener('mouseleave', () => delBtn.style.color = 'var(--text-muted)');
         delBtn.addEventListener('click', () => {
           fetchedConcepts.splice(idx, 1);
-          renderTagEditor();
+          renderTagsOnly();
         });
 
         tag.appendChild(delBtn);
         tagList.appendChild(tag);
       });
     }
-    tagEditorContainer.appendChild(tagList);
-
-    // Add Tag Input Row
-    const inputRow = el('div', '');
-    inputRow.style.display = 'flex';
-    inputRow.style.gap = 'var(--space-2)';
-    inputRow.style.alignItems = 'center';
-
-    const addInput = document.createElement('input');
-    addInput.type = 'text';
-    addInput.className = 'form-input';
-    addInput.placeholder = 'Add custom concept (e.g. silver-bullet)';
-    addInput.style.flex = '1';
-    addInput.style.fontSize = 'var(--text-sm)';
-    addInput.style.padding = '0.5rem 0.75rem';
-
-    const addBtn = el('button', 'btn btn-outline', '+ Add');
-    addBtn.type = 'button';
-    addBtn.style.padding = '0.5rem 1rem';
-    addBtn.style.fontSize = 'var(--text-sm)';
-
-    const handleAdd = () => {
-      const val = addInput.value.trim();
-      if (!val) return;
-      const slug = slugifyConcept(val);
-      if (slug && !fetchedConcepts.includes(slug)) {
-        fetchedConcepts.push(slug);
-        renderTagEditor();
-      }
-      addInput.value = '';
-    };
-
-    addBtn.addEventListener('click', handleAdd);
-    addInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAdd();
-      }
-    });
-
-    inputRow.appendChild(addInput);
-    inputRow.appendChild(addBtn);
-    tagEditorContainer.appendChild(inputRow);
   }
 
   fetchBtn.addEventListener('click', async () => {
@@ -1198,8 +1213,8 @@ function openUnlockPopup(ep, curriculumContainer) {
       preview.appendChild(el('p', 'unlock-preview-label', '📺 VIDEO FOUND:'));
       preview.appendChild(el('p', 'unlock-preview-title', fetchedTitle));
       
-      // Append our tag editor
-      renderTagEditor();
+      // Render tags and append tag editor
+      renderTagsOnly();
       preview.appendChild(tagEditorContainer);
 
       fetchBtn.textContent = '✅ Fetched!';

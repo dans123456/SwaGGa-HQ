@@ -222,16 +222,19 @@ export function deleteTrade(id) {
 // Computes aggregate statistics for the dashboard/panels
 export function calculateStats(trades) {
   if (!trades.length) {
-    return { totalTrades: 0, winRate: 0, totalPnL: 0, avgRR: 0 };
+    return { totalTrades: 0, winRate: 0, totalPnL: 0, avgRR: 0, avgEdgeScore: 100 };
   }
   const totalPnL = trades.reduce((s, t) => s + (Number(t.pnl) || 0), 0);
   const avgRR =
     trades.reduce((s, t) => s + (Number(t.rr) || 0), 0) / trades.length;
+  const totalEdgeScore = trades.reduce((s, t) => s + (t.edgeScore !== undefined ? Number(t.edgeScore) : 100), 0);
+  const avgEdgeScore = Math.round(totalEdgeScore / trades.length);
   return {
     totalTrades: trades.length,
     winRate: calculateWinRate(trades),
     totalPnL: parseFloat(totalPnL.toFixed(2)),
     avgRR: parseFloat(avgRR.toFixed(2)),
+    avgEdgeScore,
   };
 }
 
@@ -265,11 +268,23 @@ function renderStatsBar(container, stats) {
   container.replaceChildren();
   const bar = el('div', 'stats-bar');
 
+  function getDisciplineGrade(score) {
+    if (score >= 90) return 'A+';
+    if (score >= 80) return 'A';
+    if (score >= 70) return 'B';
+    if (score >= 60) return 'C';
+    return 'F';
+  }
+
+  const grade = stats.totalTrades > 0 ? getDisciplineGrade(stats.avgEdgeScore) : 'N/A';
+  const scoreDisplay = stats.totalTrades > 0 ? `${stats.avgEdgeScore}% (${grade})` : '100% (A+)';
+
   const items = [
     { label: 'Total Trades', value: String(stats.totalTrades), icon: '📈' },
     { label: 'Win Rate', value: `${stats.winRate}%`, icon: '🎯' },
     { label: 'Total P&L', value: formatCurrency(stats.totalPnL), icon: '💰' },
     { label: 'Avg R:R', value: `${stats.avgRR}R`, icon: '⚖️' },
+    { label: 'EdgeScore 🛡️', value: scoreDisplay, icon: '🛡️' },
   ];
 
   items.forEach(({ label, value, icon }) => {
@@ -962,6 +977,33 @@ export function renderTradeForm(container, onSaved) {
   });
   form.appendChild(confFieldset);
 
+  // ---- EdgeFlo Discipline Checklist ----
+  const guardrailsFieldset = el('fieldset', 'confluence-fieldset guardrails-fieldset');
+  guardrailsFieldset.style.borderColor = 'rgba(0, 212, 255, 0.2)';
+  const guardrailsLegend = el('legend', '', '🛡️ EdgeFlo Discipline Guardrails');
+  guardrailsLegend.style.color = 'var(--cyan)';
+  guardrailsFieldset.appendChild(guardrailsLegend);
+
+  const guardrailsList = [
+    { key: 'newsChecked', label: 'Checked high-impact news calendar?' },
+    { key: 'htfBiasAligned', label: 'Setup aligns with HTF Narrative Bias?' },
+    { key: 'killzoneTiming', label: 'Traded inside a session Killzone?' },
+    { key: 'sizeCalculatorUsed', label: 'Used suggested position size calculator?' },
+  ];
+
+  guardrailsList.forEach(g => {
+    const wrapper = el('label', 'form-check');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.name = `guardrail_${g.key}`;
+    cb.checked = true; // default checked to encourage good habits
+    wrapper.appendChild(cb);
+    const span = el('span', 'form-check-label', g.label);
+    wrapper.appendChild(span);
+    guardrailsFieldset.appendChild(wrapper);
+  });
+  form.appendChild(guardrailsFieldset);
+
   // ---- Outcome ----
   const outcomeSelect = document.createElement('select');
   outcomeSelect.name = 'outcome';
@@ -1175,6 +1217,29 @@ export function renderTradeForm(container, onSaved) {
       confluences.push(cb.value);
     });
 
+    // Collect checked guardrails.
+    const newsChecked = form.querySelector('input[name="guardrail_newsChecked"]').checked;
+    const htfBiasAligned = form.querySelector('input[name="guardrail_htfBiasAligned"]').checked;
+    const killzoneTiming = form.querySelector('input[name="guardrail_killzoneTiming"]').checked;
+    const sizeCalculatorUsed = form.querySelector('input[name="guardrail_sizeCalculatorUsed"]').checked;
+
+    let edgeScore = 100;
+    if (!newsChecked) edgeScore -= 15;
+    if (!htfBiasAligned) edgeScore -= 15;
+    if (!killzoneTiming) edgeScore -= 15;
+    if (!sizeCalculatorUsed) edgeScore -= 15;
+
+    const mindset = fd.get('executionMindset') || 'professional';
+    if (mindset === 'anxious') edgeScore -= 15;
+    else if (mindset === 'revenge') edgeScore -= 35;
+
+    const outcome = fd.get('outcome');
+    const mistake = outcome === 'loss' ? fd.get('mistake') : '';
+    if (outcome === 'loss' && mistake) {
+      edgeScore -= 20;
+    }
+    edgeScore = Math.max(0, edgeScore);
+
     const tradeData = {
       asset: fd.get('asset'),
       direction: fd.get('direction'),
@@ -1195,6 +1260,13 @@ export function renderTradeForm(container, onSaved) {
       balanceUsed: Number(balInput.value) || 10000,
       riskPct: Number(pctInput.value) || 1.0,
       executionMindset: fd.get('executionMindset') || 'professional',
+      guardrails: {
+        newsChecked,
+        htfBiasAligned,
+        killzoneTiming,
+        sizeCalculatorUsed,
+      },
+      edgeScore,
     };
 
     saveTrade(tradeData);
@@ -1235,11 +1307,11 @@ function exportToCSV() {
   const trades = getTrades();
   if (!trades.length) return;
 
-  const headers = ['Date','Asset','Direction','Entry','Exit','Stop','P&L','R:R','Outcome','Session','Timeframe','Confluences','Notes'];
+  const headers = ['Date','Asset','Direction','Entry','Exit','Stop','P&L','R:R','Outcome','Session','Timeframe','EdgeScore','Confluences','Notes'];
   const rows = trades.map(t => [
     t.date, t.asset, t.direction, t.entry, t.exit, t.stop,
     t.pnl, t.rr, t.outcome, t.session || '',
-    t.timeframe || '', (t.confluences || []).join('; '),
+    t.timeframe || '', t.edgeScore !== undefined ? t.edgeScore : 100, (t.confluences || []).join('; '),
     (t.notes || '').replace(/[\n\r,]/g, ' ')
   ]);
 
@@ -1307,6 +1379,17 @@ function openTradeDetail(trade) {
   else if (dynamicQuality === 'A') qualityCls = 'setup-a';
   else if (dynamicQuality === 'B') qualityCls = 'setup-b';
 
+  function getDisciplineGrade(score) {
+    if (score >= 90) return 'A+';
+    if (score >= 80) return 'A';
+    if (score >= 70) return 'B';
+    if (score >= 60) return 'C';
+    return 'F';
+  }
+
+  const scoreVal = trade.edgeScore !== undefined ? trade.edgeScore : 100;
+  const grade = getDisciplineGrade(scoreVal);
+
   const detailPairs = [
     { label: 'Date', value: formatDate(trade.date) },
     { label: 'Direction', value: trade.direction ? trade.direction.toUpperCase() : '—' },
@@ -1319,6 +1402,7 @@ function openTradeDetail(trade) {
     { label: 'P&L', value: formatCurrency(pnlVal), cls: pnlVal >= 0 ? 'pnl-positive' : 'pnl-negative' },
     { label: 'Risk:Reward', value: `${trade.rr}R` },
     { label: 'Outcome', value: trade.outcome ? trade.outcome.charAt(0).toUpperCase() + trade.outcome.slice(1) : '—' },
+    { label: 'EdgeScore', value: `${scoreVal}% (${grade})`, cls: scoreVal >= 80 ? 'pnl-positive' : scoreVal >= 60 ? 'pnl-neutral' : 'pnl-negative' },
   ];
 
   if (trade.outcome === 'loss') {
@@ -1354,6 +1438,40 @@ function openTradeDetail(trade) {
     confSection.appendChild(tags);
     body.appendChild(confSection);
   }
+
+  // EdgeFlo Guardrails Status
+  const guardrailsSection = el('div', 'trade-modal__notes');
+  guardrailsSection.appendChild(el('div', 'trade-modal__notes-title', '🛡️ EdgeFlo Guardrails Checklist'));
+  
+  const gList = el('div', '');
+  gList.style.display = 'grid';
+  gList.style.gridTemplateColumns = '1fr 1fr';
+  gList.style.gap = 'var(--space-2)';
+  
+  const gData = trade.guardrails || { newsChecked: true, htfBiasAligned: true, killzoneTiming: true, sizeCalculatorUsed: true };
+  const gItems = [
+    { label: 'News Checked', checked: gData.newsChecked },
+    { label: 'Bias Aligned', checked: gData.htfBiasAligned },
+    { label: 'Killzone Timing', checked: gData.killzoneTiming },
+    { label: 'Position Sizing Used', checked: gData.sizeCalculatorUsed }
+  ];
+  
+  gItems.forEach(item => {
+    const row = el('div', '');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '6px';
+    row.style.fontSize = 'var(--text-xs)';
+    row.style.color = item.checked ? 'var(--neon-green)' : 'var(--neon-red)';
+    row.style.fontWeight = '600';
+    
+    const badge = el('span', '', item.checked ? '✅' : '❌');
+    row.appendChild(badge);
+    row.appendChild(document.createTextNode(item.label));
+    gList.appendChild(row);
+  });
+  guardrailsSection.appendChild(gList);
+  body.appendChild(guardrailsSection);
 
   if (trade.notes) {
     const notesSection = el('div', 'trade-modal__notes');
@@ -1636,7 +1754,7 @@ export function renderTradeHistory(container, onRefresh) {
   const table = el('table', 'trade-table');
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  const headers = ['Date', 'Asset', 'Dir', 'Entry', 'Exit', 'P&L', 'R:R', 'Outcome', 'Setup', ''];
+  const headers = ['Date', 'Asset', 'Dir', 'Entry', 'Exit', 'P&L', 'R:R', 'Score', 'Setup', ''];
   headers.forEach((h) => {
     const th = el('th', '', h);
     headerRow.appendChild(th);
@@ -1665,6 +1783,7 @@ export function renderTradeHistory(container, onRefresh) {
       else dynamicQuality = 'C';
     }
 
+    const scoreVal = t.edgeScore !== undefined ? t.edgeScore : 100;
     const cells = [
       formatDate(t.date),
       t.asset,
@@ -1673,7 +1792,7 @@ export function renderTradeHistory(container, onRefresh) {
       String(t.exit),
       formatCurrency(t.pnl),
       `${t.rr}R`,
-      t.outcome,
+      `${scoreVal}%`,
       dynamicQuality,
     ];
 
@@ -1690,6 +1809,9 @@ export function renderTradeHistory(container, onRefresh) {
           clip.title = 'Screenshot Attached';
           td.appendChild(clip);
         }
+      } else if (idx === 7) {
+        td.textContent = val;
+        td.classList.add(scoreVal >= 80 ? 'pnl-positive' : scoreVal >= 60 ? 'pnl-neutral' : 'pnl-negative');
       } else if (idx === 8) {
         const badge = el('span', `setup-${val.toLowerCase().replace('+', 'plus')}`, val);
         td.appendChild(badge);

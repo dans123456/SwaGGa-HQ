@@ -66,7 +66,7 @@ Write-Host "===================================================" -ForegroundColo
 Write-Host ""
 
 git add .
-git commit -m "feat: implement interactive flashcard category filters and simulator SMC overlays"
+git commit -m "feat: fix custom concept tagging bug and integrate EdgeFlo discipline checklist & EdgeScore dashboard metrics"
 git push
 
 Write-Host ""

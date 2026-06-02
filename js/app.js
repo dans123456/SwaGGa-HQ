@@ -407,6 +407,7 @@ function renderPremarketWidget(container, isLockout = false) {
       newsChecked: false,
       htfBias: '',
       htfLogic: '',
+      keyLevels: '',
       riskChecked: false,
       riskLimit: '',
       rulesChecked: false,
@@ -436,6 +437,9 @@ function renderPremarketWidget(container, isLockout = false) {
 
     const infoRow = el('div', 'premarket-completed-info');
     infoRow.appendChild(el('span', 'premarket-info-item', `🗺️ Bias: ${routine.htfBias ? routine.htfBias.toUpperCase() : '—'}`));
+    if (routine.keyLevels) {
+      infoRow.appendChild(el('span', 'premarket-info-item', `🎯 Levels: ${routine.keyLevels}`));
+    }
     infoRow.appendChild(el('span', 'premarket-info-item', `🛡️ Max Drawdown: ${routine.riskLimit || '—'}`));
     if (routine.focusRule) {
       infoRow.appendChild(el('span', 'premarket-info-item', `🎯 Focus: ${routine.focusRule}`));
@@ -552,6 +556,26 @@ function renderPremarketWidget(container, isLockout = false) {
   });
   step2.appendChild(biasInput);
   form.appendChild(step2);
+
+  // Step 2.5: Identify Key Liquidity & Price Levels (Asian H/L, OBs, FVGs) 🎯
+  const stepLevels = el('div', 'premarket-step');
+  const stepLevelsLabel = el('label', 'premarket-step-label block', 'Step 2.5: Identify Key Liquidity & Price Levels (Asian H/L, OBs, FVGs) 🎯');
+  stepLevelsLabel.style.display = 'block';
+  stepLevelsLabel.style.marginBottom = 'var(--space-2)';
+  stepLevels.appendChild(stepLevelsLabel);
+
+  const levelsInput = document.createElement('input');
+  levelsInput.type = 'text';
+  levelsInput.className = 'form-input premarket-text-input';
+  levelsInput.placeholder = 'e.g. Asia High 1.0820, Asia Low 1.0780, H4 Demand OB 1.0750...';
+  levelsInput.value = routine.keyLevels || '';
+  levelsInput.addEventListener('input', () => {
+    routine.keyLevels = levelsInput.value;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+  stepLevels.appendChild(levelsInput);
+  form.appendChild(stepLevels);
 
   // Step 3: Drawdown Limit Plan
   const step3 = el('div', 'premarket-step');
@@ -732,11 +756,12 @@ function renderPremarketWidget(container, isLockout = false) {
   function validateForm() {
     const isStep1 = routine.newsChecked;
     const isStep2 = routine.htfBias !== undefined && routine.htfBias !== '' && routine.htfLogic && routine.htfLogic.trim() !== '';
+    const isStepLevels = routine.keyLevels && routine.keyLevels.trim() !== '';
     const isStep3 = routine.riskLimit && routine.riskLimit.trim() !== '';
     const isStep4 = checkedRulesCount === rulesToUse.length;
     const isStep5 = routine.focusRule && routine.focusRule.trim() !== '';
 
-    const allValid = isStep1 && isStep2 && isStep3 && isStep4 && isStep5;
+    const allValid = isStep1 && isStep2 && isStepLevels && isStep3 && isStep4 && isStep5;
     submitBtn.disabled = !allValid;
   }
 
@@ -768,6 +793,57 @@ function renderDashboard(container) {
   dateBadge.textContent = `📅 ${now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}`;
   hero.appendChild(dateBadge);
   container.appendChild(hero);
+
+  // ── Discipline / Revenge Warning Banner ──
+  const cooldownExpiry = storage.get('cooldown_expiry', 0);
+  const isCooldownActive = cooldownExpiry > Date.now();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todaysTrades = trades.filter(t => t.date === todayStr || (t.createdAt && t.createdAt.slice(0, 10) === todayStr));
+  const hasRevengeTradeToday = todaysTrades.some(t => t.executionMindset === 'revenge' || t.mistake === 'revenge');
+
+  if (isCooldownActive || hasRevengeTradeToday || (trades.length >= 3 && tradeStats.avgEdgeScore < 70)) {
+    const alert = el('div', 'dashboard-discipline-alert');
+    alert.style.background = 'rgba(242, 54, 69, 0.08)';
+    alert.style.border = '1px dashed var(--neon-red)';
+    alert.style.boxShadow = '0 0 15px rgba(242, 54, 69, 0.15)';
+    alert.style.borderRadius = 'var(--radius-md)';
+    alert.style.padding = 'var(--space-3) var(--space-4)';
+    alert.style.marginBottom = 'var(--space-4)';
+    alert.style.display = 'flex';
+    alert.style.alignItems = 'center';
+    alert.style.gap = 'var(--space-3)';
+    alert.style.animation = 'fadeIn 0.3s ease';
+
+    const icon = el('span', '', '⚠️');
+    icon.style.fontSize = '1.8rem';
+    alert.appendChild(icon);
+
+    const textWrap = el('div', '');
+    const title = el('h4', '', 'DISCIPLINE WARNING LEVEL: CRITICAL');
+    title.style.color = 'var(--neon-red)';
+    title.style.margin = '0';
+    title.style.fontSize = '13px';
+    title.style.fontWeight = '800';
+    textWrap.appendChild(title);
+
+    let msg = '';
+    if (isCooldownActive) {
+      const remainingMin = Math.ceil((cooldownExpiry - Date.now()) / 60000);
+      msg = `Revenge trading cooldown active. System lockout in place for another ${remainingMin} minutes. Step away from the charts!`;
+    } else if (hasRevengeTradeToday) {
+      msg = 'Revenge trading detected in today\'s log. Protect your capital: close your charting platform and take a break.';
+    } else {
+      msg = `Your average Discipline EdgeScore is currently very low (${tradeStats.avgEdgeScore}%). You are trading with high emotional leakage. Review your rules!`;
+    }
+
+    const desc = el('p', '', msg);
+    desc.style.margin = 'var(--space-1) 0 0 0';
+    desc.style.fontSize = '12px';
+    desc.style.color = 'var(--text-muted)';
+    textWrap.appendChild(desc);
+    alert.appendChild(textWrap);
+    container.appendChild(alert);
+  }
 
   /* ---- Live stats grid ---- */
   const trades = getTrades();
@@ -985,10 +1061,19 @@ function renderDashboard(container) {
     if (l.concepts) l.concepts.forEach(c => conceptSet.add(c));
   });
 
+  function getDisciplineGrade(score) {
+    if (score >= 90) return 'A+';
+    if (score >= 80) return 'A';
+    if (score >= 70) return 'B';
+    if (score >= 60) return 'C';
+    return 'F';
+  }
+
+  const scoreGrade = trades.length > 0 ? getDisciplineGrade(tradeStats.avgEdgeScore) : 'N/A';
   const oItems = [
     { label: 'Win Rate', value: `${tradeStats.winRate}%` },
     { label: 'Total P&L', value: formatCurrency(tradeStats.totalPnL) },
-    { label: 'Best Trade', value: formatCurrency(bestTrade) },
+    { label: 'EdgeScore 🛡️', value: trades.length > 0 ? `${tradeStats.avgEdgeScore}% (${scoreGrade})` : '100% (A+)' },
     { label: 'Lessons', value: `${lessons.length} / 33` },
     { label: 'Concepts', value: String(conceptSet.size) },
     { label: 'Assignments', value: `${completedAssignments} / ${assignments.length}` },
