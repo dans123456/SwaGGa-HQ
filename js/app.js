@@ -782,6 +782,9 @@ function renderPremarketWidget(container, isLockout = false) {
 function renderDashboard(container) {
   container.replaceChildren();
 
+  const trades = getTrades();
+  const tradeStats = calculateStats(trades);
+
   /* ---- Hero banner ---- */
   const hero = el('div', 'dashboard-hero');
   const greeting = getGreeting();
@@ -846,8 +849,6 @@ function renderDashboard(container) {
   }
 
   /* ---- Live stats grid ---- */
-  const trades = getTrades();
-  const tradeStats = calculateStats(trades);
   const habits = getHabits();
   const _todayKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
   const todayDone = habits.filter(h => h.log && h.log[_todayKey]).length;
