@@ -7,8 +7,8 @@ const config: CapacitorConfig = {
   // Display name shown in the launcher and app store
   appName: 'SwaGGa HQ',
 
-  // The folder containing index.html — our project root
-  webDir: '.',
+  // The folder containing index.html — copied here before each sync
+  webDir: 'dist',
 
   // Server settings
   server: {

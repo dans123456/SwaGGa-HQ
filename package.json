@@ -4,10 +4,11 @@
   "description": "SwaGGa HQ — Personal command center for trading, learning, and daily habit tracking.",
   "private": true,
   "scripts": {
-    "cap:sync": "npx cap sync android",
+    "copy": "powershell -Command \"if (Test-Path dist) { Remove-Item dist -Recurse -Force }; New-Item dist -ItemType Directory | Out-Null; Copy-Item index.html dist/; Copy-Item manifest.json dist/; Copy-Item sw.js dist/; Copy-Item -Recurse js dist/js; Copy-Item -Recurse css dist/css; Copy-Item -Recurse img dist/img\"",
+    "cap:sync": "npm run copy && npx cap sync android",
     "cap:open": "npx cap open android",
-    "cap:run": "npx cap run android",
-    "cap:build": "npx cap sync android && npx cap open android"
+    "cap:run": "npm run copy && npx cap sync android && npx cap run android",
+    "cap:build": "npm run copy && npx cap sync android && npx cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
@@ -20,6 +21,7 @@
     "@capacitor/status-bar": "^6.0.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0"
+    "@capacitor/cli": "^6.0.0",
+    "typescript": "^6.0.3"
   }
 }
