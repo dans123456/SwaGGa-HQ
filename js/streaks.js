@@ -109,6 +109,7 @@ export function toggleHabit(habitId, date) {
   const habits = getHabits();
   const habit = habits.find((h) => h.id === habitId);
   if (!habit) return;
+  if (!habit.log) habit.log = {};
   if (habit.log[dateKey]) {
     delete habit.log[dateKey];
   } else {
@@ -127,14 +128,14 @@ export function calculateStreak(habitId) {
   
   // If today is not checked (and not frozen), start counting from yesterday
   const todayKey = localDateKey(d);
-  const todayDone = habit.log[todayKey] || (habit.freezes && habit.freezes[todayKey]);
+  const todayDone = (habit.log && habit.log[todayKey]) || (habit.freezes && habit.freezes[todayKey]);
   if (!todayDone) {
     d.setDate(d.getDate() - 1);
   }
 
   while (true) {
     const key = localDateKey(d);
-    if (habit.log[key] || (habit.freezes && habit.freezes[key])) {
+    if ((habit.log && habit.log[key]) || (habit.freezes && habit.freezes[key])) {
       streak++;
       d.setDate(d.getDate() - 1);
     } else {
@@ -176,7 +177,7 @@ export function isPerfectDay(date) {
   const dateKey = date || localDateKey();
   const habits = getHabits();
   if (!habits.length) return false;
-  return habits.every((h) => h.log[dateKey] || (h.freezes && h.freezes[dateKey]));
+  return habits.every((h) => (h.log && h.log[dateKey]) || (h.freezes && h.freezes[dateKey]));
 }
 
 // --- Dom Helpers ---
@@ -196,7 +197,7 @@ function renderFireBanner(container) {
   container.replaceChildren();
   const today = localDateKey();
   const habits = getHabits();
-  const doneCount = habits.filter((h) => h.log[today] || (h.freezes && h.freezes[today])).length;
+  const doneCount = habits.filter((h) => (h.log && h.log[today]) || (h.freezes && h.freezes[today])).length;
   const total = habits.length;
   const perfect = doneCount === total && total > 0;
 
@@ -224,7 +225,7 @@ function renderFireBanner(container) {
   // Progress dots
   const dots = el('div', 'fire-banner__dots');
   habits.forEach((h) => {
-    const isCompleted = h.log[today] || (h.freezes && h.freezes[today]);
+    const isCompleted = (h.log && h.log[today]) || (h.freezes && h.freezes[today]);
     const dot = el('span', `fire-dot${isCompleted ? ' fire-dot--done' : ''}`);
     dot.style.backgroundColor = isCompleted ? (h.color || '#00d4ff') : 'rgba(255,255,255,0.1)';
     dot.setAttribute('title', h.name);
@@ -242,7 +243,7 @@ function getRecentMissedDate(habit) {
   d.setDate(d.getDate() - 1); // Yesterday
   const yesterdayKey = localDateKey(d);
   
-  const yesterdayDone = habit.log[yesterdayKey] || (habit.freezes && habit.freezes[yesterdayKey]);
+  const yesterdayDone = (habit.log && habit.log[yesterdayKey]) || (habit.freezes && habit.freezes[yesterdayKey]);
   if (!yesterdayDone) {
     return yesterdayKey;
   }
@@ -272,7 +273,7 @@ function playFreezeAnimation(cardElement, callback) {
 
 export function renderHabitCard(habit, onToggle) {
   const today = localDateKey();
-  let done = !!habit.log[today];
+  let done = !!(habit.log && habit.log[today]);
   if (habit.id === 'course33') {
     const lessonsList = storage.get('lessons', []);
     const todayLessonLogged = lessonsList.some(l => l.createdAt && l.createdAt.startsWith(today));
@@ -829,8 +830,8 @@ export function renderHabitCard(habit, onToggle) {
       checkAndUnlockAchievements('habit');
 
       // Check for perfect day bonus (all habits done)
-      const today = localDateKey();
-      if (updatedHabits.length > 0 && updatedHabits.every(h => h.log[today])) {
+      const todayKey = localDateKey();
+      if (updatedHabits.length > 0 && updatedHabits.every(h => h.log && h.log[todayKey])) {
         addXP('perfectDay', 50);
         playSynthSound('fanfare'); // Triumphant arpeggio fanfare!
         triggerConfetti(); // Celebrate perfect day milestone!
@@ -921,7 +922,7 @@ export function renderCalendarHeatmap(container, habitData) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = localDateKey(d);
-    const count = habitData.filter((h) => h.log[key] || (h.freezes && h.freezes[key])).length;
+    const count = habitData.filter((h) => (h.log && h.log[key]) || (h.freezes && h.freezes[key])).length;
     const ratio = count / totalHabits;
 
     const cell = el('div', 'heatmap-cell');
@@ -1712,7 +1713,7 @@ function checkAndNotify() {
 
   const today = localDateKey(now);
   const habits = getHabits();
-  const undone = habits.filter(h => !h.log[today]);
+  const undone = habits.filter(h => !(h.log && h.log[today]));
 
   if (undone.length === 0) return; // All done!
 

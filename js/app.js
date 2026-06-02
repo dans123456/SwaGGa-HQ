@@ -728,7 +728,7 @@ function renderPremarketWidget(container, isLockout = false) {
     storage.set('premarket_history', history);
 
     // 3. Award XP (+20 discipline bonus)
-    addXP(20, 'Pre-Market Discipline Bonus');
+    addXP('Pre-Market Discipline Bonus', 20);
     showNotificationToast('Pre-Market Routine Completed! +20 XP! 🔓🪖');
 
     // 4. Sync with cloud

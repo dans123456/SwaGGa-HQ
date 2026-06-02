@@ -29,7 +29,34 @@ const STORAGE_KEY = 'xp_data';
 // ---- data layer ----
 
 export function getXPData() {
-  return storage.get(STORAGE_KEY, { totalXP: 0, history: [] });
+  const data = storage.get(STORAGE_KEY, { totalXP: 0, history: [] });
+  // Self-heal and sanitize: If totalXP is NaN or represented as a string, recalculate it dynamically from the history array
+  if (data && (typeof data.totalXP !== 'number' || isNaN(data.totalXP))) {
+    let sum = 0;
+    if (Array.isArray(data.history)) {
+      data.history.forEach(h => {
+        // If action and xp values were reversed during the previous bug
+        if (typeof h.action === 'number') {
+          const temp = h.action;
+          h.action = h.xp;
+          h.xp = temp;
+        }
+        
+        // Correct the pre-market routine bonus value if it was saved as a string/NaN
+        if (h.action === 'Pre-Market Discipline Bonus' && (typeof h.xp !== 'number' || isNaN(h.xp))) {
+          h.xp = 20;
+        }
+
+        const val = Number(h.xp);
+        if (!isNaN(val)) {
+          sum += val;
+        }
+      });
+    }
+    data.totalXP = sum;
+    storage.set(STORAGE_KEY, data);
+  }
+  return data;
 }
 
 // award XP and persist — dispatches 'xp-change' event
