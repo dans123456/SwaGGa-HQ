@@ -16,6 +16,7 @@ import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from '
 import { renderCalendarPage } from './calendar.js';
 import { playSynthSound } from './audio.js';
 import { renderSimulatorPage } from './simulator.js';
+import { initNative } from './native-bridge.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -2408,6 +2409,9 @@ function init() {
     }, 800); // 800ms brief loading to feel highly professional
   });
 }
+
+// Kick off native features (status bar, splash, notifications) — no-op on web
+initNative().catch(err => console.warn('[App] Native init failed gracefully:', err));
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

@@ -5,6 +5,7 @@ import { generateId, sanitizeText, triggerConfetti, showNotificationToast } from
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import router from './router.js';
+import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
 // --- Constants ---
 
@@ -752,7 +753,7 @@ export function renderHabitCard(habit, onToggle) {
 
             // Perfect day bonus check
             const todayKey = localDateKey();
-            if (habits.length > 0 && habits.every(h => h.log[todayKey])) {
+            if (habits.length > 0 && habits.every(h => h.log && h.log[todayKey])) {
               addXP('perfectDay', 50);
               playSynthSound('fanfare');
               triggerConfetti();
@@ -822,6 +823,7 @@ export function renderHabitCard(habit, onToggle) {
     // Award XP when marking a habit as done (not when un-marking)
     if (!wasDone) {
       addXP('habit', 10);
+      nativeHaptic('medium'); // Buzz on Android when habit is marked done
       
       // Check streak milestones (multiples of 7)
       checkStreakMilestones(updatedHabit);
@@ -833,6 +835,7 @@ export function renderHabitCard(habit, onToggle) {
       const todayKey = localDateKey();
       if (updatedHabits.length > 0 && updatedHabits.every(h => h.log && h.log[todayKey])) {
         addXP('perfectDay', 50);
+        nativeHapticNotification('SUCCESS'); // Strong buzz for perfect day!
         playSynthSound('fanfare'); // Triumphant arpeggio fanfare!
         triggerConfetti(); // Celebrate perfect day milestone!
       } else {
