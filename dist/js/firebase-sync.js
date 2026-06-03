@@ -1,10 +1,10 @@
 // firebase cloud sync
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { initializeApp } from './firebase-app.js';
 import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, inMemoryPersistence }
-  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+  from './firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc }
-  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+  from './firebase-firestore.js';
 import { BRAH_GOH_CURRICULUM } from './learning.js';
 import storage from './storage.js';
 
