@@ -53,11 +53,50 @@ export function onAuthChange(callback) {
 }
 
 export async function signInWithGoogle() {
+  // Strategy: Try popup first with a timeout. If popup fails (COOP block,
+  // popup blocker, or timeout), automatically fall back to redirect flow.
+  // The redirect result is picked up by getRedirectResult() on page reload.
+
   try {
-    const result = await signInWithPopup(auth, provider);
+    // Race the popup against a timeout — GitHub Pages' COOP headers can cause
+    // signInWithPopup to hang forever because window.closed detection is blocked.
+    const POPUP_TIMEOUT_MS = 10000;
+    const popupPromise = signInWithPopup(auth, provider);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('POPUP_TIMEOUT')), POPUP_TIMEOUT_MS)
+    );
+
+    const result = await Promise.race([popupPromise, timeoutPromise]);
     return result.user;
   } catch (err) {
-    console.error('Google Sign-In failed:', err.code, err.message);
+    const code = err?.code || '';
+    const message = err?.message || '';
+    console.warn('Popup sign-in failed, evaluating fallback:', code, message);
+
+    // Detect errors where redirect fallback will work
+    const isPopupBlocked = code === 'auth/popup-blocked';
+    const isPopupClosed  = code === 'auth/popup-closed-by-user';
+    const isCOOPBlock    = code === 'auth/unauthorized-domain'
+                        || message.includes('Cross-Origin-Opener-Policy')
+                        || message === 'POPUP_TIMEOUT';
+    const isNetworkIssue = code === 'auth/network-request-failed';
+    const isCancelledPopup = code === 'auth/cancelled-popup-request';
+
+    // These errors are recoverable via redirect
+    if (isPopupBlocked || isCOOPBlock || isPopupClosed || isCancelledPopup) {
+      console.log('Falling back to signInWithRedirect...');
+      try {
+        await signInWithRedirect(auth, provider);
+        // signInWithRedirect navigates away, so this return signals the UI
+        return { redirecting: true };
+      } catch (redirectErr) {
+        console.error('Redirect sign-in also failed:', redirectErr);
+        // Fall through to show error UI
+      }
+    }
+
+    // Show user-friendly error for unrecoverable failures
+    console.error('Google Sign-In failed:', code, message);
     
     if (window.showGlobalError) {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -85,7 +124,7 @@ export async function signInWithGoogle() {
 
       window.showGlobalError(
         errorTitle,
-        'Firebase encountered a storage or security shield restriction.<br><strong>Error Code:</strong> ' + err.code + '<br><strong>Details:</strong> ' + err.message,
+        'Firebase encountered a storage or security shield restriction.<br><strong>Error Code:</strong> ' + (code || 'N/A') + '<br><strong>Details:</strong> ' + message,
         fixMsg
       );
     }
@@ -107,7 +146,7 @@ onAuthStateChanged(auth, (user) => {
   _authListeners.forEach(cb => cb(_currentUser));
 });
 
-// handle redirect results (Firefox popup-blocked fallback)
+// handle redirect results (popup-blocked fallback flow)
 getRedirectResult(auth)
   .then((result) => {
     if (result && result.user) {
@@ -115,7 +154,19 @@ getRedirectResult(auth)
     }
   })
   .catch((err) => {
-    console.error('Redirect sign-in failed on page load:', err.code, err.message);
+    // Only log non-critical redirect errors — these fire on every page load
+    // when no redirect was pending, which is normal behavior.
+    const code = err?.code || '';
+    const msg = err?.message || '';
+    console.warn('Redirect result check:', code, msg);
+    
+    // Ignore benign errors that fire on normal page loads with no redirect pending
+    const benignCodes = [
+      'auth/popup-closed-by-user',
+      'auth/cancelled-popup-request',
+      'auth/user-cancelled',
+    ];
+    if (benignCodes.includes(code)) return;
     
     // Defer error check to allow cached auth persistence to resolve first
     setTimeout(() => {
@@ -124,6 +175,13 @@ getRedirectResult(auth)
         return;
       }
       
+      // Only show error overlay if the error is truly blocking sign-in
+      // and the user has no session. Network errors on fresh loads are not actionable.
+      if (code === 'auth/network-request-failed') {
+        console.warn('Network error during redirect check — user may be offline.');
+        return;
+      }
+
       if (window.showGlobalError) {
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
@@ -155,11 +213,11 @@ getRedirectResult(auth)
 
         window.showGlobalError(
           errorTitle,
-          'Firebase encountered a storage or security shield restriction.<br><strong>Error Code:</strong> ' + err.code + '<br><strong>Details:</strong> ' + err.message,
+          'Firebase encountered a storage or security shield restriction.<br><strong>Error Code:</strong> ' + code + '<br><strong>Details:</strong> ' + msg,
           fixMsg
         );
       }
-    }, 1000);
+    }, 1500);
   });
 
 // ---- firestore sync ----
