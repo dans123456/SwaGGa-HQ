@@ -56,7 +56,10 @@ export function onAuthChange(callback) {
 export async function signInWithGoogle() {
   if (isNative()) {
     try {
-      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+      const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
+      if (!FirebaseAuthentication) {
+        throw new Error('FirebaseAuthentication plugin is not available on window.Capacitor.Plugins.');
+      }
       const result = await FirebaseAuthentication.signInWithGoogle();
       const idToken = result.credential?.idToken;
       if (!idToken) {

@@ -1,8 +1,9 @@
 // firebase cloud sync
 
 import { initializeApp } from './firebase-app.js';
-import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, inMemoryPersistence }
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCredential }
   from './firebase-auth.js';
+import { isNative } from './native-bridge.js';
 import { getFirestore, doc, setDoc, getDoc }
   from './firebase-firestore.js';
 import { BRAH_GOH_CURRICULUM } from './learning.js';
@@ -53,6 +54,33 @@ export function onAuthChange(callback) {
 }
 
 export async function signInWithGoogle() {
+  if (isNative()) {
+    try {
+      const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
+      if (!FirebaseAuthentication) {
+        throw new Error('FirebaseAuthentication plugin is not available on window.Capacitor.Plugins.');
+      }
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const idToken = result.credential?.idToken;
+      if (!idToken) {
+        throw new Error('No Google ID token returned from native sign-in.');
+      }
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      return userCredential.user;
+    } catch (err) {
+      console.error('Native Google Sign-In failed:', err);
+      if (window.showGlobalError) {
+        window.showGlobalError(
+          'Native Google Sign-In Failed!',
+          'Error details: ' + (err.message || err),
+          'Make sure you have an active internet connection and that Google Play Services is enabled on your phone.'
+        );
+      }
+      return null;
+    }
+  }
+
   // Strategy: Try popup first with a timeout. If popup fails (COOP block,
   // popup blocker, or timeout), automatically fall back to redirect flow.
   // The redirect result is picked up by getRedirectResult() on page reload.

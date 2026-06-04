@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "115096591196",
+    "project_id": "swagga-hq",
+    "storage_bucket": "swagga-hq.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115096591196:android:7abb041213745173eabf99",
+        "android_client_info": {
+          "package_name": "com.swaggahq.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "115096591196-q9l39gu08ea0sjcirfrbh2mhcv9shbb1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdFb6867Aq2hpAED3jHAHJLcNSZpYKBPw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "115096591196-q9l39gu08ea0sjcirfrbh2mhcv9shbb1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

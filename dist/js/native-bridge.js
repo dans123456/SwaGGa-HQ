@@ -37,13 +37,15 @@ export function isAndroid() {
 export async function nativeHaptic(style = 'medium') {
   if (isNative()) {
     try {
-      const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
-      const styleMap = {
-        light: ImpactStyle.Light,
-        medium: ImpactStyle.Medium,
-        heavy: ImpactStyle.Heavy,
-      };
-      await Haptics.impact({ style: styleMap[style] || ImpactStyle.Medium });
+      const Haptics = window.Capacitor?.Plugins?.Haptics;
+      if (Haptics) {
+        const styleMap = {
+          light: 'LIGHT',
+          medium: 'MEDIUM',
+          heavy: 'HEAVY',
+        };
+        await Haptics.impact({ style: styleMap[style] || 'MEDIUM' });
+      }
     } catch (err) {
       console.warn('[NativeBridge] Haptics error:', err);
     }
@@ -60,13 +62,15 @@ export async function nativeHaptic(style = 'medium') {
 export async function nativeHapticNotification(type = 'SUCCESS') {
   if (isNative()) {
     try {
-      const { Haptics, NotificationType } = await import('@capacitor/haptics');
-      const typeMap = {
-        SUCCESS: NotificationType.Success,
-        WARNING: NotificationType.Warning,
-        ERROR: NotificationType.Error,
-      };
-      await Haptics.notification({ type: typeMap[type] || NotificationType.Success });
+      const Haptics = window.Capacitor?.Plugins?.Haptics;
+      if (Haptics) {
+        const typeMap = {
+          SUCCESS: 'SUCCESS',
+          WARNING: 'WARNING',
+          ERROR: 'ERROR',
+        };
+        await Haptics.notification({ type: typeMap[type] || 'SUCCESS' });
+      }
     } catch (err) {
       console.warn('[NativeBridge] Haptics notification error:', err);
     }
@@ -82,10 +86,12 @@ export async function nativeHapticNotification(type = 'SUCCESS') {
 export async function initStatusBar() {
   if (!isAndroid()) return;
   try {
-    const { StatusBar, Style } = await import('@capacitor/status-bar');
-    await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: '#0d0b0f' });
-    await StatusBar.setOverlaysWebView({ overlay: false });
+    const StatusBar = window.Capacitor?.Plugins?.StatusBar;
+    if (StatusBar) {
+      await StatusBar.setStyle({ style: 'DARK' });
+      await StatusBar.setBackgroundColor({ color: '#0d0b0f' });
+      await StatusBar.setOverlaysWebView({ overlay: false });
+    }
   } catch (err) {
     console.warn('[NativeBridge] StatusBar error:', err);
   }
@@ -99,8 +105,10 @@ export async function initStatusBar() {
 export async function hideSplash() {
   if (!isNative()) return;
   try {
-    const { SplashScreen } = await import('@capacitor/splash-screen');
-    await SplashScreen.hide({ fadeOutDuration: 500 });
+    const SplashScreen = window.Capacitor?.Plugins?.SplashScreen;
+    if (SplashScreen) {
+      await SplashScreen.hide({ fadeOutDuration: 500 });
+    }
   } catch (err) {
     console.warn('[NativeBridge] SplashScreen error:', err);
   }
@@ -122,7 +130,8 @@ export async function requestNotificationPermission() {
     return false;
   }
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const LocalNotifications = window.Capacitor?.Plugins?.LocalNotifications;
+    if (!LocalNotifications) return false;
     const { display } = await LocalNotifications.requestPermissions();
     return display === 'granted';
   } catch (err) {
@@ -138,7 +147,8 @@ export async function requestNotificationPermission() {
 export async function schedulePremarketReminder() {
   if (!isNative()) return;
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const LocalNotifications = window.Capacitor?.Plugins?.LocalNotifications;
+    if (!LocalNotifications) return;
     
     // Cancel any existing reminders first
     const pending = await LocalNotifications.getPending();
@@ -192,7 +202,8 @@ export async function sendLocalNotification(title, body, id = Math.floor(Math.ra
     return;
   }
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const LocalNotifications = window.Capacitor?.Plugins?.LocalNotifications;
+    if (!LocalNotifications) return;
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -219,8 +230,10 @@ export async function sendLocalNotification(title, body, id = Math.floor(Math.ra
 export async function hideKeyboard() {
   if (!isNative()) return;
   try {
-    const { Keyboard } = await import('@capacitor/keyboard');
-    await Keyboard.hide();
+    const Keyboard = window.Capacitor?.Plugins?.Keyboard;
+    if (Keyboard) {
+      await Keyboard.hide();
+    }
   } catch (err) {
     console.warn('[NativeBridge] Keyboard hide error:', err);
   }
