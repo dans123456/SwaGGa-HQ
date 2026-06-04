@@ -1,0 +1,2 @@
+io.capawesome.capacitorjs.plugins.firebase.authentication
+string default_web_client_id
