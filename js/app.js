@@ -420,7 +420,7 @@ function renderPremarketWidget(container, isLockout = false) {
   // Header
   const header = el('div', 'premarket-widget-header');
   const title = el('h3', 'premarket-widget-title');
-  title.innerHTML = routine.completed ? '🔓 Pre-Market Routine Completed' : '⚡ Pre-Market Routine Checklist';
+  title.textContent = routine.completed ? '🔓 Pre-Market Routine Completed' : '⚡ Pre-Market Routine Checklist';
   header.appendChild(title);
   
   if (routine.completed) {
@@ -487,7 +487,7 @@ function renderPremarketWidget(container, isLockout = false) {
   step1.appendChild(step1Header);
 
   const step1Desc = el('p', 'premarket-step-desc');
-  step1Desc.innerHTML = 'Review high-impact USD or currency-specific news events scheduled for today. ';
+  step1Desc.textContent = 'Review high-impact USD or currency-specific news events scheduled for today. ';
   
   const calendarLink = el('span', 'premarket-link', 'View Economic Calendar Widget ➔');
   calendarLink.style.cursor = 'pointer';

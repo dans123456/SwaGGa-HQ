@@ -65,8 +65,13 @@ Write-Host "🚀 Pushing Updates to GitHub Repository..." -ForegroundColor Cyan
 Write-Host "===================================================" -ForegroundColor Cyan
 Write-Host ""
 
+$commitMsg = Read-Host "Enter commit message (or press Enter for default)"
+if ([string]::IsNullOrWhiteSpace($commitMsg)) {
+    $commitMsg = "chore: update SwaGGa HQ $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+}
+
 git add .
-git commit -m "feat: fix custom concept tagging bug and integrate EdgeFlo discipline checklist & EdgeScore dashboard metrics"
+git commit -m "$commitMsg"
 git push
 
 Write-Host ""
