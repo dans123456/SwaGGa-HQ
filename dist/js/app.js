@@ -472,7 +472,7 @@ function renderPremarketWidget(container, isLockout = false) {
   const step1Header = el('div', 'premarket-step-header');
   const step1Checkbox = document.createElement('input');
   step1Checkbox.type = 'checkbox';
-  step1Checkbox.id = 'premarket-news-check';
+  step1Checkbox.id = `${isLockout ? 'lockout' : 'widget'}-premarket-news-check`;
   step1Checkbox.checked = routine.newsChecked;
   step1Checkbox.addEventListener('change', () => {
     routine.newsChecked = step1Checkbox.checked;
@@ -482,7 +482,7 @@ function renderPremarketWidget(container, isLockout = false) {
   step1Header.appendChild(step1Checkbox);
   
   const step1Label = el('label', 'premarket-step-label', 'Step 1: Check Economic News Calendar 📰');
-  step1Label.setAttribute('for', 'premarket-news-check');
+  step1Label.setAttribute('for', step1Checkbox.id);
   step1Header.appendChild(step1Label);
   step1.appendChild(step1Header);
 
@@ -616,19 +616,21 @@ function renderPremarketWidget(container, isLockout = false) {
 
   const rulesListContainer = el('div', 'premarket-rules-checklist');
   let checkedRulesCount = 0;
+  const checkboxes = [];
 
   rulesToUse.forEach((rule, idx) => {
     const row = el('div', 'premarket-rule-row');
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.id = `premarket-rule-${idx}`;
+    checkbox.id = `${isLockout ? 'lockout' : 'widget'}-premarket-rule-${idx}`;
     checkbox.addEventListener('change', () => {
       updateRulesChecked();
     });
+    checkboxes.push(checkbox);
     row.appendChild(checkbox);
 
     const label = el('label', 'premarket-rule-label', rule);
-    label.setAttribute('for', `premarket-rule-${idx}`);
+    label.setAttribute('for', checkbox.id);
     row.appendChild(label);
 
     rulesListContainer.appendChild(row);
@@ -768,9 +770,8 @@ function renderPremarketWidget(container, isLockout = false) {
 
   function updateRulesChecked() {
     checkedRulesCount = 0;
-    rulesToUse.forEach((_, idx) => {
-      const elCheck = document.getElementById(`premarket-rule-${idx}`);
-      if (elCheck && elCheck.checked) {
+    checkboxes.forEach((cb) => {
+      if (cb.checked) {
         checkedRulesCount++;
       }
     });
