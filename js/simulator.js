@@ -8,6 +8,7 @@ import storage from './storage.js';
 import { formatCurrency, generateId, showNotificationToast } from './utils.js';
 import { playSynthSound } from './audio.js';
 import { addXP } from './xp.js';
+import { saveTrade } from './trading.js';
 
 // --- Curated Scenario Data ---
 const SIM_SCENARIOS = [
@@ -174,6 +175,32 @@ const SIM_SCENARIOS = [
       { open: 1.3698, high: 1.3704, low: 1.3675, close: 1.3678 }, // 12. Hits short Take Profit target at 1.3680!
       { open: 1.3678, high: 1.3685, low: 1.3672, close: 1.3674 }, // 13. Consolidation
     ]
+  },
+  {
+    id: 'ep12-judas-swing',
+    title: 'Ep 12: London Judas Swing (Short)',
+    asset: 'GBP/USD',
+    description: 'Enforce session timing discipline. During London Open, price often runs a fake stop-hunt breakout (Judas Swing) above the Asian Session High to sweep liquidity. Identify the sweep and enter a high-probability short when the rejection candle prints.',
+    optimalDirection: 'short',
+    initialBalance: 10000,
+    historyCount: 6,
+    zones: [
+      { type: 'liquidity', name: '⚡ Asian Session High Liquidity Pool', priceMin: 1.2528, priceMax: 1.2532, color: 'rgba(255, 71, 87, 0.04)', strokeColor: '#ff4757', startCandle: 1, endCandle: 7 }
+    ],
+    candles: [
+      { open: 1.2520, high: 1.2525, low: 1.2515, close: 1.2522 }, // 1. Asian session consolidation
+      { open: 1.2522, high: 1.2528, low: 1.2518, close: 1.2525 }, // 2. Asian High forms at 1.2528
+      { open: 1.2525, high: 1.2526, low: 1.2516, close: 1.2520 }, // 3. Minor range
+      { open: 1.2520, high: 1.2522, low: 1.2512, close: 1.2515 }, // 4. Asian Low forms at 1.2512
+      { open: 1.2515, high: 1.2518, low: 1.2514, close: 1.2516 }, // 5. Range bound
+      { open: 1.2516, high: 1.2524, low: 1.2515, close: 1.2522 }, // 6. London open approaches (CONTEXT ENDS HERE)
+      { open: 1.2522, high: 1.2542, low: 1.2520, close: 1.2540 }, // 7. JUDAS SWING: Impulsive run sweeping Asian High stops!
+      { open: 1.2540, high: 1.2545, low: 1.2525, close: 1.2528 }, // 8. MITIGATION / REJECTION: Strong sweep wick, closes back below Asian High (Trigger entry!)
+      { open: 1.2528, high: 1.2530, low: 1.2505, close: 1.2508 }, // 9. Aggressive displacement down
+      { open: 1.2508, high: 1.2512, low: 1.2492, close: 1.2495 }, // 10. Breaking structure
+      { open: 1.2495, high: 1.2500, low: 1.2482, close: 1.2484 }, // 11. Expansion to Take Profit target at 1.2485!
+      { open: 1.2484, high: 1.2490, low: 1.2480, close: 1.2482 }, // 12. Consolidation
+    ]
   }
 ];
 
@@ -186,6 +213,7 @@ let _activePosition = null; // { direction, entry, size, sl, tp, openIndex }
 let _autoPlayInterval = null;
 let _tradeLog = [];
 let _objectiveListEl = null;
+let _lastResolvedTrade = null;
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -782,6 +810,7 @@ export function renderSimulatorPage(container) {
     }
 
     _activePosition = null;
+    _lastResolvedTrade = null;
     posDetails.replaceChildren();
     const emptyMsg = el('p', 'sim-pos-empty', 'No active positions. Set SL/TP below and Buy/Sell to trigger!');
     emptyMsg.style.fontSize = 'var(--text-xs)';
@@ -911,7 +940,49 @@ export function renderSimulatorPage(container) {
 
   function updateActivePositionUI() {
     posDetails.replaceChildren();
-    if (!_activePosition) return;
+    if (!_activePosition) {
+      if (_lastResolvedTrade) {
+        const card = el('div', 'sim-resolution-card');
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.gap = 'var(--space-2)';
+        card.style.fontSize = 'var(--text-xs)';
+
+        const statusLabel = el('div', '', '🏁 Trade Resolved!');
+        statusLabel.style.fontWeight = '700';
+        statusLabel.style.color = 'var(--text-primary)';
+        card.appendChild(statusLabel);
+
+        const outcomeBadge = el('span', `tag ${_lastResolvedTrade.outcome === 'win' ? 'tag-unlocked' : 'tag-locked'}`);
+        outcomeBadge.textContent = `${_lastResolvedTrade.outcome.toUpperCase()} (${_lastResolvedTrade.pnl >= 0 ? '+' : ''}${formatCurrency(_lastResolvedTrade.pnl)})`;
+        outcomeBadge.style.fontWeight = '700';
+        outcomeBadge.style.alignSelf = 'start';
+        card.appendChild(outcomeBadge);
+
+        card.appendChild(el('div', 'val-muted', `Asset: ${_lastResolvedTrade.asset}`));
+        card.appendChild(el('div', 'val-muted', `Pips/Gain: ${((_lastResolvedTrade.exit - _lastResolvedTrade.entry) * (_lastResolvedTrade.direction === 'long' ? 1 : -1)).toFixed(5)}`));
+
+        // Export button
+        const exportBtn = el('button', 'btn btn-primary btn-sm', '📤 Export to Journal');
+        exportBtn.style.marginTop = 'var(--space-2)';
+        exportBtn.addEventListener('click', () => {
+          exportSimTradeToJournal(_lastResolvedTrade);
+          exportBtn.disabled = true;
+          exportBtn.textContent = '✅ Exported';
+          exportBtn.classList.remove('btn-primary');
+          exportBtn.classList.add('btn-ghost');
+        });
+        card.appendChild(exportBtn);
+
+        posDetails.appendChild(card);
+      } else {
+        const emptyMsg = el('p', 'sim-pos-empty', 'No active positions. Set SL/TP below and Buy/Sell to trigger!');
+        emptyMsg.style.fontSize = 'var(--text-xs)';
+        emptyMsg.style.color = 'var(--text-muted)';
+        posDetails.appendChild(emptyMsg);
+      }
+      return;
+    }
 
     const currentPrice = _visibleCandles[_visibleCandles.length - 1].close;
     const diff = currentPrice - _activePosition.entry;
@@ -946,6 +1017,38 @@ export function renderSimulatorPage(container) {
     row.appendChild(el('span', 'val-muted', `Target: ${_activePosition.tp.toFixed(4)}`));
 
     posDetails.appendChild(row);
+  }
+
+  function exportSimTradeToJournal(simTrade) {
+    const journalTrade = {
+      date: simTrade.timestamp.slice(0, 10),
+      asset: simTrade.asset,
+      direction: simTrade.direction,
+      entry: simTrade.entry,
+      exit: simTrade.exit,
+      stop: simTrade.direction === 'long' ? simTrade.entry - 0.0035 : simTrade.entry + 0.0035,
+      pnl: simTrade.pnl,
+      outcome: simTrade.outcome,
+      session: 'London',
+      timeframe: 'M15',
+      notes: `Simulated trade practice from scenario: "${simTrade.scenario}"`,
+      confluences: ['Supply/Demand Zone [Ep 7]'],
+      simulated: true,
+      edgeScore: simTrade.outcome === 'win' ? 100 : 75,
+      guardrails: { newsChecked: true, htfBiasAligned: true, killzoneTiming: true, sizeCalculatorUsed: true }
+    };
+
+    if (simTrade.scenario.includes('FVG')) {
+      journalTrade.confluences = ['Fair Value Gaps (FVG) [Ep 9]'];
+    } else if (simTrade.scenario.includes('Flip')) {
+      journalTrade.confluences = ['Flip Zones / Mitigations [Ep 14]'];
+    } else if (simTrade.scenario.includes('Judas')) {
+      journalTrade.confluences = ['ICT Killzones Timing [Ep 12]', 'Liquidity Sweeps / Inducements [Ep 13]'];
+    }
+
+    saveTrade(journalTrade);
+    playSynthSound('success');
+    showNotificationToast('Simulated trade exported to your journal ledger! 📓', '📥');
   }
 
   function resolveTrade(exitPrice, outcome) {
@@ -989,12 +1092,9 @@ export function renderSimulatorPage(container) {
     }
 
     // Reset controls UI state
+    _lastResolvedTrade = tradeEntry;
     _activePosition = null;
-    posDetails.replaceChildren();
-    const emptyMsg = el('p', 'sim-pos-empty', 'No active positions. Set SL/TP below and Buy/Sell to trigger!');
-    emptyMsg.style.fontSize = 'var(--text-xs)';
-    emptyMsg.style.color = 'var(--text-muted)';
-    posDetails.appendChild(emptyMsg);
+    updateActivePositionUI();
 
     closeBtn.style.display = 'none';
     buyBtn.style.display = 'inline-flex';
@@ -1032,8 +1132,9 @@ export function renderSimulatorPage(container) {
 
     // Determine current milestone indices
     const isFvgOrFlip = _activeScenario.id.includes('fvg') || _activeScenario.id.includes('flip');
-    const targetStepIndex = isFvgOrFlip ? 8 : 9;
-    const targetRejectionIndex = isFvgOrFlip ? 9 : 10;
+    const isJudas = _activeScenario.id.includes('judas');
+    const targetStepIndex = isJudas ? 7 : (isFvgOrFlip ? 8 : 9);
+    const targetRejectionIndex = isJudas ? 8 : (isFvgOrFlip ? 9 : 10);
     
     // Step 1: Step to Mitigation candle
     const step1Done = _historyIndex >= targetStepIndex;

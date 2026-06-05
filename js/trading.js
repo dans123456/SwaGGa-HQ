@@ -124,8 +124,10 @@ let _pendingChartSymbol = null;
 // --- Data Layer ---
 
 // Gets all trades saved in storage
-export function getTrades() {
-  return storage.get(STORAGE_KEY, []);
+export function getTrades(includeSimulated = false) {
+  const allTrades = storage.get(STORAGE_KEY, []);
+  if (includeSimulated) return allTrades;
+  return allTrades.filter(t => !t.simulated);
 }
 
 function parseDrawdownLimit(limitStr) {
@@ -152,7 +154,7 @@ function parseDrawdownLimit(limitStr) {
 
 // Persists a new trade to local storage and updates setup quality
 export function saveTrade(tradeData) {
-  const trades = getTrades();
+  const trades = getTrades(true);
   const confCount = Array.isArray(tradeData.confluences) ? tradeData.confluences.length : 0;
   let setupQuality = 'C';
   if (confCount >= 5) setupQuality = 'A+';
@@ -223,17 +225,18 @@ export function deleteTrade(id) {
 
 // Computes aggregate statistics for the dashboard/panels
 export function calculateStats(trades) {
-  if (!trades.length) {
+  const liveTrades = trades.filter(t => !t.simulated);
+  if (!liveTrades.length) {
     return { totalTrades: 0, winRate: 0, totalPnL: 0, avgRR: 0, avgEdgeScore: 100 };
   }
-  const totalPnL = trades.reduce((s, t) => s + (Number(t.pnl) || 0), 0);
+  const totalPnL = liveTrades.reduce((s, t) => s + (Number(t.pnl) || 0), 0);
   const avgRR =
-    trades.reduce((s, t) => s + (Number(t.rr) || 0), 0) / trades.length;
-  const totalEdgeScore = trades.reduce((s, t) => s + (t.edgeScore !== undefined ? Number(t.edgeScore) : 100), 0);
-  const avgEdgeScore = Math.round(totalEdgeScore / trades.length);
+    liveTrades.reduce((s, t) => s + (Number(t.rr) || 0), 0) / liveTrades.length;
+  const totalEdgeScore = liveTrades.reduce((s, t) => s + (t.edgeScore !== undefined ? Number(t.edgeScore) : 100), 0);
+  const avgEdgeScore = Math.round(totalEdgeScore / liveTrades.length);
   return {
-    totalTrades: trades.length,
-    winRate: calculateWinRate(trades),
+    totalTrades: liveTrades.length,
+    winRate: calculateWinRate(liveTrades),
     totalPnL: parseFloat(totalPnL.toFixed(2)),
     avgRR: parseFloat(avgRR.toFixed(2)),
     avgEdgeScore,
@@ -1308,8 +1311,8 @@ export function renderTradeForm(container, onSaved) {
 
 /* ---------- CSV Export --------------------------------------------- */
 
-function exportToCSV() {
-  const trades = getTrades();
+function exportToCSV(tradesToExport) {
+  const trades = tradesToExport || getTrades(true);
   if (!trades.length) return;
 
   const headers = ['Date','Asset','Direction','Entry','Exit','Stop','P&L','R:R','Outcome','Session','Timeframe','EdgeScore','Confluences','Notes'];
@@ -1413,6 +1416,10 @@ function openTradeDetail(trade) {
     { label: 'Outcome', value: trade.outcome ? trade.outcome.charAt(0).toUpperCase() + trade.outcome.slice(1) : '—' },
     { label: 'EdgeScore', value: `${scoreVal}% (${grade})`, cls: scoreVal >= 80 ? 'pnl-positive' : scoreVal >= 60 ? 'pnl-neutral' : 'pnl-negative' },
   ];
+
+  if (trade.simulated) {
+    detailPairs.unshift({ label: 'Mode', value: '🎮 SIMULATED', cls: 'setup-simulated' });
+  }
 
   if (trade.outcome === 'loss') {
     const mistakeLabel = MISTAKE_LABELS[trade.mistake] || 'None (Clean Execution)';
@@ -1736,11 +1743,13 @@ function generateMentorCritique(mentorKey, trade) {
 /* ---------- Trade History Table ------------------------------------ */
 
 // Build the trade history table.
+let _historyFilterMode = storage.get('history_filter_mode', 'all');
+
 export function renderTradeHistory(container, onRefresh) {
   container.replaceChildren();
-  const trades = getTrades();
+  const allTrades = getTrades(true);
 
-  if (!trades.length) {
+  if (!allTrades.length) {
     const empty = el('div', 'empty-state');
     const icon = el('span', 'empty-icon', '📭');
     const msg = el('p', '', 'No trades logged yet. Start journaling!');
@@ -1750,13 +1759,49 @@ export function renderTradeHistory(container, onRefresh) {
     return;
   }
 
+  let filteredTrades = allTrades;
+  if (_historyFilterMode === 'live') {
+    filteredTrades = allTrades.filter(t => !t.simulated);
+  } else if (_historyFilterMode === 'simulated') {
+    filteredTrades = allTrades.filter(t => t.simulated);
+  }
+
   // Export bar
   const exportBar = el('div', 'export-bar');
   const countLabel = el('span', 'export-count');
-  countLabel.textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
+  countLabel.textContent = `${filteredTrades.length} trade${filteredTrades.length !== 1 ? 's' : ''}`;
   exportBar.appendChild(countLabel);
+
+  const filterSelect = document.createElement('select');
+  filterSelect.className = 'form-select form-select-sm';
+  filterSelect.style.width = 'auto';
+  filterSelect.style.marginRight = 'var(--space-2)';
+  
+  const optAll = el('option', '', 'All Trades');
+  optAll.value = 'all';
+  if (_historyFilterMode === 'all') optAll.selected = true;
+  
+  const optLive = el('option', '', 'Live Only');
+  optLive.value = 'live';
+  if (_historyFilterMode === 'live') optLive.selected = true;
+
+  const optSim = el('option', '', 'Simulated Only');
+  optSim.value = 'simulated';
+  if (_historyFilterMode === 'simulated') optSim.selected = true;
+
+  filterSelect.appendChild(optAll);
+  filterSelect.appendChild(optLive);
+  filterSelect.appendChild(optSim);
+
+  filterSelect.addEventListener('change', () => {
+    _historyFilterMode = filterSelect.value;
+    storage.set('history_filter_mode', _historyFilterMode);
+    if (typeof onRefresh === 'function') onRefresh();
+  });
+  exportBar.appendChild(filterSelect);
+
   const exportBtn = el('button', 'btn btn-outline btn-sm', '📥 Export CSV');
-  exportBtn.addEventListener('click', exportToCSV);
+  exportBtn.addEventListener('click', () => exportToCSV(filteredTrades));
   exportBar.appendChild(exportBtn);
   container.appendChild(exportBar);
 
@@ -1774,7 +1819,7 @@ export function renderTradeHistory(container, onRefresh) {
   const tbody = document.createElement('tbody');
 
   // Show newest first.
-  [...trades].reverse().forEach((t) => {
+  [...filteredTrades].reverse().forEach((t) => {
     const row = document.createElement('tr');
 
     // Click row to open detail (but not on delete button)
@@ -1785,7 +1830,9 @@ export function renderTradeHistory(container, onRefresh) {
 
     const confCount = Array.isArray(t.confluences) ? t.confluences.length : 0;
     let dynamicQuality = t.setupQuality;
-    if (!dynamicQuality) {
+    if (t.simulated) {
+      dynamicQuality = 'SIM';
+    } else if (!dynamicQuality) {
       if (confCount >= 5) dynamicQuality = 'A+';
       else if (confCount === 4) dynamicQuality = 'A';
       else if (confCount === 3) dynamicQuality = 'B';
@@ -1813,6 +1860,14 @@ export function renderTradeHistory(container, onRefresh) {
         td.classList.add(Number(t.pnl) >= 0 ? 'pnl-positive' : 'pnl-negative');
       } else if (idx === 1) {
         td.textContent = val;
+        if (t.simulated) {
+          const simBadge = el('span', 'setup-simulated', ' 🎮 SIM');
+          simBadge.style.marginLeft = '6px';
+          simBadge.style.fontSize = '9px';
+          simBadge.style.padding = '2px 4px';
+          simBadge.title = 'Simulated Trade';
+          td.appendChild(simBadge);
+        }
         if (t.screenshot) {
           const clip = el('span', 'attachment-icon', ' 🖼️');
           clip.title = 'Screenshot Attached';
@@ -1822,7 +1877,8 @@ export function renderTradeHistory(container, onRefresh) {
         td.textContent = val;
         td.classList.add(scoreVal >= 80 ? 'pnl-positive' : scoreVal >= 60 ? 'pnl-neutral' : 'pnl-negative');
       } else if (idx === 8) {
-        const badge = el('span', `setup-${val.toLowerCase().replace('+', 'plus')}`, val);
+        const badgeClass = t.simulated ? 'setup-simulated' : `setup-${val.toLowerCase().replace('+', 'plus')}`;
+        const badge = el('span', badgeClass, val);
         td.appendChild(badge);
       } else {
         td.textContent = val;
@@ -2485,6 +2541,7 @@ function renderLiveChart(container) {
   container.replaceChildren();
 
   const wrapper = el('div', 'tv-chart-section');
+  wrapper.style.position = 'relative';
 
   // Symbol selector bar
   const selectorBar = el('div', 'tv-selector-bar');
@@ -2526,11 +2583,146 @@ function renderLiveChart(container) {
 
   container.appendChild(wrapper);
 
+  // Append floating sizer
+  const sizer = buildFloatingRiskSizer();
+  wrapper.appendChild(sizer);
+
   // Load the chart
   loadTVChart(chartDiv, defaultSymbol);
 
   // Clear pending symbol after loading
   _pendingChartSymbol = null;
+}
+
+function buildFloatingRiskSizer() {
+  const panel = el('div', 'floating-risk-sizer collapsed');
+  
+  // Toggle / Header bar
+  const header = el('div', 'floating-sizer-header');
+  const icon = el('span', 'floating-sizer-icon', '🧮');
+  const title = el('span', 'floating-sizer-title', 'Risk Calculator');
+  
+  const toggleBtn = el('button', 'btn-toggle-sizer', '▲');
+  header.appendChild(icon);
+  header.appendChild(title);
+  header.appendChild(toggleBtn);
+  panel.appendChild(header);
+
+  // Content body
+  const body = el('div', 'floating-sizer-body');
+  
+  // Inputs
+  const balInput = document.createElement('input');
+  balInput.type = 'number';
+  balInput.className = 'form-input form-input-sm';
+  balInput.value = storage.get('preset_balance', '10000');
+  balInput.step = 'any';
+  
+  const riskInput = document.createElement('input');
+  riskInput.type = 'number';
+  riskInput.className = 'form-input form-input-sm';
+  riskInput.value = storage.get('preset_risk', '1');
+  riskInput.step = 'any';
+
+  const entryInput = document.createElement('input');
+  entryInput.type = 'number';
+  entryInput.className = 'form-input form-input-sm';
+  entryInput.placeholder = 'Entry';
+  entryInput.step = 'any';
+
+  const stopInput = document.createElement('input');
+  stopInput.type = 'number';
+  stopInput.className = 'form-input form-input-sm';
+  stopInput.placeholder = 'Stop';
+  stopInput.step = 'any';
+
+  const grid = el('div', 'sizer-input-grid');
+  grid.appendChild(formGroup('Balance ($)', balInput));
+  grid.appendChild(formGroup('Risk (%)', riskInput));
+  grid.appendChild(formGroup('Entry', entryInput));
+  grid.appendChild(formGroup('Stop', stopInput));
+  body.appendChild(grid);
+
+  // Results area
+  const results = el('div', 'sizer-results');
+  results.style.display = 'none';
+  body.appendChild(results);
+
+  panel.appendChild(body);
+
+  // Auto-calculate helper
+  const calculate = () => {
+    const balance = Number(balInput.value);
+    const riskPct = Number(riskInput.value);
+    const entry = Number(entryInput.value);
+    const stop = Number(stopInput.value);
+
+    // Save presets
+    storage.set('preset_balance', balInput.value);
+    storage.set('preset_risk', riskInput.value);
+
+    if (!balance || !riskPct || !entry || !stop) {
+      results.style.display = 'none';
+      return;
+    }
+
+    const riskAmount = (balance * riskPct) / 100;
+    const slDistance = Math.abs(entry - stop);
+
+    if (slDistance === 0) {
+      results.style.display = 'block';
+      results.replaceChildren(el('p', 'risk-calc-error', 'Entry & Stop same.'));
+      return;
+    }
+
+    const positionSize = riskAmount / slDistance;
+    const direction = entry > stop ? 'LONG' : 'SHORT';
+
+    results.style.display = 'block';
+    results.replaceChildren();
+
+    const statsGrid = el('div', 'sizer-results-grid');
+    const items = [
+      { label: 'Risk Cash', value: `$${riskAmount.toFixed(2)}` },
+      { label: 'Size', value: `${positionSize.toFixed(3)} units` },
+      { label: 'TP 2R', value: (direction === 'LONG' ? entry + slDistance * 2 : entry - slDistance * 2).toFixed(5) },
+      { label: 'TP 3R', value: (direction === 'LONG' ? entry + slDistance * 3 : entry - slDistance * 3).toFixed(5) }
+    ];
+
+    items.forEach(item => {
+      const card = el('div', 'sizer-result-card');
+      card.appendChild(el('span', 'sizer-result-lbl', item.label));
+      card.appendChild(el('span', 'sizer-result-val', item.value));
+      statsGrid.appendChild(card);
+    });
+
+    results.appendChild(statsGrid);
+  };
+
+  [balInput, riskInput, entryInput, stopInput].forEach(inp => {
+    inp.addEventListener('input', calculate);
+  });
+
+  // Toggle open/closed
+  const toggle = (e) => {
+    e.stopPropagation();
+    const isCollapsed = panel.classList.contains('collapsed');
+    if (isCollapsed) {
+      panel.classList.remove('collapsed');
+      toggleBtn.textContent = '▼';
+    } else {
+      panel.classList.add('collapsed');
+      toggleBtn.textContent = '▲';
+    }
+    playSynthSound('click');
+  };
+
+  header.addEventListener('click', toggle);
+
+  // Initialize calculate
+  calculate();
+
+  return panel;
 }
 
 function loadTVChart(container, assetName) {

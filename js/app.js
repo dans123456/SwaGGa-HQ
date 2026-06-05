@@ -1021,7 +1021,19 @@ function renderDashboard(container) {
 
   // 📝 Workspace Notepad & Scratchpad Card
   const notepadSection = el('div', 'dashboard-section notepad-section');
-  notepadSection.appendChild(el('h2', 'dashboard-section__title', '📝 Daily Rules & Scratchpad'));
+  
+  const npHeader = el('div', 'dashboard-section__header');
+  npHeader.style.display = 'flex';
+  npHeader.style.justifyContent = 'space-between';
+  npHeader.style.alignItems = 'center';
+  npHeader.appendChild(el('h2', 'dashboard-section__title', '📝 Daily Rules & Scratchpad'));
+  
+  const modeBtn = el('button', 'btn btn-outline btn-sm np-toggle-btn', '👁️ View Checklist');
+  modeBtn.style.padding = '4px 10px';
+  modeBtn.style.fontSize = '10px';
+  modeBtn.style.fontWeight = '700';
+  npHeader.appendChild(modeBtn);
+  notepadSection.appendChild(npHeader);
 
   const notepadCard = el('div', 'overview-panel notepad-card');
   notepadCard.style.padding = 'var(--space-4)';
@@ -1052,6 +1064,11 @@ function renderDashboard(container) {
   textarea.style.padding = 'var(--space-3)';
   textarea.style.paddingBottom = 'var(--space-6)'; // buffer for status label
 
+  const checklistView = el('div', 'notepad-checklist-view');
+  checklistView.style.width = '100%';
+  checklistView.style.minHeight = '140px';
+  checklistView.style.display = 'none';
+
   let debounceTimeout = null;
   textarea.addEventListener('input', () => {
     statusLabel.textContent = 'Typing...';
@@ -1070,10 +1087,142 @@ function renderDashboard(container) {
     }, 1000);
   });
 
+  function renderChecklistMode() {
+    checklistView.replaceChildren();
+    const text = textarea.value.trim();
+    if (!text) {
+      const hint = el('p', 'empty-hint', 'No rules defined. Click "✍️ Edit Rules" to write some!');
+      hint.style.fontSize = 'var(--text-xs)';
+      hint.style.color = 'var(--text-muted)';
+      checklistView.appendChild(hint);
+      return;
+    }
+
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const listContainer = el('ul', 'notepad-chk-list');
+    listContainer.style.listStyle = 'none';
+    listContainer.style.display = 'flex';
+    listContainer.style.flexDirection = 'column';
+    listContainer.style.gap = 'var(--space-2)';
+
+    let checkedStates = storage.get('notepad_checked_states', {});
+    
+    lines.forEach((line) => {
+      const isRule = line.startsWith('-') || line.startsWith('*') || line.startsWith('•') || /^\d+[\.\)]/.test(line);
+      const cleanLine = line.replace(/^[-*•\d\.\)]+\s*/, '').trim();
+
+      const item = el('li', 'np-check-item');
+      item.style.display = 'flex';
+      item.style.alignItems = 'flex-start';
+      item.style.gap = 'var(--space-2)';
+      item.style.padding = 'var(--space-2) var(--space-3)';
+      item.style.borderRadius = 'var(--radius-sm)';
+      item.style.background = 'rgba(255, 255, 255, 0.01)';
+      item.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+      item.style.transition = 'all 0.3s ease';
+
+      if (isRule) {
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.style.marginTop = '3px';
+        cb.style.cursor = 'pointer';
+        cb.checked = !!checkedStates[cleanLine];
+
+        const label = el('span', 'np-check-label', cleanLine);
+        label.style.fontSize = 'var(--text-sm)';
+        label.style.cursor = 'pointer';
+        label.style.transition = 'all 0.3s ease';
+
+        const updateStyle = (checked) => {
+          if (checked) {
+            label.style.textDecoration = 'line-through';
+            label.style.color = 'var(--text-muted)';
+            item.style.opacity = '0.6';
+            item.style.borderColor = 'rgba(57, 255, 20, 0.1)';
+            item.style.background = 'rgba(57, 255, 20, 0.01)';
+          } else {
+            label.style.textDecoration = 'none';
+            label.style.color = 'var(--text-primary)';
+            item.style.opacity = '1';
+            item.style.borderColor = 'rgba(255, 255, 255, 0.04)';
+            item.style.background = 'rgba(255, 255, 255, 0.01)';
+          }
+        };
+
+        cb.addEventListener('change', () => {
+          import('./audio.js').then(({ playSynthSound }) => {
+            playSynthSound('click');
+          });
+          checkedStates[cleanLine] = cb.checked;
+          storage.set('notepad_checked_states', checkedStates);
+          updateStyle(cb.checked);
+          
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          });
+        });
+
+        label.addEventListener('click', () => {
+          cb.checked = !cb.checked;
+          cb.dispatchEvent(new Event('change'));
+        });
+
+        updateStyle(cb.checked);
+        item.appendChild(cb);
+        item.appendChild(label);
+      } else {
+        const textSpan = el('span', 'np-text-section', line);
+        textSpan.style.fontSize = 'var(--text-xs)';
+        textSpan.style.fontWeight = '700';
+        textSpan.style.color = 'var(--cyan)';
+        textSpan.style.textTransform = 'uppercase';
+        textSpan.style.letterSpacing = '0.05em';
+        item.appendChild(textSpan);
+        item.style.background = 'transparent';
+        item.style.border = 'none';
+        item.style.padding = 'var(--space-1) 0';
+        item.style.marginTop = 'var(--space-2)';
+      }
+
+      listContainer.appendChild(item);
+    });
+
+    checklistView.appendChild(listContainer);
+  }
+
+  let isChecklistMode = storage.get('notepad_is_checklist', true);
+  
+  const toggleView = (forceChecklist) => {
+    isChecklistMode = forceChecklist !== undefined ? forceChecklist : !isChecklistMode;
+    storage.set('notepad_is_checklist', isChecklistMode);
+    
+    if (isChecklistMode) {
+      textarea.style.display = 'none';
+      statusLabel.style.display = 'none';
+      checklistView.style.display = 'block';
+      modeBtn.textContent = '✍️ Edit Rules';
+      renderChecklistMode();
+    } else {
+      textarea.style.display = 'block';
+      statusLabel.style.display = 'block';
+      checklistView.style.display = 'none';
+      modeBtn.textContent = '👁️ View Checklist';
+    }
+  };
+
+  modeBtn.addEventListener('click', () => {
+    import('./audio.js').then(({ playSynthSound }) => {
+      playSynthSound('click');
+    });
+    toggleView();
+  });
+
   notepadCard.appendChild(textarea);
+  notepadCard.appendChild(checklistView);
   notepadCard.appendChild(statusLabel);
   notepadSection.appendChild(notepadCard);
   leftCol.appendChild(notepadSection);
+  toggleView(isChecklistMode);
 
   bottomGrid.appendChild(leftCol);
 
