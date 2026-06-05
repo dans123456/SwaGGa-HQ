@@ -5,7 +5,13 @@ import { generateId, sanitizeText, triggerConfetti, showNotificationToast } from
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import router from './router.js';
-import { nativeHaptic, nativeHapticNotification, sendLocalNotification } from './native-bridge.js';
+import {
+  nativeHaptic,
+  nativeHapticNotification,
+  sendLocalNotification,
+  scheduleDailyReminder,
+  cancelNotification
+} from './native-bridge.js';
 
 // --- Constants ---
 
@@ -1656,6 +1662,184 @@ function renderFreezeStatus(container) {
   container.appendChild(card);
 }
 
+function renderRemindersPanel(container) {
+  container.replaceChildren();
+
+  const card = el('div', 'streaks-reminders-card glass-card');
+  card.style.padding = 'var(--space-4)';
+  card.style.marginBottom = 'var(--space-6)';
+  card.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+  card.style.borderRadius = 'var(--radius-lg)';
+
+  const header = el('div', 'reminders-header');
+  header.style.display = 'flex';
+  header.style.alignItems = 'center';
+  header.style.gap = 'var(--space-2)';
+  header.style.marginBottom = 'var(--space-4)';
+  
+  const icon = el('span', '', '🔔');
+  icon.style.fontSize = '1.3rem';
+  header.appendChild(icon);
+  
+  const title = el('h3', 'reminders-title', 'Daily Alarm & Reminders Scheduler');
+  title.style.fontSize = 'var(--text-sm)';
+  title.style.fontWeight = '700';
+  title.style.fontFamily = 'var(--font-heading)';
+  title.style.color = 'var(--text-primary)';
+  header.appendChild(title);
+  card.appendChild(header);
+
+  // Settings state loading
+  let pmEnabled = storage.get('premarket_reminder_enabled', true);
+  let pmTime = storage.get('premarket_reminder_time', '08:30');
+  let hbEnabled = storage.get('habit_reminder_enabled', false);
+  let hbTime = storage.get('habit_reminder_time', '20:00');
+
+  // Option 1: Premarket routine reminder
+  const pmRow = el('div', 'reminder-option-row');
+  pmRow.style.display = 'flex';
+  pmRow.style.alignItems = 'center';
+  pmRow.style.justifyContent = 'space-between';
+  pmRow.style.gap = 'var(--space-3)';
+  pmRow.style.padding = 'var(--space-2) 0';
+  pmRow.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+
+  const pmDetails = el('div', '');
+  pmDetails.appendChild(el('p', 'reminder-opt-title', 'Daily Pre-Market Reminder'));
+  pmDetails.querySelector('.reminder-opt-title').style.fontWeight = '600';
+  pmDetails.querySelector('.reminder-opt-title').style.fontSize = 'var(--text-xs)';
+  const pmDesc = el('p', 'reminder-opt-desc', 'Reminds you to check off your premarket routine.');
+  pmDesc.style.fontSize = '10px';
+  pmDesc.style.color = 'var(--text-muted)';
+  pmDetails.appendChild(pmDesc);
+  pmRow.appendChild(pmDetails);
+
+  const pmControls = el('div', '');
+  pmControls.style.display = 'flex';
+  pmControls.style.alignItems = 'center';
+  pmControls.style.gap = 'var(--space-2)';
+
+  const pmTimeInput = document.createElement('input');
+  pmTimeInput.type = 'time';
+  pmTimeInput.className = 'form-input form-input-sm';
+  pmTimeInput.value = pmTime;
+  pmTimeInput.style.width = '100px';
+  pmTimeInput.style.padding = '4px 8px';
+  pmTimeInput.style.fontSize = 'var(--text-xs)';
+  pmTimeInput.disabled = !pmEnabled;
+  pmControls.appendChild(pmTimeInput);
+
+  const pmToggle = document.createElement('input');
+  pmToggle.type = 'checkbox';
+  pmToggle.checked = pmEnabled;
+  pmToggle.style.cursor = 'pointer';
+  pmToggle.addEventListener('change', () => {
+    pmEnabled = pmToggle.checked;
+    pmTimeInput.disabled = !pmEnabled;
+    nativeHaptic('light');
+  });
+  pmControls.appendChild(pmToggle);
+  pmRow.appendChild(pmControls);
+  card.appendChild(pmRow);
+
+  // Option 2: Habit clean-up reminder
+  const hbRow = el('div', 'reminder-option-row');
+  hbRow.style.display = 'flex';
+  hbRow.style.alignItems = 'center';
+  hbRow.style.justifyContent = 'space-between';
+  hbRow.style.gap = 'var(--space-3)';
+  hbRow.style.padding = 'var(--space-2) 0';
+  hbRow.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+  hbRow.style.marginTop = 'var(--space-2)';
+
+  const hbDetails = el('div', '');
+  hbDetails.appendChild(el('p', 'reminder-opt-title', 'Daily Habit Clean-up Reminder'));
+  hbDetails.querySelector('.reminder-opt-title').style.fontWeight = '600';
+  hbDetails.querySelector('.reminder-opt-title').style.fontSize = 'var(--text-xs)';
+  const hbDesc = el('p', 'reminder-opt-desc', 'Reminds you to check off any pending habit streaks.');
+  hbDesc.style.fontSize = '10px';
+  hbDesc.style.color = 'var(--text-muted)';
+  hbDetails.appendChild(hbDesc);
+  hbRow.appendChild(hbDetails);
+
+  const hbControls = el('div', '');
+  hbControls.style.display = 'flex';
+  hbControls.style.alignItems = 'center';
+  hbControls.style.gap = 'var(--space-2)';
+
+  const hbTimeInput = document.createElement('input');
+  hbTimeInput.type = 'time';
+  hbTimeInput.className = 'form-input form-input-sm';
+  hbTimeInput.value = hbTime;
+  hbTimeInput.style.width = '100px';
+  hbTimeInput.style.padding = '4px 8px';
+  hbTimeInput.style.fontSize = 'var(--text-xs)';
+  hbTimeInput.disabled = !hbEnabled;
+  hbControls.appendChild(hbTimeInput);
+
+  const hbToggle = document.createElement('input');
+  hbToggle.type = 'checkbox';
+  hbToggle.checked = hbEnabled;
+  hbToggle.style.cursor = 'pointer';
+  hbToggle.addEventListener('change', () => {
+    hbEnabled = hbToggle.checked;
+    hbTimeInput.disabled = !hbEnabled;
+    nativeHaptic('light');
+  });
+  hbControls.appendChild(hbToggle);
+  hbRow.appendChild(hbControls);
+  card.appendChild(hbRow);
+
+  // Save Settings Button
+  const saveBtn = el('button', 'btn btn-primary btn-sm', '💾 Save Reminder Alarms');
+  saveBtn.style.marginTop = 'var(--space-4)';
+  saveBtn.style.width = '100%';
+  saveBtn.addEventListener('click', async () => {
+    nativeHaptic('medium');
+    
+    // Save to storage
+    storage.set('premarket_reminder_enabled', pmEnabled);
+    storage.set('premarket_reminder_time', pmTimeInput.value);
+    storage.set('habit_reminder_enabled', hbEnabled);
+    storage.set('habit_reminder_time', hbTimeInput.value);
+
+    // Apply native notifications changes
+    // Premarket routine
+    if (pmEnabled) {
+      const [h, m] = pmTimeInput.value.split(':').map(Number);
+      await scheduleDailyReminder(
+        1001,
+        '⚡ Pre-Market Routine',
+        'Time to check the news, mark your bias, and set your levels. Lock in before the session!',
+        h !== undefined && !isNaN(h) ? h : 8,
+        m !== undefined && !isNaN(m) ? m : 30
+      );
+    } else {
+      await cancelNotification(1001);
+    }
+
+    // Habit reminder
+    if (hbEnabled) {
+      const [h, m] = hbTimeInput.value.split(':').map(Number);
+      await scheduleDailyReminder(
+        1002,
+        '🔥 Habit Streak Clean-up',
+        'Check off your streaks before the day ends! Keep the fire lit!',
+        h !== undefined && !isNaN(h) ? h : 20,
+        m !== undefined && !isNaN(m) ? m : 0
+      );
+    } else {
+      await cancelNotification(1002);
+    }
+
+    playSynthSound('success');
+    showNotificationToast('Reminder alarms saved and scheduled successfully! 🔔✨');
+  });
+  card.appendChild(saveBtn);
+
+  container.appendChild(card);
+}
+
 // Build the full Streaks page.
 export function renderStreaksPage(container) {
   container.replaceChildren();
@@ -1664,6 +1848,7 @@ export function renderStreaksPage(container) {
   const freezeContainer = el('div');
   const fireContainer = el('div');
   const statsContainer = el('div');
+  const remindersContainer = el('div');
   const cardsContainer = el('div');
   const heatmapContainer = el('div');
   const trophyContainer = el('div');
@@ -1672,6 +1857,7 @@ export function renderStreaksPage(container) {
   container.appendChild(freezeContainer);
   container.appendChild(fireContainer);
   container.appendChild(statsContainer);
+  container.appendChild(remindersContainer);
   container.appendChild(cardsContainer);
   container.appendChild(heatmapContainer);
   container.appendChild(trophyContainer);
@@ -1681,6 +1867,7 @@ export function renderStreaksPage(container) {
     renderFireBanner(fireContainer);
     renderFreezeStatus(freezeContainer);
     renderOverviewStats(statsContainer);
+    renderRemindersPanel(remindersContainer);
     renderHabitCards(cardsContainer, refresh);
     renderCalendarHeatmap(heatmapContainer, getHabits());
     renderTrophyCabinet(trophyContainer);

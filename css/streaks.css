@@ -726,4 +726,81 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+/* ============================================================
+   Upgrades: Reminders, Mindset, and SMC Blitz
+   ============================================================ */
+
+/* Streaks Reminders Card Settings */
+.streaks-reminders-card {
+  transition: all 0.3s ease;
+}
+.streaks-reminders-card:hover {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.35) !important;
+}
+.reminder-option-row input[type="checkbox"] {
+  accent-color: var(--cyan);
+  width: 16px;
+  height: 16px;
+}
+
+/* Mindset Focus Room & Breathing Circle */
+.mindset-layout {
+  animation: fadeIn 0.4s ease;
+}
+.breathing-circle-outer {
+  transition: transform 4s linear, border-color 0.4s, box-shadow 0.4s;
+  will-change: transform, border-color, box-shadow;
+}
+.breathing-circle-inner {
+  will-change: border-color, box-shadow;
+}
+
+/* Sound preset buttons styling */
+.sound-preset-btn {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.sound-preset-btn.active {
+  border-color: var(--purple) !important;
+  background: var(--purple-bg) !important;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.12);
+}
+.sound-preset-btn:hover:not(.active) {
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* SMC Blitz Page Styling */
+.blitz-stats-bar {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.blitz-options-grid button {
+  transition: all 0.2s ease;
+}
+.blitz-options-grid button:hover:not(:disabled) {
+  border-color: var(--cyan) !important;
+  background: var(--cyan-bg) !important;
+  color: var(--cyan);
+}
+.blitz-options-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.blitz-prompt {
+  line-height: 1.5;
+  margin: var(--space-2) 0;
+}
+
+@media (max-width: 768px) {
+  .mindset-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
 

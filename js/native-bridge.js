@@ -1,13 +1,8 @@
-/**
- * SwaGGa HQ — Native Bridge
- * 
- * Thin abstraction layer between the web app and Capacitor native APIs.
- * Safely detects whether we're running inside a native Capacitor shell or
- * a regular browser, and falls back to browser APIs where needed.
- * 
  * Usage in other modules:
  *   import { nativeHaptic, schedulePremarketReminder } from './native-bridge.js';
  */
+
+import storage from './storage.js';
 
 // ─── Runtime Detection ────────────────────────────────────────────────────────
 
@@ -255,6 +250,75 @@ export async function hideKeyboard() {
 // ─── App Init ─────────────────────────────────────────────────────────────────
 
 /**
+ * Schedule a daily reminder at a custom hour and minute.
+ * @param {number} id - Notification ID
+ * @param {string} title
+ * @param {string} body
+ * @param {number} hour - 0-23
+ * @param {number} minute - 0-59
+ */
+export async function scheduleDailyReminder(id, title, body, hour, minute) {
+  if (!isNative()) {
+    console.log(`[NativeBridge] Web Fallback: Mock scheduling daily reminder ID ${id} at ${hour}:${minute}`);
+    return;
+  }
+  try {
+    const LocalNotifications = window.Capacitor?.Plugins?.LocalNotifications;
+    if (!LocalNotifications) return;
+
+    // Cancel existing reminder with same ID
+    const pending = await LocalNotifications.getPending();
+    const existing = pending.notifications.filter(n => n.id === id);
+    if (existing.length) {
+      await LocalNotifications.cancel({ notifications: existing });
+    }
+
+    const fireAt = new Date();
+    fireAt.setHours(hour, minute, 0, 0);
+    if (fireAt < new Date()) {
+      fireAt.setDate(fireAt.getDate() + 1);
+    }
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id,
+          title,
+          body,
+          schedule: {
+            at: fireAt,
+            repeats: true,
+            every: 'day',
+          },
+          sound: 'default',
+          smallIcon: 'ic_stat_icon_config_sample',
+          iconColor: '#00d4ff',
+        },
+      ],
+    });
+    console.log(`[NativeBridge] Scheduled daily reminder ID ${id} at ${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`);
+  } catch (err) {
+    console.warn('[NativeBridge] scheduleDailyReminder error:', err);
+  }
+}
+
+/**
+ * Cancel a specific scheduled notification by ID.
+ * @param {number} id
+ */
+export async function cancelNotification(id) {
+  if (!isNative()) return;
+  try {
+    const LocalNotifications = window.Capacitor?.Plugins?.LocalNotifications;
+    if (!LocalNotifications) return;
+    await LocalNotifications.cancel({ notifications: [{ id }] });
+    console.log(`[NativeBridge] Cancelled notification ID ${id}`);
+  } catch (err) {
+    console.warn('[NativeBridge] cancelNotification error:', err);
+  }
+}
+
+/**
  * One-shot initialiser — call this once when the app mounts (in app.js).
  * Handles all native bootstrapping: status bar, splash screen, notifications.
  */
@@ -272,7 +336,30 @@ export async function initNative() {
   // Request notification permission then schedule reminder
   const granted = await requestNotificationPermission();
   if (granted) {
-    await schedulePremarketReminder();
+    const premarketEnabled = storage.get('premarket_reminder_enabled', true);
+    if (premarketEnabled) {
+      const timeStr = storage.get('premarket_reminder_time', '08:30');
+      const [h, m] = timeStr.split(':').map(Number);
+      await scheduleDailyReminder(
+        1001,
+        '⚡ Pre-Market Routine',
+        'Time to check the news, mark your bias, and set your levels. Lock in before the session!',
+        h !== undefined && !isNaN(h) ? h : 8,
+        m !== undefined && !isNaN(m) ? m : 30
+      );
+    }
+    const habitEnabled = storage.get('habit_reminder_enabled', false);
+    if (habitEnabled) {
+      const timeStr = storage.get('habit_reminder_time', '20:00');
+      const [h, m] = timeStr.split(':').map(Number);
+      await scheduleDailyReminder(
+        1002,
+        '🔥 Habit Streak Clean-up',
+        'Check off your streaks before the day ends! Keep the fire lit!',
+        h !== undefined && !isNaN(h) ? h : 20,
+        m !== undefined && !isNaN(m) ? m : 0
+      );
+    }
   }
 
   console.log('[NativeBridge] Native init complete');

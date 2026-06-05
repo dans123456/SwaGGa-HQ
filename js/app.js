@@ -17,6 +17,8 @@ import { renderCalendarPage } from './calendar.js';
 import { playSynthSound } from './audio.js';
 import { renderSimulatorPage } from './simulator.js';
 import { initNative, nativeHaptic, nativeHapticNotification, isNative } from './native-bridge.js';
+import { renderMindsetPage } from './mindset.js';
+import { renderBlitzPage } from './blitz.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -34,6 +36,8 @@ const NAV_ITEMS = [
   { hash: '#chart', label: 'Live Chart', icon: '📊' },
   { hash: '#learning', label: 'Learning', icon: '📚' },
   { hash: '#simulator', label: 'Simulator', icon: '🎮' },
+  { hash: '#mindset', label: 'Mindset Room', icon: '🧘' },
+  { hash: '#blitz', label: 'SMC Blitz', icon: '⚡' },
 ];
 
 let _killzonesInterval = null;
@@ -2345,7 +2349,7 @@ function buildAppShell() {
   focusBanner.style.display = 'none';
   main.appendChild(focusBanner);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'mindset', 'blitz'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -2592,6 +2596,8 @@ async function launchApp() {
   router.registerRoute('#streaks', renderStreaksPage);
   router.registerRoute('#calendar', renderCalendarPage);
   router.registerRoute('#simulator', renderSimulatorPage);
+  router.registerRoute('#mindset', renderMindsetPage);
+  router.registerRoute('#blitz', renderBlitzPage);
   router.registerRoute('#premarket-lockout', renderPremarketLockoutScreen);
   router.registerRoute('#cooldown-lockout', renderCooldownLockoutScreen);
 
