@@ -16,7 +16,9 @@ function getAudioContext() {
   
   // resume if suspended (chrome/safari autoplay policy)
   if (_audioCtx && _audioCtx.state === 'suspended') {
-    _audioCtx.resume();
+    _audioCtx.resume().catch(err => {
+      console.warn('[Audio] Failed to resume AudioContext (browser policy):', err);
+    });
   }
   
   return _audioCtx;

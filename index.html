@@ -74,8 +74,23 @@
 
       window.addEventListener('error', function(e) {
         console.error("GLOBAL ERROR DETECTED:", e);
+        var filename = e.filename || '';
+        // Only trigger overlay for our own local app scripts to avoid extension interference
+        var isLocal = filename.indexOf(window.location.origin) > -1 || 
+                      filename.indexOf('js/') > -1 || 
+                      filename.startsWith('/') || 
+                      filename.startsWith('.') || 
+                      !filename;
+        var isExtension = filename.indexOf('chrome-extension') > -1 || 
+                          filename.indexOf('moz-extension') > -1;
+
+        if (!isLocal || isExtension) {
+          console.warn('Ignoring external script error:', e.message, 'from', filename);
+          return;
+        }
+
         var msg = e.message || 'Script failed to load (likely blocked by browser security shields or tracking protection).';
-        var file = e.filename ? e.filename.split('/').pop() : 'Unknown Script';
+        var file = filename ? filename.split('/').pop() : 'Unknown Script';
         var line = e.lineno || '?';
         window.showGlobalError(
           'Browser Script Blocked!',
@@ -88,6 +103,14 @@
         console.error("UNHANDLED REJECTION:", e.reason);
         var msg = (e.reason && e.reason.message) || String(e.reason);
         var code = (e.reason && e.reason.code) || 'N/A';
+
+        // ONLY trigger overlay for Firebase Auth / Storage related rejections
+        var isAuthError = (code && typeof code === 'string' && code.indexOf('auth/') > -1) ||
+                          (msg && typeof msg === 'string' && (msg.indexOf('auth') > -1 || msg.indexOf('Firebase') > -1 || msg.indexOf('Google') > -1));
+        if (!isAuthError) {
+          console.warn('Ignoring non-auth unhandled rejection:', msg);
+          return;
+        }
         
         var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;

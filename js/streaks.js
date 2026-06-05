@@ -1885,7 +1885,16 @@ export function initStreakNotifications() {
 
   // Request permission on first visit
   if (Notification.permission === 'default') {
-    Notification.requestPermission();
+    try {
+      const p = Notification.requestPermission();
+      if (p && typeof p.catch === 'function') {
+        p.catch(err => {
+          console.warn('[Notifications] Permission request was blocked or rejected:', err);
+        });
+      }
+    } catch (err) {
+      console.warn('[Notifications] Notification.requestPermission error:', err);
+    }
   }
 
   // Check every 30 minutes
