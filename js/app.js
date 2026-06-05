@@ -16,7 +16,7 @@ import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from '
 import { renderCalendarPage } from './calendar.js';
 import { playSynthSound } from './audio.js';
 import { renderSimulatorPage } from './simulator.js';
-import { initNative, nativeHaptic, nativeHapticNotification } from './native-bridge.js';
+import { initNative, nativeHaptic, nativeHapticNotification, isNative } from './native-bridge.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -467,9 +467,39 @@ function renderPremarketWidget(container, isLockout = false) {
     e.preventDefault();
   });
 
+  // Helper to create flexible step headers with status indicators
+  function createStepHeader(labelText) {
+    const header = el('div', 'premarket-step-header-flex');
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.marginBottom = 'var(--space-2)';
+    
+    const label = el('label', 'premarket-step-label block', labelText);
+    label.style.margin = '0';
+    header.appendChild(label);
+    
+    const status = el('span', 'premarket-step-status');
+    status.style.fontSize = '9px';
+    status.style.fontWeight = '800';
+    status.style.background = 'rgba(255, 255, 255, 0.04)';
+    status.style.padding = '2px 6px';
+    status.style.borderRadius = '4px';
+    status.style.letterSpacing = '0.05em';
+    status.style.textTransform = 'uppercase';
+    status.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+    header.appendChild(status);
+    
+    return { header, label, status };
+  }
+
   // Step 1: News Check
   const step1 = el('div', 'premarket-step');
   const step1Header = el('div', 'premarket-step-header');
+  step1Header.style.display = 'flex';
+  step1Header.style.alignItems = 'center';
+  step1Header.style.width = '100%';
+
   const step1Checkbox = document.createElement('input');
   step1Checkbox.type = 'checkbox';
   step1Checkbox.id = `${isLockout ? 'lockout' : 'widget'}-premarket-news-check`;
@@ -483,7 +513,20 @@ function renderPremarketWidget(container, isLockout = false) {
   
   const step1Label = el('label', 'premarket-step-label', 'Step 1: Check Economic News Calendar 📰');
   step1Label.setAttribute('for', step1Checkbox.id);
+  step1Label.style.marginLeft = 'var(--space-2)';
   step1Header.appendChild(step1Label);
+
+  const step1Status = el('span', 'premarket-step-status');
+  step1Status.style.marginLeft = 'auto';
+  step1Status.style.fontSize = '9px';
+  step1Status.style.fontWeight = '800';
+  step1Status.style.background = 'rgba(255, 255, 255, 0.04)';
+  step1Status.style.padding = '2px 6px';
+  step1Status.style.borderRadius = '4px';
+  step1Status.style.letterSpacing = '0.05em';
+  step1Status.style.textTransform = 'uppercase';
+  step1Status.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+  step1Header.appendChild(step1Status);
   step1.appendChild(step1Header);
 
   const step1Desc = el('p', 'premarket-step-desc');
@@ -518,10 +561,8 @@ function renderPremarketWidget(container, isLockout = false) {
 
   // Step 2: HTF Bias
   const step2 = el('div', 'premarket-step');
-  const step2Label = el('label', 'premarket-step-label block', 'Step 2: Establish HTF Directional Bias (D1/H4) 🗺️');
-  step2Label.style.display = 'block';
-  step2Label.style.marginBottom = 'var(--space-2)';
-  step2.appendChild(step2Label);
+  const { header: step2Header, status: step2Status } = createStepHeader('Step 2: Establish HTF Directional Bias (D1/H4) 🗺️');
+  step2.appendChild(step2Header);
   
   const htfSegment = el('div', 'premarket-segment-control');
   const biases = [
@@ -560,10 +601,8 @@ function renderPremarketWidget(container, isLockout = false) {
 
   // Step 2.5: Identify Key Liquidity & Price Levels (Asian H/L, OBs, FVGs) 🎯
   const stepLevels = el('div', 'premarket-step');
-  const stepLevelsLabel = el('label', 'premarket-step-label block', 'Step 2.5: Identify Key Liquidity & Price Levels (Asian H/L, OBs, FVGs) 🎯');
-  stepLevelsLabel.style.display = 'block';
-  stepLevelsLabel.style.marginBottom = 'var(--space-2)';
-  stepLevels.appendChild(stepLevelsLabel);
+  const { header: stepLevelsHeader, status: stepLevelsStatus } = createStepHeader('Step 2.5: Identify Key Liquidity & Price Levels (Asian H/L, OBs, FVGs) 🎯');
+  stepLevels.appendChild(stepLevelsHeader);
 
   const levelsInput = document.createElement('input');
   levelsInput.type = 'text';
@@ -580,10 +619,8 @@ function renderPremarketWidget(container, isLockout = false) {
 
   // Step 3: Drawdown Limit Plan
   const step3 = el('div', 'premarket-step');
-  const step3Label = el('label', 'premarket-step-label block', 'Step 3: Establish Max Risk Drawdown Limit 🛡️');
-  step3Label.style.display = 'block';
-  step3Label.style.marginBottom = 'var(--space-2)';
-  step3.appendChild(step3Label);
+  const { header: step3Header, status: step3Status } = createStepHeader('Step 3: Establish Max Risk Drawdown Limit 🛡️');
+  step3.appendChild(step3Header);
   
   const riskInput = document.createElement('input');
   riskInput.type = 'text';
@@ -600,13 +637,18 @@ function renderPremarketWidget(container, isLockout = false) {
 
   // Step 4: Mindset Checklist
   const step4 = el('div', 'premarket-step');
-  const step4Label = el('label', 'premarket-step-label block', 'Step 4: Check Off Mindset & Daily Rules 🧠');
-  step4Label.style.display = 'block';
-  step4Label.style.marginBottom = 'var(--space-2)';
-  step4.appendChild(step4Label);
+  const { header: step4Header, status: step4Status } = createStepHeader('Step 4: Check Off Mindset & Daily Rules 🧠');
+  step4.appendChild(step4Header);
   
   const rulesText = storage.get('notepad_text', '') || '';
-  const rulesList = rulesText.split('\n').map(r => r.replace(/^[-*•\s]+/, '').trim()).filter(Boolean);
+  // Smart list/bullet parsing: extract lines starting with list/bullet markers
+  let rulesList = rulesText
+    .split('\n')
+    .map(r => r.trim())
+    .filter(r => r.startsWith('-') || r.startsWith('*') || r.startsWith('•') || /^\d+[\.\)]/.test(r))
+    .map(r => r.replace(/^[-*•\d\.\)]+\s*/, '').trim())
+    .filter(Boolean);
+
   const defaultRules = [
     "I will not overtrade or revenge trade.",
     "I will only enter trades at high-probability session killzones.",
@@ -640,10 +682,8 @@ function renderPremarketWidget(container, isLockout = false) {
 
   // Step 5: Focus Rule
   const step5 = el('div', 'premarket-step');
-  const step5Label = el('label', 'premarket-step-label block', 'Step 5: Set Daily Mindset Focus Rule 🎯');
-  step5Label.style.display = 'block';
-  step5Label.style.marginBottom = 'var(--space-2)';
-  step5.appendChild(step5Label);
+  const { header: step5Header, status: step5Status } = createStepHeader('Step 5: Set Daily Mindset Focus Rule 🎯');
+  step5.appendChild(step5Header);
 
   const focusSelect = document.createElement('select');
   focusSelect.className = 'form-select premarket-select-input';
@@ -757,15 +797,37 @@ function renderPremarketWidget(container, isLockout = false) {
 
   // Form validator function
   function validateForm() {
-    const isStep1 = routine.newsChecked;
-    const isStep2 = routine.htfBias !== undefined && routine.htfBias !== '' && routine.htfLogic && routine.htfLogic.trim() !== '';
-    const isStepLevels = routine.keyLevels && routine.keyLevels.trim() !== '';
-    const isStep3 = routine.riskLimit && routine.riskLimit.trim() !== '';
+    const isStep1 = !!routine.newsChecked;
+    const isStep2 = routine.htfBias !== undefined && routine.htfBias !== '' && !!(routine.htfLogic && routine.htfLogic.trim());
+    const isStepLevels = !!(routine.keyLevels && routine.keyLevels.trim());
+    const isStep3 = !!(routine.riskLimit && routine.riskLimit.trim());
     const isStep4 = checkedRulesCount === rulesToUse.length;
-    const isStep5 = routine.focusRule && routine.focusRule.trim() !== '';
+    const isStep5 = !!(routine.focusRule && routine.focusRule.trim());
+
+    // Update status labels in real-time
+    updateIndicator(step1Status, isStep1);
+    updateIndicator(step2Status, isStep2);
+    updateIndicator(stepLevelsStatus, isStepLevels);
+    updateIndicator(step3Status, isStep3);
+    updateIndicator(step4Status, isStep4, `${checkedRulesCount}/${rulesToUse.length}`);
+    updateIndicator(step5Status, isStep5);
 
     const allValid = isStep1 && isStep2 && isStepLevels && isStep3 && isStep4 && isStep5;
     submitBtn.disabled = !allValid;
+  }
+
+  function updateIndicator(el, isValid, customText = '') {
+    if (isValid) {
+      el.textContent = customText ? `✓ ${customText}` : '✓ Ready';
+      el.style.color = '#39ff14'; // Neon Green
+      el.style.background = 'rgba(57, 255, 20, 0.08)';
+      el.style.border = '1px solid rgba(57, 255, 20, 0.2)';
+    } else {
+      el.textContent = customText ? `⚠️ ${customText}` : '* Required';
+      el.style.color = 'var(--text-muted)';
+      el.style.background = 'rgba(255, 255, 255, 0.02)';
+      el.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+    }
   }
 
   function updateRulesChecked() {
@@ -777,6 +839,9 @@ function renderPremarketWidget(container, isLockout = false) {
     });
     validateForm();
   }
+
+  // Initialize rules count and run validation check on load
+  updateRulesChecked();
 }
 
 // --- Dashboard ---
@@ -1977,25 +2042,72 @@ function buildAppShell() {
 
   sidebar.appendChild(syncSection);
 
-  // Theme switcher toggle button in sidebar
-  const currentTheme = storage.get('theme', 'dark');
-  const themeBtn = el('button', 'theme-switch-btn');
-  const themeEmoji = el('span', 'theme-switch-emoji', currentTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode');
-  themeBtn.appendChild(themeEmoji);
-  
-  themeBtn.addEventListener('click', () => {
-    const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    const newTheme = activeTheme === 'light' ? 'dark' : 'light';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    storage.set('theme', newTheme);
-    themeEmoji.textContent = newTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+  // --- Cyber-Neon Theme Presets Selector in sidebar ---
+  const themeContainer = el('div', 'sidebar-theme-container');
+  themeContainer.style.display = 'flex';
+  themeContainer.style.alignItems = 'center';
+  themeContainer.style.justifyContent = 'space-between';
+  themeContainer.style.background = 'rgba(255, 255, 255, 0.02)';
+  themeContainer.style.border = '1px dashed rgba(255, 255, 255, 0.06)';
+  themeContainer.style.borderRadius = 'var(--radius-md)';
+  themeContainer.style.padding = 'var(--space-2) var(--space-3)';
+  themeContainer.style.margin = 'var(--space-3) var(--space-4) var(--space-2)';
+
+  const themeLabel = el('span', 'theme-switch-label');
+  themeLabel.textContent = '🎨 Color:';
+  themeLabel.style.fontSize = '11px';
+  themeLabel.style.fontWeight = '800';
+  themeLabel.style.color = 'var(--text-secondary)';
+  themeLabel.style.textTransform = 'uppercase';
+  themeLabel.style.letterSpacing = '0.05em';
+  themeContainer.appendChild(themeLabel);
+
+  const dotsContainer = el('div', 'theme-dots-row');
+  dotsContainer.style.display = 'flex';
+  dotsContainer.style.gap = 'var(--space-2)';
+
+  const themes = [
+    { key: 'cyan', color: '#00d4ff', label: 'Cyberpunk Cyan' },
+    { key: 'purple', color: '#d946ef', label: 'Acid Purple' },
+    { key: 'green', color: '#39ff14', label: 'Toxic Green' },
+    { key: 'gold', color: '#ffcc00', label: 'Gold General' }
+  ];
+
+  const activeTheme = storage.get('neon_theme', 'cyan');
+
+  themes.forEach(t => {
+    const dot = el('button', `theme-dot theme-dot-${t.key}`);
+    dot.setAttribute('title', t.label);
+    dot.setAttribute('data-theme-key', t.key);
+    dot.setAttribute('data-theme-color', t.color);
+    dot.style.width = '14px';
+    dot.style.height = '14px';
+    dot.style.borderRadius = '50%';
+    dot.style.border = t.key === activeTheme ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)';
+    dot.style.background = t.color;
+    dot.style.padding = '0';
+    dot.style.cursor = 'pointer';
+    dot.style.boxShadow = t.key === activeTheme ? `0 0 8px ${t.color}` : 'none';
+    dot.style.transition = 'transform 0.2s, box-shadow 0.2s';
+
+    dot.addEventListener('click', () => {
+      import('./audio.js').then(({ playSynthSound }) => {
+        playSynthSound('click');
+      });
+      setTheme(t.key);
+      storage.set('neon_theme', t.key);
+    });
+
+    dotsContainer.appendChild(dot);
   });
-  sidebar.appendChild(themeBtn);
+  themeContainer.appendChild(dotsContainer);
+  sidebar.appendChild(themeContainer);
 
   // 🔊 Retro Arcade Audio Mute Toggle in sidebar
   const audioMuted = storage.get('audio_muted', false);
   const audioBtn = el('button', 'theme-switch-btn audio-mute-btn');
+  audioBtn.style.margin = '0 var(--space-4) var(--space-4)';
+  audioBtn.style.width = 'calc(100% - var(--space-8))';
   const audioIcon = el('span', 'theme-switch-emoji', audioMuted ? '🔇 Sound Off' : '🔊 Sound On');
   audioBtn.appendChild(audioIcon);
 
@@ -2373,6 +2485,8 @@ async function launchApp() {
       await pushToCloud();
     }
   }, 30000);
+}
+
 // --- Mobile Gestures & UX Polish ---
 
 function initMobileGestures() {
@@ -2528,6 +2642,29 @@ function initMobileGestures() {
   });
 }
 
+// --- Cyber-Neon Theme Engine ---
+export function setTheme(themeKey) {
+  const body = document.body;
+  body.classList.remove('theme-cyan', 'theme-purple', 'theme-green', 'theme-gold');
+  body.classList.add(`theme-${themeKey}`);
+  
+  // Update dots UI if sidebar is mounted
+  const dots = document.querySelectorAll('.theme-dot');
+  dots.forEach(d => {
+    const key = d.getAttribute('data-theme-key');
+    if (key === themeKey) {
+      d.style.border = '2px solid #fff';
+      const tColor = d.getAttribute('data-theme-color');
+      d.style.boxShadow = `0 0 8px ${tColor}`;
+      d.classList.add('active');
+    } else {
+      d.style.border = '1px solid rgba(255,255,255,0.2)';
+      d.style.boxShadow = 'none';
+      d.classList.remove('active');
+    }
+  });
+}
+
 // --- Init ---
 
 function init() {
@@ -2537,6 +2674,18 @@ function init() {
   // Initialize the saved visual theme (defaults to dark mode)
   const savedTheme = storage.get('theme', 'dark');
   document.documentElement.setAttribute('data-theme', savedTheme);
+
+  // Initialize the cyber-neon theme engine
+  const savedNeonTheme = storage.get('neon_theme', 'cyan');
+  setTheme(savedNeonTheme);
+
+  // Start periodic high-impact news alert scanner (every 60 seconds)
+  setInterval(() => {
+    const cached = storage.get('economic_calendar', null);
+    if (cached) {
+      checkAndVoiceNewsWarnings(cached);
+    }
+  }, 60000);
 
   // Show login screen in checking state first
   showLoginScreen(true);
@@ -2599,13 +2748,17 @@ export function fetchEconomicCalendar() {
     return Promise.resolve(cachedData);
   }
 
-  const proxyUrl = 'https://api.allorigins.win/raw?url=';
   const targetUrl = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+  const url = isNative() ? targetUrl : ('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
 
-  return fetch(proxyUrl + encodeURIComponent(targetUrl))
+  return fetch(url)
     .then(res => {
       if (!res.ok) throw new Error('API request failed');
-      return res.json();
+      // CapacitorHttp handles string to JSON conversion natively or returns raw text
+      if (typeof res.json === 'function') {
+        return res.json();
+      }
+      return JSON.parse(res);
     })
     .then(events => {
       if (!Array.isArray(events)) throw new Error('Invalid JSON structure');
@@ -2623,6 +2776,25 @@ export function fetchEconomicCalendar() {
 }
 
 function renderEconomicNewsWidget(container) {
+  const filterRow = el('div', 'news-filter-row');
+  filterRow.style.display = 'flex';
+  filterRow.style.gap = 'var(--space-2)';
+  filterRow.style.marginBottom = 'var(--space-3)';
+
+  const btnAll = el('button', 'btn btn-xs', 'All Major News');
+  btnAll.style.fontSize = '10px';
+  btnAll.style.padding = '3px 8px';
+  btnAll.style.borderRadius = '4px';
+
+  const btnUSDHigh = el('button', 'btn btn-xs', '🔴 USD High Impact');
+  btnUSDHigh.style.fontSize = '10px';
+  btnUSDHigh.style.padding = '3px 8px';
+  btnUSDHigh.style.borderRadius = '4px';
+
+  filterRow.appendChild(btnAll);
+  filterRow.appendChild(btnUSDHigh);
+  container.appendChild(filterRow);
+
   const listContainer = el('div', 'news-list-container');
   container.appendChild(listContainer);
 
@@ -2631,15 +2803,59 @@ function renderEconomicNewsWidget(container) {
   loadingText.style.color = 'var(--text-muted)';
   listContainer.appendChild(loadingText);
 
-  fetchEconomicCalendar()
-    .then(events => {
-      renderEventsList(listContainer, events);
-    })
-    .catch(err => {
-      console.error('Failed to load economic news calendar:', err);
-      listContainer.replaceChildren();
-      listContainer.appendChild(el('p', 'news-empty-text', '❌ Failed to load economic calendar.'));
-    });
+  function refreshNews() {
+    listContainer.replaceChildren(loadingText);
+    fetchEconomicCalendar()
+      .then(events => {
+        renderEventsList(listContainer, events);
+      })
+      .catch(err => {
+        console.error('Failed to load economic news calendar:', err);
+        listContainer.replaceChildren();
+        listContainer.appendChild(el('p', 'news-empty-text', '❌ Failed to load economic calendar.'));
+      });
+  }
+
+  function updateFilterButtons() {
+    const active = storage.get('news_filter_usd_high', false);
+    if (active) {
+      btnUSDHigh.style.background = 'var(--cyan-bg)';
+      btnUSDHigh.style.color = 'var(--cyan)';
+      btnUSDHigh.style.borderColor = 'rgba(0, 212, 255, 0.3)';
+      btnUSDHigh.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.1)';
+      
+      btnAll.style.background = 'rgba(255, 255, 255, 0.02)';
+      btnAll.style.color = 'var(--text-secondary)';
+      btnAll.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+      btnAll.style.boxShadow = 'none';
+    } else {
+      btnAll.style.background = 'var(--cyan-bg)';
+      btnAll.style.color = 'var(--cyan)';
+      btnAll.style.borderColor = 'rgba(0, 212, 255, 0.3)';
+      btnAll.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.1)';
+      
+      btnUSDHigh.style.background = 'rgba(255, 255, 255, 0.02)';
+      btnUSDHigh.style.color = 'var(--text-secondary)';
+      btnUSDHigh.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+      btnUSDHigh.style.boxShadow = 'none';
+    }
+  }
+
+  btnAll.addEventListener('click', () => {
+    storage.set('news_filter_usd_high', false);
+    updateFilterButtons();
+    refreshNews();
+  });
+
+  btnUSDHigh.addEventListener('click', () => {
+    storage.set('news_filter_usd_high', true);
+    updateFilterButtons();
+    refreshNews();
+  });
+
+  // Init
+  updateFilterButtons();
+  refreshNews();
 }
 
 function getCuratedFallbackEvents() {
@@ -2675,8 +2891,12 @@ function renderEventsList(container, events) {
   const now = new Date();
   
   // Filter for major currencies, High and Medium impact events, and sort by date chronologically
+  const filterUSDHigh = storage.get('news_filter_usd_high', false);
   const filtered = events
     .filter(e => {
+      if (filterUSDHigh) {
+        return e.country === 'USD' && e.impact === 'High';
+      }
       const isMajor = ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'CHF', 'NZD'].includes(e.country);
       const isHighOrMed = ['High', 'Medium'].includes(e.impact);
       return isMajor && isHighOrMed;
@@ -2791,4 +3011,65 @@ function renderEventsList(container, events) {
   });
 
   container.appendChild(listEl);
+}
+
+// Check and announce USD high-volatility news events starting in exactly 10 minutes
+export function checkAndVoiceNewsWarnings(events) {
+  if (!events || !Array.isArray(events)) return;
+  const now = Date.now();
+  const announced = storage.get('announced_news_warnings', {});
+  let announcedChanged = false;
+
+  events.forEach(e => {
+    if (e.country === 'USD' && e.impact === 'High') {
+      const eventTime = new Date(e.date).getTime();
+      const diffMin = Math.round((eventTime - now) / 60000);
+      
+      // If it starts in 10 minutes (between 0 and 10 minutes from now)
+      if (diffMin > 0 && diffMin <= 10) {
+        const eventId = `${e.country}_${e.title}_${e.date}`;
+        if (!announced[eventId]) {
+          announced[eventId] = true;
+          announcedChanged = true;
+          
+          announceNewsWarning(e);
+        }
+      }
+    }
+  });
+
+  if (announcedChanged) {
+    storage.set('announced_news_warnings', announced);
+  }
+}
+
+function announceNewsWarning(event) {
+  // 1. Show notification toast
+  showNotificationToast(`⚠️ USD NEWS ALARM: ${event.title} in 10 mins!`);
+  
+  // 2. Play warning alert chime
+  import('./audio.js').then(({ playSynthSound }) => {
+    playSynthSound('fail');
+  });
+  
+  // 3. Text-to-Speech (TTS)
+  if ('speechSynthesis' in window) {
+    const audioMuted = storage.get('audio_muted', false);
+    if (!audioMuted) {
+      setTimeout(() => {
+        const text = `Warning. High volatility U.S. dollar news release, ${event.title}, in ten minutes. Manage your open positions.`;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        utterance.volume = 1.0;
+        utterance.pitch = 0.9;
+        
+        // Find English voice
+        const voices = window.speechSynthesis.getVoices();
+        const enVoice = voices.find(v => v.lang.startsWith('en-') && v.name.includes('Google'));
+        if (enVoice) utterance.voice = enVoice;
+        
+        window.speechSynthesis.speak(utterance);
+      }, 1200);
+    }
+  }
 }

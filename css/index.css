@@ -2416,6 +2416,61 @@ body, .sidebar, .main-content, .card, .stat-card, .dash-card, .nav-item,
   }
 }
 
+/* ── Cyber-Neon Theme System Overrides ── */
+body.theme-purple {
+  --cyan:             #d946ef; /* Magenta */
+  --cyan-dim:         #a855f7; /* Violet */
+  --cyan-bg:          rgba(217, 70, 239, 0.08);
+  --cyan-glow:        0 0 20px rgba(217, 70, 239, 0.25);
+
+  --neon-green:       #00ffff; /* Aqua for success */
+  --neon-green-dim:   #00ccff;
+  --neon-green-bg:    rgba(0, 255, 255, 0.08);
+  --neon-green-glow:  0 0 20px rgba(0, 255, 255, 0.25);
+
+  --bg-deepest:       #08040a;
+  --bg-card:          #0f0a14;
+  --bg-elevated:      #181020;
+  --accent-gradient:  linear-gradient(135deg, #0f0a14 0%, #181020 100%);
+  --gray-border:      #261933;
+}
+
+body.theme-green {
+  --cyan:             #39ff14; /* Toxic Hacker Green */
+  --cyan-dim:         #00cc44;
+  --cyan-bg:          rgba(57, 255, 20, 0.08);
+  --cyan-glow:        0 0 20px rgba(57, 255, 20, 0.25);
+
+  --neon-green:       #ccff00; /* Neon Lime success */
+  --neon-green-dim:   #aacc00;
+  --neon-green-bg:    rgba(204, 255, 0, 0.08);
+  --neon-green-glow:  0 0 20px rgba(204, 255, 0, 0.25);
+
+  --bg-deepest:       #030704;
+  --bg-card:          #071009;
+  --bg-elevated:      #0e1f11;
+  --accent-gradient:  linear-gradient(135deg, #071009 0%, #0e1f11 100%);
+  --gray-border:      #16331c;
+}
+
+body.theme-gold {
+  --cyan:             #ffcc00; /* Cyber Gold */
+  --cyan-dim:         #cca300;
+  --cyan-bg:          rgba(255, 204, 0, 0.08);
+  --cyan-glow:        0 0 20px rgba(255, 204, 0, 0.25);
+
+  --neon-green:       #00e676; /* Emerald green */
+  --neon-green-dim:   #00b252;
+  --neon-green-bg:    rgba(0, 230, 118, 0.08);
+  --neon-green-glow:  0 0 20px rgba(0, 230, 118, 0.25);
+
+  --bg-deepest:       #080806;
+  --bg-card:          #0f0e0b;
+  --bg-elevated:      #1a1914;
+  --accent-gradient:  linear-gradient(135deg, #0f0e0b 0%, #1a1914 100%);
+  --gray-border:      #26241f;
+}
+
 
 
 

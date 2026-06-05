@@ -271,6 +271,7 @@ const SYNC_KEYS = [
   'notepad_text',
   'premarket_routine',
   'premarket_history',
+  'unlocked_achievements',
 ];
 
 const NAMESPACE = 'swagga';
@@ -495,8 +496,61 @@ export async function pullFromCloud() {
         merged[key] = localLen >= cloudLen ? local : cloud;
       } else if (key.startsWith('ba_progress_')) {
         merged[key] = Math.max(Number(cloud) || 0, Number(local) || 0);
-      } else if (['bg_unlocked_lessons', 'premarket_routine', 'premarket_history'].includes(key)) {
-        // Object deep-merge: combine local and cloud unlocked lessons / routines
+      } else if (key === 'premarket_routine') {
+        const cloudRoutine = cloud || {};
+        const localRoutine = local || {};
+        const cloudDate = cloudRoutine.date || '';
+        const localDate = localRoutine.date || '';
+        
+        if (cloudDate > localDate) {
+          merged[key] = cloudRoutine;
+        } else if (localDate > cloudDate) {
+          merged[key] = localRoutine;
+        } else {
+          // Same date: merge properties, completed/checked wins, longer text wins
+          merged[key] = {
+            ...cloudRoutine,
+            ...localRoutine,
+            completed: !!(cloudRoutine.completed || localRoutine.completed),
+            newsChecked: !!(cloudRoutine.newsChecked || localRoutine.newsChecked),
+            htfBias: localRoutine.htfBias || cloudRoutine.htfBias || '',
+            htfLogic: (localRoutine.htfLogic || '').length >= (cloudRoutine.htfLogic || '').length ? (localRoutine.htfLogic || '') : (cloudRoutine.htfLogic || ''),
+            keyLevels: (localRoutine.keyLevels || '').length >= (cloudRoutine.keyLevels || '').length ? (localRoutine.keyLevels || '') : (cloudRoutine.keyLevels || ''),
+            riskLimit: (localRoutine.riskLimit || '').length >= (cloudRoutine.riskLimit || '').length ? (localRoutine.riskLimit || '') : (cloudRoutine.riskLimit || ''),
+            focusRule: localRoutine.focusRule || cloudRoutine.focusRule || '',
+            riskChecked: !!(cloudRoutine.riskChecked || localRoutine.riskChecked),
+            rulesChecked: !!(cloudRoutine.rulesChecked || localRoutine.rulesChecked)
+          };
+        }
+      } else if (key === 'premarket_history') {
+        // Merge routine histories by date key
+        const cloudHist = cloud || {};
+        const localHist = local || {};
+        const mergedHist = { ...cloudHist };
+        
+        Object.keys(localHist).forEach(date => {
+          if (!mergedHist[date]) {
+            mergedHist[date] = localHist[date];
+          } else {
+            // merge individual routine records
+            const cR = mergedHist[date];
+            const lR = localHist[date];
+            mergedHist[date] = {
+              ...cR,
+              ...lR,
+              completed: !!(cR.completed || lR.completed),
+              newsChecked: !!(cR.newsChecked || lR.newsChecked),
+              htfBias: lR.htfBias || cR.htfBias || '',
+              htfLogic: (lR.htfLogic || '').length >= (cR.htfLogic || '').length ? (lR.htfLogic || '') : (cR.htfLogic || ''),
+              keyLevels: (lR.keyLevels || '').length >= (cR.keyLevels || '').length ? (lR.keyLevels || '') : (cR.keyLevels || ''),
+              riskLimit: (lR.riskLimit || '').length >= (cR.riskLimit || '').length ? (lR.riskLimit || '') : (cR.riskLimit || ''),
+              focusRule: lR.focusRule || cR.focusRule || ''
+            };
+          }
+        });
+        merged[key] = mergedHist;
+      } else if (['bg_unlocked_lessons', 'unlocked_achievements'].includes(key)) {
+        // Object deep-merge: combine local and cloud unlocked lessons / achievements
         merged[key] = { ...(cloud || {}), ...(local || {}) };
       } else {
         // default: cloud wins
