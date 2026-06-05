@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "115096591196-7n4efap0869qg5fuk42pgafejdivnro3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.swaggahq.app",
+            "certificate_hash": "ef1d0390084fc8220a9ac30233b95ea46416228c"
+          }
+        },
+        {
           "client_id": "115096591196-q9l39gu08ea0sjcirfrbh2mhcv9shbb1.apps.googleusercontent.com",
           "client_type": 3
         }

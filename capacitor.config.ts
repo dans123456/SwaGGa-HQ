@@ -40,6 +40,10 @@ const config: CapacitorConfig = {
 
   // Plugin configurations
   plugins: {
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ['google.com'],
+    },
     SplashScreen: {
       // Show splash for 2 seconds then fade out
       launchShowDuration: 2000,

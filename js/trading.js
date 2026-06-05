@@ -14,6 +14,7 @@ import {
 } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
+import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
 // --- Constants ---
 
@@ -215,6 +216,7 @@ export function saveTrade(tradeData) {
 export function deleteTrade(id) {
   const trades = getTrades().filter((t) => t.id !== id);
   storage.set(STORAGE_KEY, trades);
+  nativeHaptic('medium');
 }
 
 // --- Stats Calculations ---
@@ -970,6 +972,7 @@ export function renderTradeForm(container, onSaved) {
     cb.type = 'checkbox';
     cb.name = 'confluences';
     cb.value = c;
+    cb.addEventListener('change', () => nativeHaptic('light'));
     wrapper.appendChild(cb);
     const span = el('span', 'form-check-label', c);
     wrapper.appendChild(span);
@@ -997,6 +1000,7 @@ export function renderTradeForm(container, onSaved) {
     cb.type = 'checkbox';
     cb.name = `guardrail_${g.key}`;
     cb.checked = true; // default checked to encourage good habits
+    cb.addEventListener('change', () => nativeHaptic('light'));
     wrapper.appendChild(cb);
     const span = el('span', 'form-check-label', g.label);
     wrapper.appendChild(span);
@@ -1271,6 +1275,7 @@ export function renderTradeForm(container, onSaved) {
 
     saveTrade(tradeData);
     addXP('trade', 25);
+    nativeHaptic('medium');
 
     // Check general achievements dynamically to prevent cycle
     try {
@@ -1341,6 +1346,10 @@ export const MISTAKE_LABELS = {
 function openTradeDetail(trade) {
   const overlay = el('div', 'trade-modal-overlay');
   const modal = el('div', 'trade-modal');
+
+  // Mobile sheet grab bar
+  const grabHandle = el('div', 'modal-swipe-handle');
+  modal.appendChild(grabHandle);
 
   // Gradient topbar
   const topbar = el('div', '');

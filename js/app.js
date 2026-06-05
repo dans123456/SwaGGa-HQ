@@ -16,7 +16,7 @@ import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from '
 import { renderCalendarPage } from './calendar.js';
 import { playSynthSound } from './audio.js';
 import { renderSimulatorPage } from './simulator.js';
-import { initNative } from './native-bridge.js';
+import { initNative, nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -1924,6 +1924,10 @@ function buildAppShell() {
     if (result.success) {
       // Refresh current page to show synced data
       router.init();
+      const sidebarXP = document.querySelector('.sidebar-xp');
+      if (sidebarXP) {
+        updateSidebarXP(sidebarXP);
+      }
     }
   });
   syncSection.appendChild(syncBtn);
@@ -1953,6 +1957,10 @@ function buildAppShell() {
       if (result.success) {
         setTimeout(() => { syncBtn.textContent = '🔄 Sync Now'; }, 2000);
         router.init();
+        const sidebarXP = document.querySelector('.sidebar-xp');
+        if (sidebarXP) {
+          updateSidebarXP(sidebarXP);
+        }
       }
     } else {
       signInBtn.style.display = 'block';
@@ -2365,11 +2373,167 @@ async function launchApp() {
       await pushToCloud();
     }
   }, 30000);
+// --- Mobile Gestures & UX Polish ---
+
+function initMobileGestures() {
+  // Pull to Refresh
+  const ptrContainer = document.createElement('div');
+  ptrContainer.className = 'ptr-container';
+  const ptrSpinner = document.createElement('div');
+  ptrSpinner.className = 'ptr-spinner';
+  ptrContainer.appendChild(ptrSpinner);
+  document.body.appendChild(ptrContainer);
+
+  let startY = 0;
+  let currentY = 0;
+  let pulling = false;
+
+  document.body.addEventListener('touchstart', (e) => {
+    if (window.scrollY === 0) {
+      startY = e.touches[0].pageY;
+      pulling = true;
+    }
+  }, { passive: true });
+
+  document.body.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    currentY = e.touches[0].pageY;
+    const diff = currentY - startY;
+
+    if (diff > 0) {
+      ptrContainer.classList.add('ptr-container--pulling');
+      const height = Math.min(diff * 0.4, 80);
+      ptrContainer.style.height = `${height}px`;
+      
+      if (height >= 60 && !ptrContainer.dataset.bumped) {
+        ptrContainer.dataset.bumped = 'true';
+        nativeHaptic('light');
+      } else if (height < 60) {
+        delete ptrContainer.dataset.bumped;
+      }
+    }
+  }, { passive: true });
+
+  document.body.addEventListener('touchend', async () => {
+    if (!pulling) return;
+    pulling = false;
+    delete ptrContainer.dataset.bumped;
+
+    const height = parseInt(ptrContainer.style.height) || 0;
+    ptrContainer.style.height = '0px';
+    ptrContainer.classList.remove('ptr-container--pulling');
+
+    if (height >= 60) {
+      nativeHapticNotification('SUCCESS');
+      const syncBtn = document.querySelector('.sidebar-sync__sync-btn');
+      if (syncBtn) {
+        syncBtn.click();
+      }
+    }
+  });
+
+  // Edge Swipe Sidebar
+  let startX = 0;
+  let currentX = 0;
+  let swipingSidebar = false;
+
+  document.body.addEventListener('touchstart', (e) => {
+    const x = e.touches[0].clientX;
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOpen = sidebar && sidebar.classList.contains('open');
+
+    if (x < 30 && !sidebarOpen) {
+      startX = x;
+      swipingSidebar = 'open';
+    } else if (sidebarOpen) {
+      startX = x;
+      swipingSidebar = 'close';
+    }
+  }, { passive: true });
+
+  document.body.addEventListener('touchmove', (e) => {
+    if (!swipingSidebar) return;
+    currentX = e.touches[0].clientX;
+    const diff = currentX - startX;
+    
+    if (swipingSidebar === 'open' && diff > 80) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && !sidebar.classList.contains('open')) {
+        sidebar.classList.add('open');
+        nativeHaptic('light');
+        swipingSidebar = false;
+      }
+    } else if (swipingSidebar === 'close' && diff < -80) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        nativeHaptic('light');
+        swipingSidebar = false;
+      }
+    }
+  }, { passive: true });
+
+  document.body.addEventListener('touchend', () => {
+    swipingSidebar = false;
+  });
+
+  // Bottom Sheet Drag to Dismiss
+  let activeModal = null;
+  let modalStartY = 0;
+  
+  document.body.addEventListener('touchstart', (e) => {
+    const handle = e.target.closest('.modal-swipe-handle');
+    if (handle) {
+      activeModal = handle.closest('.modal') || handle.closest('.trade-modal');
+      if (activeModal) {
+        modalStartY = e.touches[0].pageY;
+        activeModal.style.transition = 'none';
+      }
+    }
+  }, { passive: true });
+
+  document.body.addEventListener('touchmove', (e) => {
+    if (!activeModal) return;
+    const currentY = e.touches[0].pageY;
+    const diff = currentY - modalStartY;
+    if (diff > 0) {
+      activeModal.style.transform = `translateY(${diff}px)`;
+    }
+  }, { passive: true });
+
+  document.body.addEventListener('touchend', (e) => {
+    if (!activeModal) return;
+    const modal = activeModal;
+    activeModal = null;
+
+    modal.style.transition = '';
+    const transform = modal.style.transform;
+    const match = transform ? transform.match(/translateY\((\d+)px\)/) : null;
+    const diff = match ? parseInt(match[1]) : 0;
+    modal.style.transform = '';
+
+    if (diff > 120) {
+      const closeBtn = modal.querySelector('.modal__close') || modal.querySelector('.trade-modal__close');
+      if (closeBtn) {
+        nativeHaptic('light');
+        closeBtn.click();
+      } else {
+        const overlay = modal.closest('.modal-overlay') || modal.closest('.trade-modal-overlay');
+        if (overlay) {
+          overlay.style.opacity = '0';
+          setTimeout(() => overlay.remove(), 250);
+        }
+      }
+    }
+  });
 }
 
 // --- Init ---
 
 function init() {
+  // Initialize mobile guestures/gestures
+  initMobileGestures();
+
   // Initialize the saved visual theme (defaults to dark mode)
   const savedTheme = storage.get('theme', 'dark');
   document.documentElement.setAttribute('data-theme', savedTheme);

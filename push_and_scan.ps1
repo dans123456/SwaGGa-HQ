@@ -61,8 +61,10 @@ foreach ($file in $filesToScan) {
 }
 
 Write-Host "===================================================" -ForegroundColor Cyan
-Write-Host "🚀 Pushing Updates to GitHub Repository..." -ForegroundColor Cyan
+Write-Host "🔄 Syncing Web Assets to Android (Capacitor)..." -ForegroundColor Cyan
 Write-Host "===================================================" -ForegroundColor Cyan
+Write-Host ""
+npm run cap:sync
 Write-Host ""
 
 $commitMsg = Read-Host "Enter commit message (or press Enter for default)"

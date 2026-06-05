@@ -5,7 +5,7 @@ import { generateId, sanitizeText, triggerConfetti, showNotificationToast } from
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import router from './router.js';
-import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
+import { nativeHaptic, nativeHapticNotification, sendLocalNotification } from './native-bridge.js';
 
 // --- Constants ---
 
@@ -625,6 +625,7 @@ export function renderHabitCard(habit, onToggle) {
 
         item.addEventListener('click', (e) => {
           e.preventDefault();
+          nativeHaptic('light');
           if (t.special === 'tradingview' || (habit.id === 'course33' && t.key === 'charting')) {
             if (isChecked) {
               if (habit.id === 'course33') {
@@ -1037,6 +1038,7 @@ export function checkAndUnlockAchievements(triggerType) {
     }
 
     showFreezeToast(`🏆 Trophy Unlocked: ${def.name}! +${def.xpReward} XP awarded!`);
+    nativeHapticNotification('SUCCESS');
     playSynthSound('fanfare');
     triggerConfetti();
   }
@@ -1221,10 +1223,13 @@ export function renderTrophyCabinet(container) {
 /* ---------- Add Habit Form ---------------------------------------- */
 
 export function openEditHabitModal(habit, onSaved) {
-  // Create modal overlay
   const overlay = el('div', 'modal-overlay');
   const modal = el('div', 'modal');
   modal.style.maxWidth = '500px';
+
+  // Mobile sheet grab bar
+  const grabHandle = el('div', 'modal-swipe-handle');
+  modal.appendChild(grabHandle);
 
   const topBar = el('div', 'modal__topbar');
   topBar.style.background = 'linear-gradient(90deg, var(--cyan), var(--purple), var(--neon-green))';
@@ -1733,19 +1738,7 @@ function checkAndNotify() {
     ? `None of your streaks are done today! Don't break them 💥`
     : `${undone.length} streak${undone.length > 1 ? 's' : ''} left: ${names}`;
 
-  const notif = new Notification('🪖 SwaGGa HQ — Streak Reminder', {
-    body,
-    icon: 'img/icon-512.png',
-    badge: 'img/icon-512.png',
-    tag: 'streak-reminder',
-    renotify: true,
-  });
-
-  notif.addEventListener('click', () => {
-    window.focus();
-    window.location.hash = '#streaks';
-    notif.close();
-  });
+  sendLocalNotification('🪖 SwaGGa HQ — Streak Reminder', body);
 
   storage.set('streak_last_notif', new Date().toISOString());
 }

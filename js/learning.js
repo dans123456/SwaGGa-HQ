@@ -4,6 +4,7 @@ import storage from './storage.js';
 import { generateId, formatDate, sanitizeText, showNotificationToast } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
+import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
 // --- Constants ---
 
@@ -460,6 +461,10 @@ function el(tag, cls = '', text = '') {
 function createModal(title) {
   const overlay = el('div', 'modal-overlay');
   const modal = el('div', 'modal');
+
+  // Mobile sheet grab bar
+  const grabHandle = el('div', 'modal-swipe-handle');
+  modal.appendChild(grabHandle);
 
   // Top bar with colored stripe
   const topBar = el('div', 'modal__topbar');
@@ -1469,12 +1474,14 @@ function openQuizPopup() {
         if (ci === q.answer) {
           optBtn.classList.add('quiz-option--correct');
           mcqScore++;
+          nativeHapticNotification('SUCCESS');
         } else {
           optBtn.classList.add('quiz-option--wrong');
           const allOpts = optionsWrap.querySelectorAll('.quiz-option');
           allOpts.forEach(btn => {
             if (btn.textContent === q.choices[q.answer]) btn.classList.add('quiz-option--correct');
           });
+          nativeHapticNotification('ERROR');
         }
         scoreText.textContent = `${mcqAnswered} / ${mcqTotal} MCQ answered`;
       });

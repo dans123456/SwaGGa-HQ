@@ -197,7 +197,20 @@ export async function sendLocalNotification(title, body, id = Math.floor(Math.ra
   if (!isNative()) {
     // Web fallback
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: './img/icon-512.png' });
+      try {
+        new Notification(title, { body, icon: './img/icon-512.png' });
+      } catch (err) {
+        console.warn('[NativeBridge] new Notification failed, trying ServiceWorker:', err);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready
+            .then(registration => {
+              registration.showNotification(title, { body, icon: './img/icon-512.png' });
+            })
+            .catch(swErr => {
+              console.error('[NativeBridge] ServiceWorker showNotification failed:', swErr);
+            });
+        }
+      }
     }
     return;
   }
