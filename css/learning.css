@@ -2098,3 +2098,21 @@
     height: 200px;
   }
 }
+
+/* ── Mobile: clear bottom nav bar for exercise popup & quiz ──── */
+@media (max-width: 768px) {
+  /* Exercise & Flashcard popup — ensure action buttons visible above bottom nav */
+  .exercise-overlay,
+  .flashcard-overlay {
+    z-index: 1100 !important; /* above bottom nav (z-index 999) */
+  }
+
+  .exercise-card {
+    padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 96px) !important;
+  }
+
+  /* Quiz / Modal body — ensure submit buttons visible */
+  .modal__body {
+    padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 24px) !important;
+  }
+}

@@ -421,6 +421,11 @@
     display: none;
   }
 
+  /* Add bottom padding so sidebar content isn't hidden behind mobile bottom nav */
+  .sidebar-sync {
+    padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 96px) !important;
+  }
+
   .mobile-menu-btn {
     display: flex;
   }
