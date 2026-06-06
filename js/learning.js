@@ -1,7 +1,7 @@
 // SwaGGa HQ — Learning Hub Module (Redesigned)
 
 import storage from './storage.js';
-import { generateId, formatDate, sanitizeText, showNotificationToast } from './utils.js';
+import { generateId, formatDate, sanitizeText, showNotificationToast, triggerConfetti } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
@@ -102,8 +102,14 @@ export const ASSIGNMENT_TEMPLATES = [
 
 const STORAGE_LESSONS = 'lessons';
 const STORAGE_ASSIGNMENTS = 'assignments';
+const STORAGE_JOURNAL = 'extra_study_journal';
 const RANDOM_ASSETS = ['EUR/USD', 'GBP/USD', 'XAU/USD', 'BTC/USD', 'NAS100', 'US30', 'GBP/JPY'];
 const RANDOM_TIMEFRAMES = ['M15', 'M30', 'H1', 'H4', 'D1'];
+
+const JOURNAL_CATEGORIES = [
+  'Order Flow', 'Psychology', 'Risk Management', 'Killzones',
+  'Price Action', 'Mindset', 'Market Structure', 'Supply & Demand', 'Other'
+];
 
 // --- Data Layer ---
 
@@ -159,6 +165,48 @@ export function saveAssignment(assignment) {
   const entry = { id: generateId(), ...assignment, completed: false, createdAt: new Date().toISOString() };
   assignments.push(entry);
   storage.set(STORAGE_ASSIGNMENTS, assignments);
+  return entry;
+}
+
+function getJournalEntries() { return storage.get(STORAGE_JOURNAL, []); }
+
+function saveJournalEntry(data) {
+  const entries = getJournalEntries();
+  const entry = {
+    id: generateId(),
+    title: sanitizeText(data.title, 200),
+    source: sanitizeText(data.source || 'Brah Goh', 100),
+    link: data.link || '',
+    takeaways: sanitizeText(data.takeaways, 5000),
+    category: data.category || 'Other',
+    createdAt: new Date().toISOString(),
+  };
+  entries.push(entry);
+  storage.set(STORAGE_JOURNAL, entries);
+
+  // Auto-check the extra_study habit for today
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  const todayKey = `${y}-${m}-${d}`;
+
+  const habits = storage.get('habits', []);
+  const studyHabit = habits.find(h => h.id === 'extra_study');
+  if (studyHabit && !(studyHabit.log && studyHabit.log[todayKey])) {
+    if (!studyHabit.log) studyHabit.log = {};
+    studyHabit.log[todayKey] = true;
+    storage.set('habits', habits);
+  }
+
+  // Award XP
+  addXP('extra_study', 10);
+
+  // Push to cloud
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  });
+
   return entry;
 }
 
@@ -2188,6 +2236,279 @@ function renderFlashcardMode() {
   document.body.appendChild(overlay);
 }
 
+// --- Study Journal ---
+
+function renderStudyJournal(container, onRefresh) {
+  container.replaceChildren();
+  const entries = getJournalEntries();
+
+  const section = el('div', 'study-journal-section');
+
+  // Header row
+  const headerRow = el('div', 'study-journal-header');
+  headerRow.style.display = 'flex';
+  headerRow.style.justifyContent = 'space-between';
+  headerRow.style.alignItems = 'center';
+  headerRow.style.marginBottom = 'var(--space-4)';
+
+  const titleWrap = el('div', '');
+  const sectionTitle = el('h2', 'section-title', '📓 Study Journal');
+  sectionTitle.style.marginBottom = '2px';
+  titleWrap.appendChild(sectionTitle);
+
+  const subtitle = el('p', '', `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} logged`);
+  subtitle.style.fontSize = 'var(--text-xs)';
+  subtitle.style.color = 'var(--text-muted)';
+  titleWrap.appendChild(subtitle);
+  headerRow.appendChild(titleWrap);
+
+  const addBtn = el('button', 'btn btn-primary btn-sm', '+ Log New Study');
+  addBtn.style.whiteSpace = 'nowrap';
+  addBtn.addEventListener('click', () => openLogStudyPopup(onRefresh));
+  headerRow.appendChild(addBtn);
+
+  section.appendChild(headerRow);
+
+  // Empty state
+  if (entries.length === 0) {
+    const emptyCard = el('div', 'overview-panel glass-card');
+    emptyCard.style.padding = 'var(--space-8)';
+    emptyCard.style.textAlign = 'center';
+    emptyCard.style.display = 'flex';
+    emptyCard.style.flexDirection = 'column';
+    emptyCard.style.alignItems = 'center';
+    emptyCard.style.gap = 'var(--space-3)';
+
+    const emptyIcon = el('span', '', '📓');
+    emptyIcon.style.fontSize = '2.5rem';
+    emptyCard.appendChild(emptyIcon);
+
+    const emptyTitle = el('h3', '', 'No study entries yet');
+    emptyTitle.style.color = 'var(--text-primary)';
+    emptyTitle.style.fontWeight = '700';
+    emptyTitle.style.fontSize = 'var(--text-sm)';
+    emptyCard.appendChild(emptyTitle);
+
+    const emptyDesc = el('p', '', 'Log a video, lesson, or concept you learned outside the curriculum to start building your personal knowledge journal.');
+    emptyDesc.style.color = 'var(--text-muted)';
+    emptyDesc.style.fontSize = 'var(--text-xs)';
+    emptyDesc.style.maxWidth = '380px';
+    emptyCard.appendChild(emptyDesc);
+
+    const emptyCta = el('button', 'btn btn-primary', '📓 Log Your First Study');
+    emptyCta.addEventListener('click', () => openLogStudyPopup(onRefresh));
+    emptyCard.appendChild(emptyCta);
+
+    section.appendChild(emptyCard);
+  } else {
+    // Timeline of entries (newest first)
+    const timeline = el('div', 'study-journal-timeline');
+    timeline.style.display = 'flex';
+    timeline.style.flexDirection = 'column';
+    timeline.style.gap = 'var(--space-3)';
+
+    const sorted = [...entries].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    sorted.forEach(entry => {
+      const card = el('div', 'overview-panel glass-card study-journal-entry');
+      card.style.padding = 'var(--space-4)';
+      card.style.display = 'flex';
+      card.style.flexDirection = 'column';
+      card.style.gap = 'var(--space-2)';
+      card.style.borderLeft = '3px solid #f59e0b';
+      card.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+
+      card.addEventListener('mouseenter', () => {
+        card.style.transform = 'translateY(-2px)';
+        card.style.boxShadow = '0 8px 24px rgba(245, 158, 11, 0.12)';
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = '';
+      });
+
+      // Top row: title + category tag
+      const topRow = el('div', '');
+      topRow.style.display = 'flex';
+      topRow.style.justifyContent = 'space-between';
+      topRow.style.alignItems = 'flex-start';
+      topRow.style.gap = 'var(--space-2)';
+
+      const titleEl = el('h4', '', entry.title);
+      titleEl.style.fontWeight = '700';
+      titleEl.style.fontSize = 'var(--text-sm)';
+      titleEl.style.color = '#fff';
+      titleEl.style.flex = '1';
+      topRow.appendChild(titleEl);
+
+      const categoryTag = el('span', 'tag');
+      categoryTag.textContent = entry.category || 'Other';
+      categoryTag.style.background = 'rgba(245, 158, 11, 0.12)';
+      categoryTag.style.color = '#f59e0b';
+      categoryTag.style.border = '1px solid rgba(245, 158, 11, 0.25)';
+      categoryTag.style.fontSize = '9px';
+      categoryTag.style.padding = '2px 8px';
+      categoryTag.style.borderRadius = 'var(--radius-sm)';
+      categoryTag.style.whiteSpace = 'nowrap';
+      topRow.appendChild(categoryTag);
+
+      card.appendChild(topRow);
+
+      // Source + date meta row
+      const metaRow = el('div', '');
+      metaRow.style.display = 'flex';
+      metaRow.style.gap = 'var(--space-3)';
+      metaRow.style.fontSize = 'var(--text-xs)';
+      metaRow.style.color = 'var(--text-muted)';
+
+      const sourceMeta = el('span', '', `🎓 ${entry.source || 'Unknown'}`);
+      metaRow.appendChild(sourceMeta);
+
+      const dateMeta = el('span', '', `📅 ${formatDate(entry.createdAt)}`);
+      metaRow.appendChild(dateMeta);
+
+      card.appendChild(metaRow);
+
+      // Takeaways
+      const takeawaysEl = el('p', '', entry.takeaways);
+      takeawaysEl.style.fontSize = 'var(--text-xs)';
+      takeawaysEl.style.color = 'var(--text-secondary)';
+      takeawaysEl.style.lineHeight = '1.5';
+      takeawaysEl.style.whiteSpace = 'pre-wrap';
+      card.appendChild(takeawaysEl);
+
+      // Link (if provided)
+      if (entry.link) {
+        const linkEl = document.createElement('a');
+        linkEl.href = entry.link;
+        linkEl.target = '_blank';
+        linkEl.rel = 'noopener noreferrer';
+        linkEl.textContent = '🔗 View Video / Resource';
+        linkEl.style.fontSize = 'var(--text-xs)';
+        linkEl.style.color = '#f59e0b';
+        linkEl.style.textDecoration = 'none';
+        linkEl.style.fontWeight = '600';
+        linkEl.style.display = 'inline-flex';
+        linkEl.style.alignItems = 'center';
+        linkEl.style.gap = 'var(--space-1)';
+        linkEl.style.padding = '4px 10px';
+        linkEl.style.borderRadius = 'var(--radius-sm)';
+        linkEl.style.background = 'rgba(245, 158, 11, 0.08)';
+        linkEl.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+        linkEl.style.marginTop = 'var(--space-1)';
+        linkEl.style.width = 'fit-content';
+        card.appendChild(linkEl);
+      }
+
+      timeline.appendChild(card);
+    });
+
+    section.appendChild(timeline);
+  }
+
+  container.appendChild(section);
+}
+
+function openLogStudyPopup(onSaved) {
+  const { body, close } = createModal('📓 Log New Study');
+
+  const form = el('form', 'modal-form');
+  form.setAttribute('novalidate', '');
+
+  // Title
+  const titleGroup = el('div', 'form-group');
+  titleGroup.appendChild(el('label', 'form-label', 'What did you watch / study?'));
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.className = 'form-input';
+  titleInput.placeholder = 'e.g. ICT Silver Bullet Strategy Explained';
+  titleInput.required = true;
+  titleGroup.appendChild(titleInput);
+  form.appendChild(titleGroup);
+
+  // Source / Mentor
+  const sourceGroup = el('div', 'form-group');
+  sourceGroup.appendChild(el('label', 'form-label', 'Source / Mentor'));
+  const sourceInput = document.createElement('input');
+  sourceInput.type = 'text';
+  sourceInput.className = 'form-input';
+  sourceInput.placeholder = 'Brah Goh';
+  sourceInput.value = 'Brah Goh';
+  sourceGroup.appendChild(sourceInput);
+  form.appendChild(sourceGroup);
+
+  // Link (optional)
+  const linkGroup = el('div', 'form-group');
+  linkGroup.appendChild(el('label', 'form-label', 'Video / Resource Link (optional)'));
+  const linkInput = document.createElement('input');
+  linkInput.type = 'url';
+  linkInput.className = 'form-input';
+  linkInput.placeholder = 'https://youtu.be/...';
+  linkGroup.appendChild(linkInput);
+  form.appendChild(linkGroup);
+
+  // Key Takeaways
+  const takeawaysGroup = el('div', 'form-group');
+  takeawaysGroup.appendChild(el('label', 'form-label', 'Key Takeaways — What did you learn?'));
+  const takeawaysInput = document.createElement('textarea');
+  takeawaysInput.className = 'form-textarea';
+  takeawaysInput.rows = 5;
+  takeawaysInput.placeholder = 'Write what you learned in your own words...\n\ne.g. "Learned that the Silver Bullet setup targets the FVG created during the 10am-11am NY window..."';
+  takeawaysInput.required = true;
+  takeawaysGroup.appendChild(takeawaysInput);
+  form.appendChild(takeawaysGroup);
+
+  // Category
+  const catGroup = el('div', 'form-group');
+  catGroup.appendChild(el('label', 'form-label', 'Category'));
+  const catSelect = document.createElement('select');
+  catSelect.className = 'form-select';
+  JOURNAL_CATEGORIES.forEach(cat => {
+    const opt = el('option', '', cat);
+    opt.value = cat;
+    catSelect.appendChild(opt);
+  });
+  catGroup.appendChild(catSelect);
+  form.appendChild(catGroup);
+
+  // Submit
+  const submitBtn = el('button', 'btn btn-primary btn-lg', '📓 Save Study Entry (+10 XP)');
+  submitBtn.type = 'submit';
+  form.appendChild(submitBtn);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = titleInput.value.trim();
+    const takeaways = takeawaysInput.value.trim();
+    if (!title) { titleInput.focus(); return; }
+    if (!takeaways) { takeawaysInput.focus(); return; }
+
+    const linkVal = linkInput.value.trim();
+    if (linkVal && !linkVal.startsWith('http://') && !linkVal.startsWith('https://')) {
+      showNotificationToast('Link must start with http:// or https://');
+      linkInput.focus();
+      return;
+    }
+
+    saveJournalEntry({
+      title,
+      source: sourceInput.value.trim(),
+      link: linkVal,
+      takeaways,
+      category: catSelect.value,
+    });
+
+    playSynthSound('fanfare');
+    triggerConfetti();
+    showNotificationToast('📓 Study logged! +10 XP! Keep learning! 🔥');
+
+    close();
+    if (typeof onSaved === 'function') onSaved();
+  });
+
+  body.appendChild(form);
+}
+
 // --- Main Render ---
 
 export function renderLearningPage(container) {
@@ -2198,16 +2519,18 @@ export function renderLearningPage(container) {
   const flashcardsContainer = el('div');
   const milestonesContainer = el('div');
   const actionContainer = el('div');
+  const studyJournalContainer = el('div');
   const mentorContainer = el('div');
   const assignmentContainer = el('div');
   const curriculumContainer = el('div');
   const baCurriculumContainer = el('div');
 
-  // Order: Daily Tip → Flashcards → Milestones → Actions → Mentors → Assignments → Curriculum
+  // Order: Daily Tip → Flashcards → Milestones → Actions → Study Journal → Mentors → Assignments → Curriculum
   container.appendChild(dailyTipContainer);
   container.appendChild(flashcardsContainer);
   container.appendChild(milestonesContainer);
   container.appendChild(actionContainer);
+  container.appendChild(studyJournalContainer);
   container.appendChild(mentorContainer);
   container.appendChild(assignmentContainer);
   container.appendChild(curriculumContainer);
@@ -2218,6 +2541,7 @@ export function renderLearningPage(container) {
     renderFlashcards(flashcardsContainer);
     renderMilestones(milestonesContainer);
     renderActionBar(actionContainer, refresh);
+    renderStudyJournal(studyJournalContainer, refresh);
     renderMentorCards(mentorContainer, refresh, curriculumContainer, baCurriculumContainer);
     renderCurriculumLog(curriculumContainer);
     renderBossAckahCurriculum(baCurriculumContainer, refresh);

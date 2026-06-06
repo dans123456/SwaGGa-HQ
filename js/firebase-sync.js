@@ -272,6 +272,7 @@ const SYNC_KEYS = [
   'premarket_routine',
   'premarket_history',
   'unlocked_achievements',
+  'extra_study_journal',
 ];
 
 const NAMESPACE = 'swagga';

@@ -28,7 +28,8 @@ function localDateKey(d) {
 export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
-  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 53 }
+  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 53 },
+  { id: 'extra_study', name: 'Extra Study', emoji: '📓', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.08)', borderColor: 'rgba(245, 158, 11, 0.25)', tagline: 'Learn something new daily', baseStreak: 0 }
 ];
 
 // --- Data Layer ---
@@ -48,6 +49,15 @@ export function getHabits() {
     if (courseIndex !== -1) {
       habits.splice(courseIndex, 1);
       migrated = true;
+    }
+
+    // Inject extra_study habit if missing (new feature migration)
+    if (!habits.find(h => h.id === 'extra_study')) {
+      const def = DEFAULT_HABITS.find(d => d.id === 'extra_study');
+      if (def) {
+        habits.push({ ...def, log: {}, freezes: {} });
+        migrated = true;
+      }
     }
 
     habits.forEach(h => {
@@ -285,6 +295,11 @@ export function renderHabitCard(habit, onToggle) {
     const lessonsList = storage.get('lessons', []);
     const todayLessonLogged = lessonsList.some(l => l.createdAt && l.createdAt.startsWith(today));
     done = done || todayLessonLogged;
+  }
+  if (habit.id === 'extra_study') {
+    const journal = storage.get('extra_study_journal', []);
+    const todayStudyLogged = journal.some(e => e.createdAt && e.createdAt.startsWith(today));
+    done = done || todayStudyLogged;
   }
   const streak = calculateStreak(habit.id);
   const best = getBestStreak(habit.id);
@@ -1366,7 +1381,7 @@ export function openEditHabitModal(habit, onSaved) {
   actionsRow.appendChild(saveBtn);
 
   // Deletion for custom habits
-  const isDefaultHabit = ['snap', 'tiktok', 'duolingo', 'course33'].includes(habit.id);
+  const isDefaultHabit = ['snap', 'tiktok', 'duolingo', 'course33', 'extra_study'].includes(habit.id);
   if (!isDefaultHabit) {
     const deleteBtn = el('button', 'btn btn-danger', 'Delete Habit 🗑️');
     deleteBtn.type = 'button';
