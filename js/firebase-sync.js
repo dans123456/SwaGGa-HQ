@@ -433,8 +433,8 @@ export async function pullFromCloud() {
           merged[key] = mergedHabits;
 
           merged[key].forEach(h => {
-            if (h.id === 'duolingo' && h.baseStreak !== 44) {
-              h.baseStreak = 44;
+            if (h.id === 'duolingo' && h.baseStreak !== 53) {
+              h.baseStreak = 53;
             }
           });
         } else {
