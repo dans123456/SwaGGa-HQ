@@ -1,6 +1,6 @@
 import storage from './storage.js';
 import { playSynthSound, startBinauralBeat, stopBinauralBeat, startAmbientDrone, stopAmbientDrone } from './audio.js';
-import { nativeHaptic, showNotificationToast } from './native-bridge.js';
+import { nativeHaptic } from './native-bridge.js';
 
 let _activeInterval = null;
 let _activeAudioType = 'off'; // 'off', 'alpha', 'theta', 'waves'

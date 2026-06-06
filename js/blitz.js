@@ -1,7 +1,8 @@
 import storage from './storage.js';
 import { playSynthSound } from './audio.js';
 import { addXP } from './xp.js';
-import { nativeHaptic, nativeHapticNotification, showNotificationToast } from './native-bridge.js';
+import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
+import { showNotificationToast } from './utils.js';
 
 let _quizState = {
   score: 0,
