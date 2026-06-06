@@ -1,3 +1,4 @@
+/*
  * Usage in other modules:
  *   import { nativeHaptic, schedulePremarketReminder } from './native-bridge.js';
  */
