@@ -298,7 +298,10 @@ export function renderHabitCard(habit, onToggle) {
   }
   if (habit.id === 'extra_study') {
     const journal = storage.get('extra_study_journal', []);
-    const todayStudyLogged = journal.some(e => e.createdAt && e.createdAt.startsWith(today));
+    const todayStudyLogged = journal.some(e => 
+      (e.localDate && e.localDate === today) || 
+      (e.createdAt && e.createdAt.startsWith(today))
+    );
     done = done || todayStudyLogged;
   }
   const streak = calculateStreak(habit.id);

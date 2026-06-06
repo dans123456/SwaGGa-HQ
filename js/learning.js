@@ -172,6 +172,13 @@ function getJournalEntries() { return storage.get(STORAGE_JOURNAL, []); }
 
 function saveJournalEntry(data) {
   const entries = getJournalEntries();
+
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  const todayKey = `${y}-${m}-${d}`;
+
   const entry = {
     id: generateId(),
     title: sanitizeText(data.title, 200),
@@ -180,17 +187,12 @@ function saveJournalEntry(data) {
     takeaways: sanitizeText(data.takeaways, 5000),
     category: data.category || 'Other',
     createdAt: new Date().toISOString(),
+    localDate: todayKey,
   };
   entries.push(entry);
   storage.set(STORAGE_JOURNAL, entries);
 
   // Auto-check the extra_study habit for today
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, '0');
-  const d = String(today.getDate()).padStart(2, '0');
-  const todayKey = `${y}-${m}-${d}`;
-
   const habits = storage.get('habits', []);
   const studyHabit = habits.find(h => h.id === 'extra_study');
   if (studyHabit && !(studyHabit.log && studyHabit.log[todayKey])) {
