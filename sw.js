@@ -4,7 +4,7 @@
  * Strategy: Cache-first for static assets, network-first for dynamic.
  */
 
-const CACHE_NAME = 'swagga-hq-v82';
+const CACHE_NAME = 'swagga-hq-v83';
 
 // Core files to cache on install
 const CORE_ASSETS = [
