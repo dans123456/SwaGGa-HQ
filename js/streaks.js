@@ -362,9 +362,9 @@ export function renderHabitCard(habit, onToggle) {
 
   const totalDays = Object.keys(habit.log || {}).length;
 
-  const displayStreak = done ? streak : (streak + 1);
-  const displayBest = done ? best : Math.max(best, streak + 1);
-  const displayTotal = done ? totalDays : (totalDays + 1);
+  const displayStreak = streak;
+  const displayBest = Math.max(best, streak);
+  const displayTotal = totalDays;
 
   const streakStat = el('div', 'habit-pro__stat');
   const streakVal = el('span', 'habit-pro__stat-value', String(displayStreak));
