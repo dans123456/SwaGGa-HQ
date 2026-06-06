@@ -210,6 +210,8 @@
 /* Action Button */
 .habit-pro__action {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .habit-pro__btn {
@@ -466,20 +468,19 @@
 /* ── Freeze Card Actions ─────────────────────────────────── */
 .habit-pro__freeze-btn {
   background: transparent;
-  color: var(--cyan) !important;
-  border-color: rgba(0, 212, 255, 0.4) !important;
+  color: var(--freeze-color, var(--cyan)) !important;
+  border-color: var(--freeze-border, rgba(0, 212, 255, 0.4)) !important;
   font-weight: 600;
   flex: 1;
-  margin-left: var(--space-2);
   padding: 0.65rem 1rem !important;
   font-size: var(--text-xs) !important;
   border-radius: var(--radius-md) !important;
 }
 
 .habit-pro__freeze-btn:hover:not(:disabled) {
-  background: rgba(0, 212, 255, 0.1) !important;
-  border-color: var(--cyan) !important;
-  box-shadow: var(--cyan-glow) !important;
+  background: var(--freeze-hover-bg, rgba(0, 212, 255, 0.1)) !important;
+  border-color: var(--freeze-color, var(--cyan)) !important;
+  box-shadow: 0 0 15px var(--freeze-hover-shadow, rgba(0, 212, 255, 0.25)) !important;
   transform: translateY(-1px) !important;
 }
 

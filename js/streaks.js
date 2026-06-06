@@ -881,6 +881,17 @@ export function renderHabitCard(habit, onToggle) {
     const freezeBtn = el('button', 'btn btn-outline btn-sm habit-pro__freeze-btn');
     freezeBtn.textContent = `❄️ Freeze Yesterday (${tokens > 0 ? 'Use Token' : '0 Tokens'})`;
     
+    // Theme-matching colors for freeze button
+    const habitColor = habit.color || '#00d4ff';
+    const habitBorderColor = habit.borderColor || 'rgba(0, 212, 255, 0.25)';
+    const hoverBgColor = habit.bgColor ? habit.bgColor.replace('0.08', '0.15') : 'rgba(0, 212, 255, 0.1)';
+    const hoverShadowColor = habitColor.startsWith('#') ? `${habitColor}40` : 'rgba(0, 212, 255, 0.25)';
+    
+    freezeBtn.style.setProperty('--freeze-color', habitColor);
+    freezeBtn.style.setProperty('--freeze-border', habitBorderColor);
+    freezeBtn.style.setProperty('--freeze-hover-bg', hoverBgColor);
+    freezeBtn.style.setProperty('--freeze-hover-shadow', hoverShadowColor);
+    
     if (tokens > 0) {
       freezeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
