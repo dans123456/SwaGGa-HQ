@@ -28,7 +28,7 @@ function localDateKey(d) {
 export const DEFAULT_HABITS = [
   { id: 'snap',     name: 'Snapchat',  emoji: '👻', color: '#FFFC00', bgColor: 'rgba(255, 252, 0, 0.08)',  borderColor: 'rgba(255, 252, 0, 0.25)',  tagline: 'Keep the streak alive', baseStreak: 0 },
   { id: 'tiktok',   name: 'TikTok',    emoji: '🎵', color: '#ff0050', bgColor: 'rgba(255, 0, 80, 0.08)',   borderColor: 'rgba(255, 0, 80, 0.25)',   tagline: 'Scroll & create daily', baseStreak: 0 },
-  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 53 },
+  { id: 'duolingo', name: 'Duolingo',  emoji: '🦉', color: '#58cc02', bgColor: 'rgba(88, 204, 2, 0.08)',   borderColor: 'rgba(88, 204, 2, 0.25)',   tagline: 'Never miss a lesson', baseStreak: 44 },
   { id: 'extra_study', name: 'Extra Study', emoji: '📓', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.08)', borderColor: 'rgba(245, 158, 11, 0.25)', tagline: 'Learn something new daily', baseStreak: 0 }
 ];
 
@@ -74,9 +74,9 @@ export function getHabits() {
         h.baseStreak = def ? def.baseStreak : 0;
         migrated = true;
       }
-      // Force duolingo base streak to be exactly 53 (so 53 + logged days = correct count)
-      if (h.id === 'duolingo' && h.baseStreak !== 53) {
-        h.baseStreak = 53;
+      // Force duolingo base streak to be exactly 44 (so 44 + logged days = correct count)
+      if (h.id === 'duolingo' && h.baseStreak !== 44) {
+        h.baseStreak = 44;
         migrated = true;
       }
     });
