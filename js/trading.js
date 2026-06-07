@@ -130,6 +130,152 @@ export function getTrades(includeSimulated = false) {
   return allTrades.filter(t => !t.simulated);
 }
 
+export function getAssetConfig(assetName) {
+  if (!assetName) return { decimals: 2, step: 0.01, pipText: '0.01' };
+  const name = assetName.toUpperCase();
+  if (name.includes('JPY')) {
+    return { decimals: 3, step: 0.001, pipText: '0.001 (1 pip = 0.01)' };
+  }
+  if (name.includes('/') && !name.includes('BTC') && !name.includes('XAU') && !name.includes('XAG')) {
+    return { decimals: 5, step: 0.0001, pipText: '0.0001 (1 pip = 0.0001)' };
+  }
+  if (name.includes('BTC') || name.includes('USDT')) {
+    return { decimals: 2, step: 1.0, pipText: '1.00' };
+  }
+  if (name.includes('XAU') || name.includes('XAG') || name.includes('GOLD') || name.includes('SILVER')) {
+    return { decimals: 2, step: 0.1, pipText: '0.10' };
+  }
+  if (name.includes('VOLATILITY') || name.includes('US30') || name.includes('NAS100') || name.includes('SPX500') || name.includes('GER40') || name.includes('UK100')) {
+    return { decimals: 2, step: 0.1, pipText: '0.10' };
+  }
+  return { decimals: 2, step: 0.01, pipText: '0.01' };
+}
+
+export function createSpinnerInput(name, placeholder, initialValue = '', required = false, getDecimalsAndStep) {
+  const container = el('div', 'spinner-input-container');
+  container.style.display = 'flex';
+  container.style.alignItems = 'center';
+  container.style.gap = 'var(--space-2)';
+  container.style.position = 'relative';
+
+  const minusBtn = el('button', 'btn btn-outline btn-sm spinner-btn-minus', '−');
+  minusBtn.type = 'button';
+  minusBtn.style.padding = '0 var(--space-3)';
+  minusBtn.style.height = 'var(--space-9)';
+  minusBtn.style.minWidth = 'var(--space-9)';
+  minusBtn.style.fontFamily = 'monospace';
+  minusBtn.style.fontWeight = 'bold';
+  minusBtn.style.fontSize = '1.2rem';
+  minusBtn.style.borderRadius = 'var(--radius-md)';
+  minusBtn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+  minusBtn.style.background = 'rgba(255, 255, 255, 0.02)';
+  minusBtn.style.color = 'var(--text-color)';
+  minusBtn.style.cursor = 'pointer';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = name;
+  input.inputMode = 'decimal';
+  input.pattern = '[0-9]*\\.?[0-9]*';
+  input.placeholder = placeholder;
+  input.className = 'form-input';
+  input.style.flex = '1';
+  input.style.textAlign = 'center';
+  input.style.fontFamily = 'monospace';
+  if (initialValue !== '') input.value = initialValue;
+  if (required) input.required = true;
+
+  const plusBtn = el('button', 'btn btn-outline btn-sm spinner-btn-plus', '+');
+  plusBtn.type = 'button';
+  plusBtn.style.padding = '0 var(--space-3)';
+  plusBtn.style.height = 'var(--space-9)';
+  plusBtn.style.minWidth = 'var(--space-9)';
+  plusBtn.style.fontFamily = 'monospace';
+  plusBtn.style.fontWeight = 'bold';
+  plusBtn.style.fontSize = '1.2rem';
+  plusBtn.style.borderRadius = 'var(--radius-md)';
+  plusBtn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+  plusBtn.style.background = 'rgba(255, 255, 255, 0.02)';
+  plusBtn.style.color = 'var(--text-color)';
+  plusBtn.style.cursor = 'pointer';
+
+  // Apply hover and active styles via JS
+  [minusBtn, plusBtn].forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'rgba(0, 212, 255, 0.1)';
+      btn.style.borderColor = 'var(--cyan)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'rgba(255, 255, 255, 0.02)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+    });
+  });
+
+  const adjustVal = (direction) => {
+    const val = parseFloat(input.value) || 0;
+    const { decimals, step } = getDecimalsAndStep();
+    const multiplier = Math.pow(10, decimals);
+    const scaledVal = Math.round(val * multiplier);
+    const scaledStep = Math.round(step * multiplier);
+    
+    let newVal;
+    if (direction === 'plus') {
+      newVal = (scaledVal + scaledStep) / multiplier;
+    } else {
+      newVal = Math.max(0, (scaledVal - scaledStep) / multiplier);
+    }
+    input.value = newVal.toFixed(decimals);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  minusBtn.addEventListener('click', () => adjustVal('minus'));
+  plusBtn.addEventListener('click', () => adjustVal('plus'));
+
+  // Allow long press for fast adjustments
+  let timerId;
+  const startAdjusting = (direction) => {
+    adjustVal(direction);
+    timerId = setInterval(() => adjustVal(direction), 100);
+  };
+  const stopAdjusting = () => {
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+  };
+
+  minusBtn.addEventListener('mousedown', () => startAdjusting('minus'));
+  minusBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAdjusting('minus'); }, { passive: false });
+  
+  plusBtn.addEventListener('mousedown', () => startAdjusting('plus'));
+  plusBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAdjusting('plus'); }, { passive: false });
+
+  window.addEventListener('mouseup', stopAdjusting);
+  window.addEventListener('touchend', stopAdjusting);
+
+  // Filter input value
+  input.addEventListener('input', () => {
+    let cleaned = input.value.replace(/[^0-9.-]/g, '');
+    const dotParts = cleaned.split('.');
+    if (dotParts.length > 2) {
+      cleaned = dotParts[0] + '.' + dotParts.slice(1).join('');
+    }
+    if (cleaned.lastIndexOf('-') > 0) {
+      cleaned = (cleaned.startsWith('-') ? '-' : '') + cleaned.replace(/-/g, '');
+    }
+    if (input.value !== cleaned) {
+      input.value = cleaned;
+    }
+  });
+
+  container.appendChild(minusBtn);
+  container.appendChild(input);
+  container.appendChild(plusBtn);
+
+  return { container, input };
+}
+
 function parseDrawdownLimit(limitStr) {
   if (!limitStr) return null;
   const cleaned = limitStr.trim();
@@ -165,6 +311,7 @@ export function saveTrade(tradeData) {
     id: generateId(),
     ...tradeData,
     setupQuality,
+    riskPercent: Number(tradeData.riskPct) || 1.0,
     pnl: calculatePnL(
       tradeData.entry,
       tradeData.exit,
@@ -606,6 +753,61 @@ export function renderTradeForm(container, onSaved) {
   const form = el('form', 'trade-form');
   form.setAttribute('novalidate', '');
 
+  // --- Drawdown Circuit Breaker check ---
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const trades = getTrades(true);
+  const todayTrades = trades.filter(t => t.date === todayStr || (t.createdAt && t.createdAt.slice(0, 10) === todayStr));
+  const todayNetPnL = todayTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+  
+  const routine = storage.get('premarket_routine');
+  if (routine && routine.riskLimit && todayNetPnL < 0) {
+    const limit = parseDrawdownLimit(routine.riskLimit);
+    if (limit) {
+      let lossProgressPercent = 0;
+      if (limit.type === 'percent') {
+        const presetBalance = Number(storage.get('preset_balance', '10000'));
+        const lossPct = (-todayNetPnL / presetBalance) * 100;
+        lossProgressPercent = (lossPct / limit.value) * 100;
+      } else if (limit.type === 'cash') {
+        lossProgressPercent = (-todayNetPnL / limit.value) * 100;
+      }
+
+      if (lossProgressPercent >= 50) {
+        const drawdownWarningEl = el('div', 'drawdown-warning-banner');
+        drawdownWarningEl.style.padding = 'var(--space-3) var(--space-4)';
+        drawdownWarningEl.style.borderRadius = 'var(--radius-md)';
+        drawdownWarningEl.style.marginBottom = 'var(--space-4)';
+        drawdownWarningEl.style.fontSize = 'var(--text-xs)';
+        drawdownWarningEl.style.fontWeight = 'bold';
+        drawdownWarningEl.style.display = 'flex';
+        drawdownWarningEl.style.alignItems = 'center';
+        drawdownWarningEl.style.gap = 'var(--space-2)';
+        
+        let warningText = '';
+        if (lossProgressPercent >= 100) {
+          drawdownWarningEl.style.background = 'rgba(255, 59, 59, 0.15)';
+          drawdownWarningEl.style.border = '1px solid var(--neon-red)';
+          drawdownWarningEl.style.color = 'var(--neon-red)';
+          warningText = `🔴 Locked Out: Daily drawdown limit breached (${lossProgressPercent.toFixed(0)}% breached).`;
+        } else if (lossProgressPercent >= 75) {
+          drawdownWarningEl.style.background = 'rgba(255, 136, 0, 0.15)';
+          drawdownWarningEl.style.border = '1px solid #ff8800';
+          drawdownWarningEl.style.color = '#ff8800';
+          warningText = `🟠 Warning: Drawdown at ${lossProgressPercent.toFixed(0)}% of daily limit. Trade cautiously!`;
+        } else {
+          drawdownWarningEl.style.background = 'rgba(255, 252, 0, 0.1)';
+          drawdownWarningEl.style.border = '1px solid #fffc00';
+          drawdownWarningEl.style.color = '#fffc00';
+          warningText = `🟡 Caution: Drawdown at ${lossProgressPercent.toFixed(0)}% of daily limit. Watch your risk sizing.`;
+        }
+        
+        drawdownWarningEl.appendChild(el('span', '', '⚠️'));
+        drawdownWarningEl.appendChild(document.createTextNode(warningText));
+        form.appendChild(drawdownWarningEl);
+      }
+    }
+  }
+
   // ---- Asset select ----
   const assetSelect = document.createElement('select');
   assetSelect.name = 'asset';
@@ -706,8 +908,16 @@ export function renderTradeForm(container, onSaved) {
     });
   }
 
+  function getSelectedAssetConfig() {
+    return getAssetConfig(assetSelect.value);
+  }
+
   assetSelect.addEventListener('change', () => {
     updateNewsWarning(assetSelect.value);
+    updateAssetHints();
+    if (typeof updateLiveRisk === 'function') {
+      updateLiveRisk();
+    }
   });
 
   // ---- Direction ----
@@ -723,24 +933,52 @@ export function renderTradeForm(container, onSaved) {
   // ---- Numeric fields ----
   let entryInput, stopInput, exitInput;
   const numericFields = [
-    { name: 'entry', label: 'Entry Price', step: 'any', required: true },
-    { name: 'stop', label: 'Stop Loss', step: 'any', required: true },
-    { name: 'exit', label: 'Exit Price', step: 'any', required: true },
+    { name: 'entry', label: 'Entry Price', placeholder: '0.00000', required: true },
+    { name: 'stop', label: 'Stop Loss', placeholder: '0.00000', required: true },
+    { name: 'exit', label: 'Exit Price', placeholder: '0.00000', required: true },
   ];
-  numericFields.forEach(({ name, label, step, required }) => {
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.name = name;
-    input.step = step;
-    input.placeholder = '0.00';
-    if (required) input.required = true;
-    
+
+  numericFields.forEach(({ name, label, placeholder, required }) => {
+    const spinner = createSpinnerInput(name, placeholder, '', required, getSelectedAssetConfig);
+    const input = spinner.input;
+    const spinnerWrap = spinner.container;
+
     if (name === 'entry') entryInput = input;
     else if (name === 'stop') stopInput = input;
     else if (name === 'exit') exitInput = input;
-    
-    form.appendChild(formGroup(label, input));
+
+    form.appendChild(formGroup(label, spinnerWrap));
   });
+
+  function updateAssetHints() {
+    const config = getSelectedAssetConfig();
+    const formatHintText = `Format: ${config.decimals} decimals · Step: ${config.pipText}`;
+    
+    const fields = [
+      { input: entryInput, name: 'entry' },
+      { input: stopInput, name: 'stop' },
+      { input: exitInput, name: 'exit' }
+    ];
+    
+    fields.forEach(f => {
+      if (f.input) {
+        f.input.placeholder = (0).toFixed(config.decimals);
+        const group = f.input.closest('.form-group');
+        if (group) {
+          let hint = group.querySelector('.input-format-hint');
+          if (!hint) {
+            hint = el('span', 'input-format-hint');
+            hint.style.fontSize = 'var(--text-xs)';
+            hint.style.color = 'var(--text-muted)';
+            hint.style.marginTop = 'var(--space-1)';
+            hint.style.display = 'block';
+            group.appendChild(hint);
+          }
+          hint.textContent = formatHintText;
+        }
+      }
+    });
+  }
 
   // ---- Active Lot-Size & Risk Position Calculator ----
   const riskHelper = el('div', 'trade-form__risk-helper glass-card');
@@ -1247,13 +1485,25 @@ export function renderTradeForm(container, onSaved) {
     }
     edgeScore = Math.max(0, edgeScore);
 
+    const entry = Number(fd.get('entry'));
+    const stop = Number(fd.get('stop'));
+    const balanceUsed = Number(balInput.value) || 10000;
+    const riskPct = Number(pctInput.value) || 1.0;
+    const slDistance = Math.abs(entry - stop);
+    
+    let size = 1;
+    if (slDistance > 0) {
+      const riskAmount = (balanceUsed * riskPct) / 100;
+      size = riskAmount / slDistance;
+    }
+
     const tradeData = {
       asset: fd.get('asset'),
       direction: fd.get('direction'),
-      entry: Number(fd.get('entry')),
-      stop: Number(fd.get('stop')),
+      entry,
+      stop,
       exit: Number(fd.get('exit')),
-      size: 1,
+      size,
       fees: 0,
       slippage: 0,
       date: fd.get('date') || new Date().toISOString().slice(0, 10),
@@ -1264,8 +1514,8 @@ export function renderTradeForm(container, onSaved) {
       mistake: fd.get('outcome') === 'loss' ? fd.get('mistake') : '',
       notes: sanitizeText(fd.get('notes') || '', 2000),
       screenshot: fd.get('screenshot') || '',
-      balanceUsed: Number(balInput.value) || 10000,
-      riskPct: Number(pctInput.value) || 1.0,
+      balanceUsed,
+      riskPct,
       executionMindset: fd.get('executionMindset') || 'professional',
       guardrails: {
         newsChecked,
@@ -1305,6 +1555,12 @@ export function renderTradeForm(container, onSaved) {
 
     if (typeof onSaved === 'function') onSaved();
   });
+
+  // Initialize hints and calculations on load
+  setTimeout(() => {
+    updateAssetHints();
+    updateLiveRisk();
+  }, 50);
 
   container.appendChild(form);
 }
@@ -2139,6 +2395,11 @@ function calculateAdvancedMetrics(trades) {
   let peak = 10000;
   let maxDrawdownPercent = 0;
 
+  // Risk conformance tracking
+  let riskConformingCount = 0;
+  let tradesWithRiskCount = 0;
+  const targetRiskLimit = Number(storage.get('preset_risk', '1'));
+
   const pnlList = [];
 
   sorted.forEach(t => {
@@ -2168,6 +2429,24 @@ function calculateAdvancedMetrics(trades) {
     if (drawdown > maxDrawdownPercent) {
       maxDrawdownPercent = drawdown;
     }
+
+    // Risk discipline tracking
+    let tRisk = t.riskPercent;
+    if (tRisk === undefined) {
+      const entry = Number(t.entry);
+      const stop = Number(t.stop);
+      const size = Number(t.size) || 1;
+      const balance = Number(t.balanceUsed) || 10000;
+      if (entry && stop && entry !== stop) {
+        tRisk = (Math.abs(entry - stop) * size / balance) * 100;
+      } else {
+        tRisk = 1.0;
+      }
+    }
+    if (tRisk <= targetRiskLimit) {
+      riskConformingCount++;
+    }
+    tradesWithRiskCount++;
   });
 
   // Profit Factor
@@ -2187,6 +2466,18 @@ function calculateAdvancedMetrics(trades) {
   const averageWin = winCount > 0 ? (grossProfits / winCount) : 0;
   const averageLoss = lossCount > 0 ? (grossLosses / lossCount) : 0;
 
+  // Kelly Criterion
+  const totalCount = winCount + lossCount;
+  const winRate = totalCount > 0 ? (winCount / totalCount) : 0;
+  const rRatio = averageLoss > 0 ? (averageWin / averageLoss) : averageWin;
+  
+  let kellyPercent = 0;
+  if (totalCount >= 3 && rRatio > 0) {
+    kellyPercent = winRate - ((1 - winRate) / rRatio);
+  }
+
+  const riskDisciplineScore = tradesWithRiskCount > 0 ? Math.round((riskConformingCount / tradesWithRiskCount) * 100) : 100;
+
   return {
     profitFactor: parseFloat(profitFactor.toFixed(2)),
     sharpeRatio: parseFloat(sharpeRatio.toFixed(2)),
@@ -2194,7 +2485,9 @@ function calculateAdvancedMetrics(trades) {
     maxWinStreak,
     maxLossStreak,
     averageWin: parseFloat(averageWin.toFixed(2)),
-    averageLoss: parseFloat(averageLoss.toFixed(2))
+    averageLoss: parseFloat(averageLoss.toFixed(2)),
+    kellyPercent: parseFloat((kellyPercent * 100).toFixed(1)),
+    riskDisciplineScore
   };
 }
 
@@ -2213,7 +2506,7 @@ function buildAdvancedMetricsWidget(trades) {
   header.appendChild(titleWrap);
   section.appendChild(header);
 
-  // 4-Column Grid
+  // 6-Column Grid
   const grid = el('div', 'metrics-summary-grid');
 
   // 1. Profit Factor Card
@@ -2259,6 +2552,50 @@ function buildAdvancedMetricsWidget(trades) {
   stCard.appendChild(el('span', 'metric-summary-label', 'Streak Records'));
   stCard.appendChild(el('span', 'metric-summary-desc', 'Consecutive wins and losses'));
   grid.appendChild(stCard);
+
+  // 5. Kelly Criterion Card
+  const kellyCard = el('div', 'metric-summary-card glass-card sr-card');
+  const kellyVal = el('span', 'metric-summary-value');
+  const kellyValNum = metrics.kellyPercent;
+  const halfKellyValNum = kellyValNum / 2;
+  
+  if (trades.length < 3) {
+    kellyVal.textContent = '—';
+    kellyVal.classList.add('val-muted');
+  } else {
+    kellyVal.textContent = `${kellyValNum > 0 ? '+' : ''}${kellyValNum}%`;
+    if (kellyValNum > 0) kellyVal.classList.add('val-high');
+    else kellyVal.classList.add('val-low');
+  }
+  
+  kellyCard.appendChild(kellyVal);
+  kellyCard.appendChild(el('span', 'metric-summary-label', 'Kelly Criterion'));
+  
+  const kellyDesc = el('span', 'metric-summary-desc');
+  if (trades.length < 3) {
+    kellyDesc.textContent = 'Requires 3+ logged trades';
+  } else if (kellyValNum > 0) {
+    kellyDesc.textContent = `Sizing: Edge detected. Half-Kelly suggests risking ${halfKellyValNum.toFixed(1)}% per trade.`;
+  } else {
+    kellyDesc.textContent = 'No edge detected. Reduce risk sizing.';
+  }
+  kellyCard.appendChild(kellyDesc);
+  grid.appendChild(kellyCard);
+
+  // 6. Risk Discipline Score Card
+  const disciplineCard = el('div', 'metric-summary-card glass-card st-card');
+  const disciplineVal = el('span', 'metric-summary-value', `${metrics.riskDisciplineScore}%`);
+  if (metrics.riskDisciplineScore >= 90) disciplineVal.classList.add('val-high');
+  else if (metrics.riskDisciplineScore >= 70) disciplineVal.classList.add('val-mid');
+  else disciplineVal.classList.add('val-low');
+  
+  disciplineCard.appendChild(disciplineVal);
+  disciplineCard.appendChild(el('span', 'metric-summary-label', 'Risk Discipline Score'));
+  
+  const presetRiskVal = storage.get('preset_risk', '1');
+  const disciplineDesc = el('span', 'metric-summary-desc', `${metrics.riskDisciplineScore}% of trades followed the ≤ ${presetRiskVal}% risk rule`);
+  disciplineCard.appendChild(disciplineDesc);
+  grid.appendChild(disciplineCard);
 
   section.appendChild(grid);
 

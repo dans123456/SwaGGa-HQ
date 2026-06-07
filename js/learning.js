@@ -81,6 +81,10 @@ const QUIZ_BANK = [
   { concept: 'AMD', q: 'In the Power of Three (AMD Strategy), what do the phases stand for?', choices: ['Accumulation, Manipulation, Distribution', 'Analysis, Mitigation, Drawdown', 'Aggressive, Moderate, Defensive', 'Ask, Median, Bid'], answer: 0 },
   { concept: 'breaker-block', q: 'What is a key difference between a Breaker Block and a Mitigation Block?', choices: ['A Breaker Block sweeps liquidity before structural failure, while a Mitigation Block does not', 'A Mitigation Block is only used on weekly timeframes', 'Breaker Blocks are always bullish and Mitigation Blocks are always bearish', 'Mitigation Blocks require a news release to validate'], answer: 0 },
   { concept: 'dealing-range', q: 'What is a "dealing range" in market maker models?', choices: ['The price boundaries between a defined swing high and swing low where orders are engineered', 'The total spread cost of a transaction', 'The time window of the Asian session', 'A series of custom indicators used for scalping'], answer: 0 },
+  { concept: 'risk-management', q: 'What is the recommended max risk per trade in professional trading?', choices: ['1% – 2% of account balance', '5% – 10% of account balance', '50% of account balance', 'Whatever leverage allows'], answer: 0 },
+  { concept: 'position-sizing', q: 'Position sizing determines:', choices: ['How many lots or units to trade based on balance and SL distance', 'Which direction the market will go next', 'When high-impact news releases occur', 'The maximum number of trades you can take in a day'], answer: 0 },
+  { concept: 'drawdown-control', q: 'A drawdown circuit breaker should trigger when:', choices: ['Your daily loss reaches a predefined maximum limit', 'You lose three trades in a row', 'The market is in consolidation', 'High-impact news is released'], answer: 0 },
+  { concept: 'kelly-criterion', q: 'The Kelly Criterion formula calculates:', choices: ['The optimal percentage of capital to risk based on win rate and R:R', 'The exact price level of an institutional Order Block', 'The daily drawdown lockout cooldown duration', 'The average win-to-loss ratio split'], answer: 0 },
 ];
 
 const OPEN_ENDED_TEMPLATES = [
@@ -2110,6 +2114,9 @@ const FLASHCARD_DATA = [
   { emoji: '⚡', concept: 'Price Action', answer: 'Price action is the study of raw price movement without indicators. Candle patterns, structure, and S/D zones are all price action tools. It reveals the true story of supply and demand in real time.' },
   { emoji: '🎰', concept: 'Risk Management', answer: 'Never risk more than 1-2% per trade. Use proper position sizing. A 1:3 risk-to-reward ratio means you only need to win 25% of trades to be profitable. Protect capital above all else.' },
   { emoji: '🧊', concept: 'Liquidity Sweep', answer: 'A liquidity sweep occurs when price pushes past a swing point to trigger stop-losses, then reverses sharply. This is smart money collecting orders. The reversal after a sweep is a high-probability entry.' },
+  { emoji: '📏', concept: 'Position Sizing (Ep 19)', answer: 'How to calculate lot size based on account balance, risk %, and stop loss distance. Professional traders always size their position so that hitting the stop loss results in losing exactly the risk percentage defined.' },
+  { emoji: '🛑', concept: 'Drawdown Circuit Breaker (Ep 19)', answer: 'A maximum loss limit (e.g. 5% daily limit) that, when hit, immediately locks you out of trading for the day to prevent emotional revenge trading and protect capital.' },
+  { emoji: '📐', concept: 'Kelly Criterion (Ep 19)', answer: 'A mathematical formula [K% = W - ((1-W)/R)] that determines optimal trade size based on win rate (W) and Risk-to-Reward ratio (R) to maximize long-term account growth.' },
 ];
 
 function renderFlashcardMode() {
