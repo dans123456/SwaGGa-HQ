@@ -2587,12 +2587,15 @@ async function launchApp() {
   _appLaunched = true;
 
   // Auto-recovery for the user's streaks (Snapchat: 10, TikTok: 10, Duolingo: 10 logged + 44 base = 54)
-  if (!localStorage.getItem('streak_recovery_done_v2')) {
+  const habits = getHabits();
+  const snapHabit = habits.find(h => h.id === 'snap');
+  const snapLoggedCount = snapHabit && snapHabit.log ? Object.keys(snapHabit.log).length : 0;
+
+  if (snapLoggedCount < 10) {
     const dates = [
       '2026-06-06', '2026-06-05', '2026-06-04', '2026-06-03', '2026-06-02',
       '2026-06-01', '2026-05-31', '2026-05-30', '2026-05-29', '2026-05-28'
     ];
-    const habits = getHabits();
     habits.forEach(h => {
       if (['snap', 'tiktok', 'duolingo'].includes(h.id)) {
         if (!h.log) h.log = {};
