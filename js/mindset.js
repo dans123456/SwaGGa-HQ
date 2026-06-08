@@ -1,9 +1,21 @@
 import storage from './storage.js';
-import { playSynthSound, startBinauralBeat, stopBinauralBeat, startAmbientDrone, stopAmbientDrone } from './audio.js';
+import { playSynthSound, startBinauralBeat, stopBinauralBeat, startAmbientDrone, stopAmbientDrone, isMuted } from './audio.js';
 import { nativeHaptic } from './native-bridge.js';
 
 let _activeInterval = null;
 let _activeAudioType = 'off'; // 'off', 'alpha', 'theta', 'waves'
+let _currentAudioStream = null;
+let _activeAudioStreamKey = 'off';
+let _streamVolume = storage.get('mindset_volume', 0.8);
+let _activeTab = storage.get('mindset_active_tab', 'streams');
+let _synthInitialized = false;
+
+const AUDIO_STREAMS = [
+  { key: 'lofi', label: '🎧 Lofi Beats (Deep Focus)', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', desc: 'Chill lofi tracks for background concentration' },
+  { key: 'rain', label: '🌧️ Ambient Rain (Heavy)', url: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg', desc: 'Heavy white-noise rain loop' },
+  { key: 'birds', label: '🌲 Forest Birds & Wind', url: 'https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg', desc: 'Natural woodland morning ambiance' },
+  { key: 'waves', label: '🌊 Ocean Waves (Zen)', url: 'https://actions.google.com/sounds/v1/ambiences/ocean_waves.ogg', desc: 'Relaxing shoreline water swells' }
+];
 
 function el(tag, cls = '', text = '') {
   const node = document.createElement(tag);
@@ -146,26 +158,251 @@ export function renderMindsetPage(container) {
   soundTitle.style.fontFamily = 'var(--font-heading)';
   soundCard.appendChild(soundTitle);
 
-  const soundDesc = el('p', '', 'Generate offline binaural brainwave frequencies or slow wave patterns to filter out external noise and block psychological stress.');
-  soundDesc.style.fontSize = '10px';
-  soundDesc.style.color = 'var(--text-muted)';
-  soundDesc.style.lineHeight = '1.4';
-  soundCard.appendChild(soundDesc);
+  // Segmented Tab switcher
+  const tabsContainer = el('div', 'mindset-tabs');
+  tabsContainer.style.display = 'flex';
+  tabsContainer.style.background = 'rgba(255, 255, 255, 0.03)';
+  tabsContainer.style.borderRadius = 'var(--radius-md)';
+  tabsContainer.style.padding = '4px';
+  tabsContainer.style.gap = '4px';
+  tabsContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+  tabsContainer.style.marginBottom = '2px';
 
-  const soundsList = el('div', 'soundscapes-list');
-  soundsList.style.display = 'flex';
-  soundsList.style.flexDirection = 'column';
-  soundsList.style.gap = 'var(--space-2)';
+  const tabConfigs = [
+    { id: 'streams', label: '🎧 Streams' },
+    { id: 'spotify', label: '🎵 Spotify' },
+    { id: 'synth', label: '🧠 Synth' }
+  ];
+
+  const tabButtons = {};
+  const tabContentAreas = {};
+
+  tabConfigs.forEach(tab => {
+    const tabBtn = el('button', 'btn btn-sm', tab.label);
+    tabBtn.style.flex = '1';
+    tabBtn.style.padding = '6px 0';
+    tabBtn.style.fontSize = '10px';
+    tabBtn.style.fontWeight = '700';
+    tabBtn.style.border = 'none';
+    tabBtn.style.borderRadius = 'var(--radius-sm)';
+    tabBtn.style.cursor = 'pointer';
+    tabBtn.style.transition = 'all 0.2s ease';
+    
+    tabBtn.addEventListener('click', () => {
+      switchTab(tab.id);
+    });
+    
+    tabsContainer.appendChild(tabBtn);
+    tabButtons[tab.id] = tabBtn;
+
+    const contentArea = el('div', `tab-content-${tab.id}`);
+    contentArea.style.display = 'none';
+    contentArea.style.flexDirection = 'column';
+    contentArea.style.gap = 'var(--space-3)';
+    tabContentAreas[tab.id] = contentArea;
+  });
   
-  const soundPresets = [
+  soundCard.appendChild(tabsContainer);
+
+  Object.values(tabContentAreas).forEach(area => {
+    soundCard.appendChild(area);
+  });
+
+  // --- 1. STREAMS TAB CONTENT ---
+  const streamsDesc = el('p', '', 'High-quality ambient soundscapes streaming directly from secure networks to keep you focused.');
+  streamsDesc.style.fontSize = '10px';
+  streamsDesc.style.color = 'var(--text-muted)';
+  streamsDesc.style.lineHeight = '1.4';
+  tabContentAreas['streams'].appendChild(streamsDesc);
+
+  const streamsList = el('div', 'streams-list');
+  streamsList.style.display = 'flex';
+  streamsList.style.flexDirection = 'column';
+  streamsList.style.gap = 'var(--space-2)';
+  
+  const streamButtons = {};
+  AUDIO_STREAMS.forEach(stream => {
+    const btn = el('button', 'btn btn-outline sound-preset-btn');
+    btn.style.display = 'flex';
+    btn.style.flexDirection = 'column';
+    btn.style.alignItems = 'start';
+    btn.style.textAlign = 'left';
+    btn.style.padding = 'var(--space-2) var(--space-3)';
+    btn.style.gap = '2px';
+    btn.style.border = '1px solid rgba(255,255,255,0.04)';
+    btn.style.background = 'rgba(255,255,255,0.01)';
+    
+    const label = el('span', '', stream.label);
+    label.style.fontSize = 'var(--text-xs)';
+    label.style.fontWeight = '700';
+    label.style.color = 'var(--text-primary)';
+    
+    const desc = el('span', '', stream.desc);
+    desc.style.fontSize = '9px';
+    desc.style.color = 'var(--text-muted)';
+    
+    btn.appendChild(label);
+    btn.appendChild(desc);
+    
+    btn.addEventListener('click', () => {
+      triggerStream(stream.key);
+    });
+    
+    streamsList.appendChild(btn);
+    streamButtons[stream.key] = btn;
+  });
+  tabContentAreas['streams'].appendChild(streamsList);
+
+  const volumeContainer = el('div');
+  volumeContainer.style.display = 'flex';
+  volumeContainer.style.flexDirection = 'column';
+  volumeContainer.style.gap = '4px';
+  volumeContainer.style.marginTop = '2px';
+  
+  const volumeLabelRow = el('div');
+  volumeLabelRow.style.display = 'flex';
+  volumeLabelRow.style.justifyContent = 'space-between';
+  volumeLabelRow.style.alignItems = 'center';
+  
+  const volumeLabel = el('span', '', 'Stream Volume');
+  volumeLabel.style.fontSize = '10px';
+  volumeLabel.style.fontWeight = '700';
+  volumeLabel.style.color = 'var(--text-secondary)';
+  
+  const volumeVal = el('span', '', `${Math.round(_streamVolume * 100)}%`);
+  volumeVal.style.fontSize = '10px';
+  volumeVal.style.color = 'var(--text-muted)';
+  
+  volumeLabelRow.appendChild(volumeLabel);
+  volumeLabelRow.appendChild(volumeVal);
+  volumeContainer.appendChild(volumeLabelRow);
+  
+  const volumeSlider = document.createElement('input');
+  volumeSlider.type = 'range';
+  volumeSlider.min = '0';
+  volumeSlider.max = '100';
+  volumeSlider.value = String(_streamVolume * 100);
+  volumeSlider.style.width = '100%';
+  volumeSlider.style.cursor = 'pointer';
+  volumeSlider.style.height = '6px';
+  volumeSlider.style.background = 'rgba(255,255,255,0.1)';
+  volumeSlider.style.borderRadius = '3px';
+  volumeSlider.style.accentColor = 'var(--purple)';
+  
+  volumeSlider.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value) / 100;
+    _streamVolume = val;
+    storage.set('mindset_volume', val);
+    volumeVal.textContent = `${Math.round(val * 100)}%`;
+    if (_currentAudioStream) {
+      _currentAudioStream.volume = val;
+    }
+  });
+  
+  volumeContainer.appendChild(volumeSlider);
+  tabContentAreas['streams'].appendChild(volumeContainer);
+
+  const stopStreamBtn = el('button', 'btn btn-outline-danger btn-sm', '⏹️ Stop Stream');
+  stopStreamBtn.style.width = '100%';
+  stopStreamBtn.style.marginTop = '2px';
+  stopStreamBtn.addEventListener('click', () => {
+    stopActiveStream();
+  });
+  tabContentAreas['streams'].appendChild(stopStreamBtn);
+
+  // --- 2. SPOTIFY TAB CONTENT ---
+  const spotifyDesc = el('p', '', 'Embed official Spotify player. Login to your Spotify account in this browser for full song previews.');
+  spotifyDesc.style.fontSize = '10px';
+  spotifyDesc.style.color = 'var(--text-muted)';
+  spotifyDesc.style.lineHeight = '1.4';
+  tabContentAreas['spotify'].appendChild(spotifyDesc);
+
+  const spotifyInputRow = el('div');
+  spotifyInputRow.style.display = 'flex';
+  spotifyInputRow.style.gap = 'var(--space-2)';
+  
+  const spotifyInput = document.createElement('input');
+  spotifyInput.type = 'text';
+  spotifyInput.placeholder = 'Paste Spotify playlist/album link...';
+  spotifyInput.className = 'form-control form-control-sm';
+  spotifyInput.style.flex = '1';
+  spotifyInput.style.fontSize = '10px';
+  spotifyInput.style.background = 'rgba(255, 255, 255, 0.02)';
+  spotifyInput.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+  spotifyInput.style.color = '#fff';
+  
+  const storedPlaylist = storage.get('custom_spotify_playlist', 'https://open.spotify.com/playlist/37i9dQZF1DX8Uebhn2wRm1');
+  spotifyInput.value = storedPlaylist;
+
+  const spotifyLoadBtn = el('button', 'btn btn-primary btn-sm', 'Load');
+  spotifyLoadBtn.style.padding = '0 var(--space-3)';
+  spotifyLoadBtn.style.fontSize = '10px';
+  spotifyLoadBtn.style.fontWeight = '700';
+
+  spotifyInputRow.appendChild(spotifyInput);
+  spotifyInputRow.appendChild(spotifyLoadBtn);
+  tabContentAreas['spotify'].appendChild(spotifyInputRow);
+
+  const iframeContainer = el('div', 'spotify-iframe-container');
+  iframeContainer.style.width = '100%';
+  iframeContainer.style.height = '320px';
+  iframeContainer.style.borderRadius = 'var(--radius-md)';
+  iframeContainer.style.overflow = 'hidden';
+  iframeContainer.style.background = 'rgba(0,0,0,0.2)';
+  iframeContainer.style.border = '1px solid rgba(255,255,255,0.05)';
+  
+  const spotifyIframe = document.createElement('iframe');
+  spotifyIframe.style.border = '0';
+  spotifyIframe.style.width = '100%';
+  spotifyIframe.style.height = '100%';
+  spotifyIframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+  spotifyIframe.loading = 'lazy';
+  
+  iframeContainer.appendChild(spotifyIframe);
+  tabContentAreas['spotify'].appendChild(iframeContainer);
+
+  spotifyLoadBtn.addEventListener('click', () => {
+    const url = spotifyInput.value.trim();
+    if (url) {
+      storage.set('custom_spotify_playlist', url);
+      loadSpotifyPlayer(url);
+      playSynthSound('success');
+    }
+  });
+
+  // --- 3. SYNTH TAB CONTENT ---
+  const synthDesc = el('p', '', 'Generate offline binaural brainwave frequencies or slow wave patterns to filter out external noise and block psychological stress.');
+  synthDesc.style.fontSize = '10px';
+  synthDesc.style.color = 'var(--text-muted)';
+  synthDesc.style.lineHeight = '1.4';
+  tabContentAreas['synth'].appendChild(synthDesc);
+
+  const initBtn = el('button', 'btn btn-outline btn-sm', '⚡ Initialize Synth Audio');
+  initBtn.style.width = '100%';
+  initBtn.style.padding = 'var(--space-2)';
+  initBtn.style.fontSize = 'var(--text-xs)';
+  initBtn.style.fontWeight = '700';
+  initBtn.style.color = 'var(--cyan)';
+  initBtn.style.borderColor = 'rgba(0, 212, 255, 0.2)';
+  initBtn.style.background = 'rgba(0, 212, 255, 0.02)';
+  
+  const synthListContainer = el('div');
+  synthListContainer.style.display = 'flex';
+  synthListContainer.style.flexDirection = 'column';
+  synthListContainer.style.gap = 'var(--space-2)';
+
+  tabContentAreas['synth'].appendChild(initBtn);
+  tabContentAreas['synth'].appendChild(synthListContainer);
+
+  const synthPresets = [
     { key: 'alpha', label: '🧠 Deep Focus (Alpha Waves)', desc: '10Hz binaural waves for reading/charting' },
     { key: 'theta', label: '🧘 Zen Meditation (Theta Waves)', desc: '5Hz binaural waves to calm trading stress' },
     { key: 'waves', label: '🌊 Ocean Surf (Slow LFO Drone)', desc: 'Wave-like synthesiser swells for box breathing' },
     { key: 'off', label: '🔇 Silent Room (Off)', desc: 'Stop all ambient audio synthesiser output' }
   ];
 
-  const soundButtons = {};
-  soundPresets.forEach(sp => {
+  const synthButtons = {};
+  synthPresets.forEach(sp => {
     const btn = el('button', `btn btn-outline sound-preset-btn${sp.key === _activeAudioType ? ' active' : ''}`);
     btn.style.display = 'flex';
     btn.style.flexDirection = 'column';
@@ -189,33 +426,166 @@ export function renderMindsetPage(container) {
     btn.appendChild(desc);
 
     btn.addEventListener('click', () => {
+      _synthInitialized = true;
+      updateInitBtnState();
       triggerAudio(sp.key);
     });
 
-    soundsList.appendChild(btn);
-    soundButtons[sp.key] = btn;
+    synthListContainer.appendChild(btn);
+    synthButtons[sp.key] = btn;
   });
-  soundCard.appendChild(soundsList);
 
   const audioWarning = el('p', '', '⚠️ Headphone Note: Binaural frequencies require stereo headphones to successfully trigger brainwave states.');
   audioWarning.style.fontSize = '9px';
   audioWarning.style.color = 'var(--text-muted)';
   audioWarning.style.lineHeight = '1.3';
-  soundCard.appendChild(audioWarning);
+  tabContentAreas['synth'].appendChild(audioWarning);
 
   rightCol.appendChild(soundCard);
 
-  // --- Interactive Functions ---
+  // --- Operations / Helpers ---
+  
+  function switchTab(tabId) {
+    _activeTab = tabId;
+    storage.set('mindset_active_tab', tabId);
+    
+    Object.entries(tabButtons).forEach(([id, btn]) => {
+      if (id === tabId) {
+        btn.style.background = 'rgba(255, 255, 255, 0.1)';
+        btn.style.color = '#fff';
+        btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+      } else {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.boxShadow = 'none';
+      }
+    });
 
-  let breathingState = 'off'; // 'off', 'inhale', 'hold1', 'exhale', 'hold2'
-  let breathCount = 0;
+    Object.entries(tabContentAreas).forEach(([id, area]) => {
+      if (id === tabId) {
+        area.style.display = 'flex';
+      } else {
+        area.style.display = 'none';
+      }
+    });
+  }
 
-  function triggerAudio(type) {
-    _activeAudioType = type;
+  function parseSpotifyEmbedUrl(url) {
+    if (!url) return '';
+    if (url.includes('spotify.com/embed')) return url;
+    
+    const match = url.match(/spotify\.com\/(playlist|album|track|artist)\/([a-zA-Z0-9]+)/);
+    if (match) {
+      const type = match[1];
+      const id = match[2];
+      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+    }
+    
+    if (/^[a-zA-Z0-9]{22}$/.test(url.trim())) {
+      return `https://open.spotify.com/embed/playlist/${url.trim()}?utm_source=generator&theme=0`;
+    }
+    
+    return '';
+  }
+
+  function loadSpotifyPlayer(url) {
+    const embedUrl = parseSpotifyEmbedUrl(url);
+    if (embedUrl) {
+      spotifyIframe.src = embedUrl;
+      stopActiveStream();
+      stopBinauralBeat();
+      stopAmbientDrone();
+      _activeAudioType = 'off';
+      updateSynthButtons('off');
+    }
+  }
+
+  function updateInitBtnState() {
+    if (_synthInitialized) {
+      initBtn.textContent = '✅ Synth Audio Active';
+      initBtn.style.color = 'var(--neon-green)';
+      initBtn.style.borderColor = 'rgba(57, 255, 20, 0.2)';
+      initBtn.style.background = 'rgba(57, 255, 20, 0.02)';
+    } else {
+      initBtn.textContent = '⚡ Initialize Synth Audio';
+      initBtn.style.color = 'var(--cyan)';
+      initBtn.style.borderColor = 'rgba(0, 212, 255, 0.2)';
+      initBtn.style.background = 'rgba(0, 212, 255, 0.02)';
+    }
+  }
+
+  initBtn.addEventListener('click', () => {
+    _synthInitialized = true;
+    updateInitBtnState();
     playSynthSound('click');
+  });
 
-    // Reset buttons visual state
-    Object.entries(soundButtons).forEach(([key, btn]) => {
+  function triggerStream(key) {
+    if (isMuted()) return;
+    stopBinauralBeat();
+    stopAmbientDrone();
+    _activeAudioType = 'off';
+    updateSynthButtons('off');
+    
+    if (_currentAudioStream) {
+      _currentAudioStream.pause();
+      _currentAudioStream = null;
+    }
+    
+    const stream = AUDIO_STREAMS.find(s => s.key === key);
+    if (!stream) return;
+    
+    _activeAudioStreamKey = key;
+    playSynthSound('click');
+    
+    Object.entries(streamButtons).forEach(([k, btn]) => {
+      const lbl = btn.querySelector('span');
+      if (k === key) {
+        btn.classList.add('active');
+        btn.style.borderColor = 'var(--purple-border)';
+        btn.style.background = 'var(--purple-bg)';
+        if (lbl) lbl.style.color = 'var(--purple)';
+      } else {
+        btn.classList.remove('active');
+        btn.style.borderColor = 'rgba(255,255,255,0.04)';
+        btn.style.background = 'rgba(255,255,255,0.01)';
+        if (lbl) lbl.style.color = 'var(--text-primary)';
+      }
+    });
+    
+    try {
+      _currentAudioStream = new Audio(stream.url);
+      _currentAudioStream.loop = true;
+      _currentAudioStream.volume = _streamVolume;
+      
+      const playPromise = _currentAudioStream.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('[Mindset Streams] Playback failed or was interrupted:', err);
+        });
+      }
+    } catch (err) {
+      console.error('[Mindset Streams] Failed to initialize audio:', err);
+    }
+  }
+
+  function stopActiveStream() {
+    _activeAudioStreamKey = 'off';
+    if (_currentAudioStream) {
+      _currentAudioStream.pause();
+      _currentAudioStream = null;
+    }
+    Object.entries(streamButtons).forEach(([k, btn]) => {
+      const lbl = btn.querySelector('span');
+      btn.classList.remove('active');
+      btn.style.borderColor = 'rgba(255,255,255,0.04)';
+      btn.style.background = 'rgba(255,255,255,0.01)';
+      if (lbl) lbl.style.color = 'var(--text-primary)';
+    });
+  }
+
+  function updateSynthButtons(type) {
+    Object.entries(synthButtons).forEach(([key, btn]) => {
       const lbl = btn.querySelector('span');
       if (key === type) {
         btn.classList.add('active');
@@ -229,19 +599,40 @@ export function renderMindsetPage(container) {
         if (lbl) lbl.style.color = 'var(--text-primary)';
       }
     });
+  }
 
-    // Control Web Audio
+  function triggerAudio(type) {
+    _activeAudioType = type;
+    playSynthSound('click');
+    stopActiveStream();
+    updateSynthButtons(type);
+
     stopBinauralBeat();
     stopAmbientDrone();
 
     if (type === 'alpha') {
-      startBinauralBeat(150, 160); // 10Hz diff
+      startBinauralBeat(150, 160);
     } else if (type === 'theta') {
-      startBinauralBeat(100, 105); // 5Hz diff
+      startBinauralBeat(100, 105);
     } else if (type === 'waves') {
       startAmbientDrone('zen');
     }
   }
+
+  // Set initial States
+  switchTab(_activeTab);
+  loadSpotifyPlayer(storedPlaylist);
+  updateInitBtnState();
+  if (_activeAudioStreamKey !== 'off') {
+    triggerStream(_activeAudioStreamKey);
+  } else if (_activeAudioType !== 'off') {
+    triggerAudio(_activeAudioType);
+  }
+
+  // --- Interactive Functions ---
+
+  let breathingState = 'off'; // 'off', 'inhale', 'hold1', 'exhale', 'hold2'
+  let breathCount = 0;
 
   function handleBreathing() {
     if (breathingState === 'off') {
@@ -389,7 +780,9 @@ export function renderMindsetPage(container) {
       stopBreathing();
       stopBinauralBeat();
       stopAmbientDrone();
+      stopActiveStream();
       _activeAudioType = 'off';
+      _activeAudioStreamKey = 'off';
       observer.disconnect();
     }
   });

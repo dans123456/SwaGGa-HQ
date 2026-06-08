@@ -273,6 +273,7 @@ const SYNC_KEYS = [
   'premarket_history',
   'unlocked_achievements',
   'extra_study_journal',
+  'custom_spotify_playlist',
 ];
 
 const NAMESPACE = 'swagga';
