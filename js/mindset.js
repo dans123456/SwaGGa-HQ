@@ -161,12 +161,12 @@ export function renderMindsetPage(container) {
   // Segmented Tab switcher
   const tabsContainer = el('div', 'mindset-tabs');
   tabsContainer.style.display = 'flex';
-  tabsContainer.style.background = 'rgba(255, 255, 255, 0.03)';
+  tabsContainer.style.background = 'rgba(0, 0, 0, 0.2)';
   tabsContainer.style.borderRadius = 'var(--radius-md)';
   tabsContainer.style.padding = '4px';
   tabsContainer.style.gap = '4px';
   tabsContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
-  tabsContainer.style.marginBottom = '2px';
+  tabsContainer.style.marginBottom = '4px';
 
   const tabConfigs = [
     { id: 'streams', label: '🎧 Streams' },
@@ -180,13 +180,15 @@ export function renderMindsetPage(container) {
   tabConfigs.forEach(tab => {
     const tabBtn = el('button', 'btn btn-sm', tab.label);
     tabBtn.style.flex = '1';
-    tabBtn.style.padding = '6px 0';
-    tabBtn.style.fontSize = '10px';
+    tabBtn.style.padding = '8px 0';
+    tabBtn.style.fontSize = '11px';
     tabBtn.style.fontWeight = '700';
-    tabBtn.style.border = 'none';
+    tabBtn.style.border = '1px solid transparent';
     tabBtn.style.borderRadius = 'var(--radius-sm)';
     tabBtn.style.cursor = 'pointer';
-    tabBtn.style.transition = 'all 0.2s ease';
+    tabBtn.style.transition = 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)';
+    tabBtn.style.background = 'transparent';
+    tabBtn.style.color = 'var(--text-muted)';
     
     tabBtn.addEventListener('click', () => {
       switchTab(tab.id);
@@ -211,7 +213,7 @@ export function renderMindsetPage(container) {
   // --- 1. STREAMS TAB CONTENT ---
   const streamsDesc = el('p', '', 'High-quality ambient soundscapes streaming directly from secure networks to keep you focused.');
   streamsDesc.style.fontSize = '10px';
-  streamsDesc.style.color = 'var(--text-muted)';
+  streamsDesc.style.color = 'var(--text-secondary)';
   streamsDesc.style.lineHeight = '1.4';
   tabContentAreas['streams'].appendChild(streamsDesc);
 
@@ -222,15 +224,18 @@ export function renderMindsetPage(container) {
   
   const streamButtons = {};
   AUDIO_STREAMS.forEach(stream => {
-    const btn = el('button', 'btn btn-outline sound-preset-btn');
+    const btn = el('button', 'btn sound-preset-btn');
     btn.style.display = 'flex';
     btn.style.flexDirection = 'column';
     btn.style.alignItems = 'start';
     btn.style.textAlign = 'left';
-    btn.style.padding = 'var(--space-2) var(--space-3)';
-    btn.style.gap = '2px';
-    btn.style.border = '1px solid rgba(255,255,255,0.04)';
-    btn.style.background = 'rgba(255,255,255,0.01)';
+    btn.style.padding = 'var(--space-3) var(--space-4)';
+    btn.style.gap = '4px';
+    btn.style.borderRadius = 'var(--radius-md)';
+    btn.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+    btn.style.background = 'rgba(255, 255, 255, 0.02)';
+    btn.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+    btn.style.width = '100%';
     
     const label = el('span', '', stream.label);
     label.style.fontSize = 'var(--text-xs)';
@@ -248,6 +253,19 @@ export function renderMindsetPage(container) {
       triggerStream(stream.key);
     });
     
+    btn.addEventListener('mouseenter', () => {
+      if (btn.classList.contains('active')) return;
+      btn.style.background = 'rgba(255, 255, 255, 0.06)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+      btn.style.transform = 'translateX(4px)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      if (btn.classList.contains('active')) return;
+      btn.style.background = 'rgba(255, 255, 255, 0.02)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+      btn.style.transform = 'none';
+    });
+    
     streamsList.appendChild(btn);
     streamButtons[stream.key] = btn;
   });
@@ -256,8 +274,8 @@ export function renderMindsetPage(container) {
   const volumeContainer = el('div');
   volumeContainer.style.display = 'flex';
   volumeContainer.style.flexDirection = 'column';
-  volumeContainer.style.gap = '4px';
-  volumeContainer.style.marginTop = '2px';
+  volumeContainer.style.gap = '6px';
+  volumeContainer.style.marginTop = 'var(--space-2)';
   
   const volumeLabelRow = el('div');
   volumeLabelRow.style.display = 'flex';
@@ -265,12 +283,12 @@ export function renderMindsetPage(container) {
   volumeLabelRow.style.alignItems = 'center';
   
   const volumeLabel = el('span', '', 'Stream Volume');
-  volumeLabel.style.fontSize = '10px';
+  volumeLabel.style.fontSize = '11px';
   volumeLabel.style.fontWeight = '700';
   volumeLabel.style.color = 'var(--text-secondary)';
   
   const volumeVal = el('span', '', `${Math.round(_streamVolume * 100)}%`);
-  volumeVal.style.fontSize = '10px';
+  volumeVal.style.fontSize = '11px';
   volumeVal.style.color = 'var(--text-muted)';
   
   volumeLabelRow.appendChild(volumeLabel);
@@ -302,9 +320,25 @@ export function renderMindsetPage(container) {
   volumeContainer.appendChild(volumeSlider);
   tabContentAreas['streams'].appendChild(volumeContainer);
 
-  const stopStreamBtn = el('button', 'btn btn-outline-danger btn-sm', '⏹️ Stop Stream');
+  const stopStreamBtn = el('button', 'btn btn-sm', '⏹ Stop Stream');
   stopStreamBtn.style.width = '100%';
-  stopStreamBtn.style.marginTop = '2px';
+  stopStreamBtn.style.marginTop = 'var(--space-2)';
+  stopStreamBtn.style.background = 'rgba(255, 71, 87, 0.08)';
+  stopStreamBtn.style.color = 'var(--neon-red)';
+  stopStreamBtn.style.borderColor = 'rgba(255, 71, 87, 0.15)';
+  stopStreamBtn.style.fontWeight = '700';
+  stopStreamBtn.style.transition = 'all 0.2s ease';
+  
+  stopStreamBtn.addEventListener('mouseenter', () => {
+    stopStreamBtn.style.background = 'rgba(255, 71, 87, 0.15)';
+    stopStreamBtn.style.borderColor = 'rgba(255, 71, 87, 0.3)';
+    stopStreamBtn.style.boxShadow = '0 0 15px rgba(255, 71, 87, 0.15)';
+  });
+  stopStreamBtn.addEventListener('mouseleave', () => {
+    stopStreamBtn.style.background = 'rgba(255, 71, 87, 0.08)';
+    stopStreamBtn.style.borderColor = 'rgba(255, 71, 87, 0.15)';
+    stopStreamBtn.style.boxShadow = 'none';
+  });
   stopStreamBtn.addEventListener('click', () => {
     stopActiveStream();
   });
@@ -313,7 +347,7 @@ export function renderMindsetPage(container) {
   // --- 2. SPOTIFY TAB CONTENT ---
   const spotifyDesc = el('p', '', 'Embed official Spotify player. Login to your Spotify account in this browser for full song previews.');
   spotifyDesc.style.fontSize = '10px';
-  spotifyDesc.style.color = 'var(--text-muted)';
+  spotifyDesc.style.color = 'var(--text-secondary)';
   spotifyDesc.style.lineHeight = '1.4';
   tabContentAreas['spotify'].appendChild(spotifyDesc);
 
@@ -324,9 +358,10 @@ export function renderMindsetPage(container) {
   const spotifyInput = document.createElement('input');
   spotifyInput.type = 'text';
   spotifyInput.placeholder = 'Paste Spotify playlist/album link...';
-  spotifyInput.className = 'form-control form-control-sm';
+  spotifyInput.className = 'form-input';
   spotifyInput.style.flex = '1';
-  spotifyInput.style.fontSize = '10px';
+  spotifyInput.style.fontSize = '11px';
+  spotifyInput.style.padding = '0.5rem 0.75rem';
   spotifyInput.style.background = 'rgba(255, 255, 255, 0.02)';
   spotifyInput.style.border = '1px solid rgba(255, 255, 255, 0.08)';
   spotifyInput.style.color = '#fff';
@@ -334,10 +369,25 @@ export function renderMindsetPage(container) {
   const storedPlaylist = storage.get('custom_spotify_playlist', 'https://open.spotify.com/playlist/37i9dQZF1DX8Uebhn2wRm1');
   spotifyInput.value = storedPlaylist;
 
-  const spotifyLoadBtn = el('button', 'btn btn-primary btn-sm', 'Load');
-  spotifyLoadBtn.style.padding = '0 var(--space-3)';
-  spotifyLoadBtn.style.fontSize = '10px';
+  const spotifyLoadBtn = el('button', 'btn btn-sm', 'Load');
+  spotifyLoadBtn.style.padding = '0 var(--space-4)';
+  spotifyLoadBtn.style.fontSize = '11px';
   spotifyLoadBtn.style.fontWeight = '700';
+  spotifyLoadBtn.style.background = 'rgba(168, 85, 247, 0.15)';
+  spotifyLoadBtn.style.color = 'var(--purple)';
+  spotifyLoadBtn.style.borderColor = 'rgba(168, 85, 247, 0.25)';
+  spotifyLoadBtn.style.transition = 'all 0.2s ease';
+  
+  spotifyLoadBtn.addEventListener('mouseenter', () => {
+    spotifyLoadBtn.style.background = 'rgba(168, 85, 247, 0.25)';
+    spotifyLoadBtn.style.borderColor = 'var(--purple)';
+    spotifyLoadBtn.style.boxShadow = '0 0 15px rgba(168, 85, 247, 0.2)';
+  });
+  spotifyLoadBtn.addEventListener('mouseleave', () => {
+    spotifyLoadBtn.style.background = 'rgba(168, 85, 247, 0.15)';
+    spotifyLoadBtn.style.borderColor = 'rgba(168, 85, 247, 0.25)';
+    spotifyLoadBtn.style.boxShadow = 'none';
+  });
 
   spotifyInputRow.appendChild(spotifyInput);
   spotifyInputRow.appendChild(spotifyLoadBtn);
@@ -345,16 +395,17 @@ export function renderMindsetPage(container) {
 
   const iframeContainer = el('div', 'spotify-iframe-container');
   iframeContainer.style.width = '100%';
-  iframeContainer.style.height = '320px';
+  iframeContainer.style.height = '352px';
   iframeContainer.style.borderRadius = 'var(--radius-md)';
   iframeContainer.style.overflow = 'hidden';
-  iframeContainer.style.background = 'rgba(0,0,0,0.2)';
-  iframeContainer.style.border = '1px solid rgba(255,255,255,0.05)';
+  iframeContainer.style.background = 'transparent';
+  iframeContainer.style.border = 'none';
   
   const spotifyIframe = document.createElement('iframe');
   spotifyIframe.style.border = '0';
   spotifyIframe.style.width = '100%';
   spotifyIframe.style.height = '100%';
+  spotifyIframe.style.borderRadius = 'var(--radius-md)';
   spotifyIframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
   spotifyIframe.loading = 'lazy';
   
@@ -373,18 +424,16 @@ export function renderMindsetPage(container) {
   // --- 3. SYNTH TAB CONTENT ---
   const synthDesc = el('p', '', 'Generate offline binaural brainwave frequencies or slow wave patterns to filter out external noise and block psychological stress.');
   synthDesc.style.fontSize = '10px';
-  synthDesc.style.color = 'var(--text-muted)';
+  synthDesc.style.color = 'var(--text-secondary)';
   synthDesc.style.lineHeight = '1.4';
   tabContentAreas['synth'].appendChild(synthDesc);
 
-  const initBtn = el('button', 'btn btn-outline btn-sm', '⚡ Initialize Synth Audio');
+  const initBtn = el('button', 'btn btn-sm', '⚡ Initialize Synth Audio');
   initBtn.style.width = '100%';
-  initBtn.style.padding = 'var(--space-2)';
+  initBtn.style.padding = 'var(--space-3)';
   initBtn.style.fontSize = 'var(--text-xs)';
   initBtn.style.fontWeight = '700';
-  initBtn.style.color = 'var(--cyan)';
-  initBtn.style.borderColor = 'rgba(0, 212, 255, 0.2)';
-  initBtn.style.background = 'rgba(0, 212, 255, 0.02)';
+  initBtn.style.transition = 'all 0.2s ease';
   
   const synthListContainer = el('div');
   synthListContainer.style.display = 'flex';
@@ -403,20 +452,23 @@ export function renderMindsetPage(container) {
 
   const synthButtons = {};
   synthPresets.forEach(sp => {
-    const btn = el('button', `btn btn-outline sound-preset-btn${sp.key === _activeAudioType ? ' active' : ''}`);
+    const btn = el('button', 'btn sound-preset-btn');
     btn.style.display = 'flex';
     btn.style.flexDirection = 'column';
     btn.style.alignItems = 'start';
     btn.style.textAlign = 'left';
-    btn.style.padding = 'var(--space-2) var(--space-3)';
-    btn.style.gap = '2px';
-    btn.style.border = '1px solid rgba(255,255,255,0.04)';
-    btn.style.background = 'rgba(255,255,255,0.01)';
+    btn.style.padding = 'var(--space-3) var(--space-4)';
+    btn.style.gap = '4px';
+    btn.style.borderRadius = 'var(--radius-md)';
+    btn.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+    btn.style.background = 'rgba(255, 255, 255, 0.02)';
+    btn.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+    btn.style.width = '100%';
     
     const label = el('span', '', sp.label);
     label.style.fontSize = 'var(--text-xs)';
     label.style.fontWeight = '700';
-    label.style.color = sp.key === _activeAudioType ? 'var(--purple)' : 'var(--text-primary)';
+    label.style.color = 'var(--text-primary)';
     
     const desc = el('span', '', sp.desc);
     desc.style.fontSize = '9px';
@@ -429,6 +481,19 @@ export function renderMindsetPage(container) {
       _synthInitialized = true;
       updateInitBtnState();
       triggerAudio(sp.key);
+    });
+
+    btn.addEventListener('mouseenter', () => {
+      if (btn.classList.contains('active')) return;
+      btn.style.background = 'rgba(255, 255, 255, 0.06)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+      btn.style.transform = 'translateX(4px)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      if (btn.classList.contains('active')) return;
+      btn.style.background = 'rgba(255, 255, 255, 0.02)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+      btn.style.transform = 'none';
     });
 
     synthListContainer.appendChild(btn);
@@ -451,12 +516,14 @@ export function renderMindsetPage(container) {
     
     Object.entries(tabButtons).forEach(([id, btn]) => {
       if (id === tabId) {
-        btn.style.background = 'rgba(255, 255, 255, 0.1)';
-        btn.style.color = '#fff';
-        btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+        btn.style.background = 'rgba(168, 85, 247, 0.15)';
+        btn.style.color = 'var(--purple)';
+        btn.style.borderColor = 'rgba(168, 85, 247, 0.3)';
+        btn.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.1)';
       } else {
         btn.style.background = 'transparent';
         btn.style.color = 'var(--text-muted)';
+        btn.style.borderColor = 'transparent';
         btn.style.boxShadow = 'none';
       }
     });
@@ -504,13 +571,15 @@ export function renderMindsetPage(container) {
     if (_synthInitialized) {
       initBtn.textContent = '✅ Synth Audio Active';
       initBtn.style.color = 'var(--neon-green)';
-      initBtn.style.borderColor = 'rgba(57, 255, 20, 0.2)';
-      initBtn.style.background = 'rgba(57, 255, 20, 0.02)';
+      initBtn.style.borderColor = 'rgba(57, 255, 20, 0.25)';
+      initBtn.style.background = 'rgba(57, 255, 20, 0.08)';
+      initBtn.style.boxShadow = '0 0 15px rgba(57, 255, 20, 0.1)';
     } else {
       initBtn.textContent = '⚡ Initialize Synth Audio';
       initBtn.style.color = 'var(--cyan)';
-      initBtn.style.borderColor = 'rgba(0, 212, 255, 0.2)';
-      initBtn.style.background = 'rgba(0, 212, 255, 0.02)';
+      initBtn.style.borderColor = 'rgba(0, 212, 255, 0.25)';
+      initBtn.style.background = 'rgba(0, 212, 255, 0.08)';
+      initBtn.style.boxShadow = 'none';
     }
   }
 
@@ -540,16 +609,23 @@ export function renderMindsetPage(container) {
     
     Object.entries(streamButtons).forEach(([k, btn]) => {
       const lbl = btn.querySelector('span');
+      const desc = btn.querySelectorAll('span')[1];
       if (k === key) {
         btn.classList.add('active');
-        btn.style.borderColor = 'var(--purple-border)';
-        btn.style.background = 'var(--purple-bg)';
+        btn.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+        btn.style.background = 'rgba(168, 85, 247, 0.08)';
+        btn.style.boxShadow = '0 0 15px rgba(168, 85, 247, 0.1)';
+        btn.style.transform = 'translateX(4px)';
         if (lbl) lbl.style.color = 'var(--purple)';
+        if (desc) desc.style.color = 'rgba(168, 85, 247, 0.7)';
       } else {
         btn.classList.remove('active');
-        btn.style.borderColor = 'rgba(255,255,255,0.04)';
-        btn.style.background = 'rgba(255,255,255,0.01)';
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+        btn.style.background = 'rgba(255, 255, 255, 0.02)';
+        btn.style.boxShadow = 'none';
+        btn.style.transform = 'none';
         if (lbl) lbl.style.color = 'var(--text-primary)';
+        if (desc) desc.style.color = 'var(--text-muted)';
       }
     });
     
@@ -577,26 +653,37 @@ export function renderMindsetPage(container) {
     }
     Object.entries(streamButtons).forEach(([k, btn]) => {
       const lbl = btn.querySelector('span');
+      const desc = btn.querySelectorAll('span')[1];
       btn.classList.remove('active');
-      btn.style.borderColor = 'rgba(255,255,255,0.04)';
-      btn.style.background = 'rgba(255,255,255,0.01)';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+      btn.style.background = 'rgba(255, 255, 255, 0.02)';
+      btn.style.boxShadow = 'none';
+      btn.style.transform = 'none';
       if (lbl) lbl.style.color = 'var(--text-primary)';
+      if (desc) desc.style.color = 'var(--text-muted)';
     });
   }
 
   function updateSynthButtons(type) {
     Object.entries(synthButtons).forEach(([key, btn]) => {
       const lbl = btn.querySelector('span');
+      const desc = btn.querySelectorAll('span')[1];
       if (key === type) {
         btn.classList.add('active');
-        btn.style.borderColor = 'var(--purple-border)';
-        btn.style.background = 'var(--purple-bg)';
+        btn.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+        btn.style.background = 'rgba(168, 85, 247, 0.08)';
+        btn.style.boxShadow = '0 0 15px rgba(168, 85, 247, 0.1)';
+        btn.style.transform = 'translateX(4px)';
         if (lbl) lbl.style.color = 'var(--purple)';
+        if (desc) desc.style.color = 'rgba(168, 85, 247, 0.7)';
       } else {
         btn.classList.remove('active');
-        btn.style.borderColor = 'rgba(255,255,255,0.04)';
-        btn.style.background = 'rgba(255,255,255,0.01)';
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+        btn.style.background = 'rgba(255, 255, 255, 0.02)';
+        btn.style.boxShadow = 'none';
+        btn.style.transform = 'none';
         if (lbl) lbl.style.color = 'var(--text-primary)';
+        if (desc) desc.style.color = 'var(--text-muted)';
       }
     });
   }
