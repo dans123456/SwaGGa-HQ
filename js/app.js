@@ -1958,7 +1958,7 @@ function updateDashboardRank() {
   }
 }
 
-function showXPToast(amount, action) {
+function showXPToast(amount, action, streakMultiplier = 1.0) {
   const toastContainer = document.querySelector('.xp-toast-container') || (() => {
     const tc = el('div', 'xp-toast-container');
     document.body.appendChild(tc);
@@ -1976,9 +1976,10 @@ function showXPToast(amount, action) {
     perfectDay: 'Perfect Day Streak!'
   };
   const label = Object.prototype.hasOwnProperty.call(labels, action) ? labels[action] : action;
+  const bonusSuffix = streakMultiplier > 1.0 ? ` +${Math.round((streakMultiplier - 1.0) * 100)}% Streak Bonus!` : '';
 
   toast.appendChild(el('span', 'xp-toast__icon', '⚡'));
-  toast.appendChild(el('span', 'xp-toast__text', `+${amount} XP (${label})`));
+  toast.appendChild(el('span', 'xp-toast__text', `+${amount} XP (${label}${bonusSuffix})`));
   
   toastContainer.appendChild(toast);
 
@@ -1993,6 +1994,9 @@ function showXPToast(amount, action) {
 }
 
 function showLevelUpModal(oldLvl, newLvl) {
+  // Play Fanfare Audio Chord
+  playSynthSound('fanfare');
+
   const overlay = el('div', 'welcome-modal-overlay level-up-overlay');
   const modal = el('div', 'welcome-modal level-up-modal');
 
@@ -2629,10 +2633,10 @@ async function launchApp() {
 
   // Real-time XP & Level progression reactive updater
   window.addEventListener('xp-change', (e) => {
-    const { amount, action, leveledUp, oldLevel, newLevel } = e.detail;
+    const { amount, action, leveledUp, oldLevel, newLevel, streakMultiplier } = e.detail;
     
     // 1. Show dynamic floating toast notification
-    showXPToast(amount, action);
+    showXPToast(amount, action, streakMultiplier);
     
     // 2. Update sidebar XP widget
     const sidebarXP = document.querySelector('.sidebar-xp');

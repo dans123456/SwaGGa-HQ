@@ -59,15 +59,68 @@ export function getXPData() {
   return data;
 }
 
+export function getStreakMultiplier() {
+  try {
+    const habits = storage.get('habits', []);
+    if (!Array.isArray(habits) || !habits.length) return 1.0;
+
+    let maxStreak = 0;
+    
+    // YYYY-MM-DD local formatter
+    const localDateKey = (dt) => {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    habits.forEach(habit => {
+      let streak = 0;
+      const d = new Date();
+      
+      const todayKey = localDateKey(d);
+      const todayDone = (habit.log && habit.log[todayKey]) || (habit.freezes && habit.freezes[todayKey]);
+      if (!todayDone) {
+        d.setDate(d.getDate() - 1);
+      }
+
+      while (true) {
+        const key = localDateKey(d);
+        if ((habit.log && habit.log[key]) || (habit.freezes && habit.freezes[key])) {
+          streak++;
+          d.setDate(d.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      
+      const currentStreak = streak + (habit.baseStreak || 0);
+      if (currentStreak > maxStreak) {
+        maxStreak = currentStreak;
+      }
+    });
+
+    if (maxStreak >= 30) return 1.5;
+    if (maxStreak >= 14) return 1.3;
+    if (maxStreak >= 7) return 1.2;
+    if (maxStreak >= 3) return 1.1;
+  } catch (e) {
+    console.error('XP Multiplier Error:', e);
+  }
+  return 1.0;
+}
+
 // award XP and persist — dispatches 'xp-change' event
 export function addXP(action, amount) {
 
   const oldLevelObj = getLevel();
+  const mult = getStreakMultiplier();
+  amount = Math.round(amount * mult);
   
   const data = getXPData();
   data.totalXP += amount;
   data.history.push({
-    action,
+    action: mult > 1.0 ? `${action} (x${mult} Streak Bonus)` : action,
     xp: amount,
     date: new Date().toISOString(),
   });
@@ -83,7 +136,8 @@ export function addXP(action, amount) {
       totalXP: data.totalXP,
       leveledUp,
       oldLevel: oldLevelObj,
-      newLevel: newLevelObj
+      newLevel: newLevelObj,
+      streakMultiplier: mult
     }
   }));
   
