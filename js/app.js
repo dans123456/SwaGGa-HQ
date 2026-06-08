@@ -1549,7 +1549,8 @@ const ACHIEVEMENTS = [
       }
     }
     return maxStreak >= 5;
-  }}
+  }},
+  { id: 'mindset-master', emoji: '🧘', name: 'Mindset Master', desc: 'Complete 10 focus or breathing sessions', check: () => storage.get('mindset_sessions_completed', 0) >= 10 }
 ];
 
 function renderAchievementBadges(container, trades, tradeStats, lessons, habits) {

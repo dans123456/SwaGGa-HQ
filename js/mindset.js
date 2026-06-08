@@ -1,6 +1,8 @@
 import storage from './storage.js';
 import { playSynthSound, startBinauralBeat, stopBinauralBeat, startAmbientDrone, stopAmbientDrone, isMuted } from './audio.js';
-import { nativeHaptic } from './native-bridge.js';
+import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
+import { addXP } from './xp.js';
+import { triggerConfetti, showNotificationToast } from './utils.js';
 
 let _activeInterval = null;
 let _activeAudioType = 'off'; // 'off', 'alpha', 'theta', 'waves'
@@ -108,6 +110,24 @@ export function renderMindsetPage(container) {
   circleOuter.appendChild(circleInner);
   breathCard.appendChild(circleOuter);
 
+  // Session Progress bar
+  const progressBarContainer = el('div', 'breathing-progress-bar-container');
+  progressBarContainer.style.width = '100%';
+  progressBarContainer.style.height = '6px';
+  progressBarContainer.style.background = 'rgba(255, 255, 255, 0.05)';
+  progressBarContainer.style.borderRadius = '3px';
+  progressBarContainer.style.marginTop = 'var(--space-6)';
+  progressBarContainer.style.overflow = 'hidden';
+  progressBarContainer.style.display = 'none';
+  
+  const progressBarFill = el('div', 'breathing-progress-bar-fill');
+  progressBarFill.style.height = '100%';
+  progressBarFill.style.width = '0%';
+  progressBarFill.style.background = 'var(--purple)';
+  progressBarFill.style.transition = 'width 1s linear';
+  progressBarContainer.appendChild(progressBarFill);
+  breathCard.appendChild(progressBarContainer);
+
   // Settings & Start
   const breathControls = el('div', '');
   breathControls.style.display = 'flex';
@@ -117,18 +137,35 @@ export function renderMindsetPage(container) {
 
   const routineSelect = document.createElement('select');
   routineSelect.className = 'form-select';
-  routineSelect.style.width = '180px';
+  routineSelect.style.width = '160px';
   routineSelect.style.fontSize = 'var(--text-xs)';
   
-  const optBox = el('option', '', 'Box Breathing (4-4-4-4)');
+  const optBox = el('option', '', 'Box Breath (4-4-4-4)');
   optBox.value = 'box';
-  const optRelax = el('option', '', 'Relaxing Breath (4-7-8)');
+  const optRelax = el('option', '', 'Relaxing (4-7-8)');
   optRelax.value = 'relax';
   routineSelect.appendChild(optBox);
   routineSelect.appendChild(optRelax);
   breathControls.appendChild(routineSelect);
 
-  const startBtn = el('button', 'btn btn-primary btn-sm', '▶ Start Breathing');
+  const durationSelect = document.createElement('select');
+  durationSelect.className = 'form-select';
+  durationSelect.style.width = '90px';
+  durationSelect.style.fontSize = 'var(--text-xs)';
+  
+  const opt1m = el('option', '', '1 Min');
+  opt1m.value = '60';
+  const opt2m = el('option', '', '2 Min');
+  opt2m.value = '120';
+  const opt5m = el('option', '', '5 Min');
+  opt5m.value = '300';
+  durationSelect.appendChild(opt1m);
+  durationSelect.appendChild(opt2m);
+  durationSelect.appendChild(opt5m);
+  durationSelect.value = '120'; // Default to 2 Min
+  breathControls.appendChild(durationSelect);
+
+  const startBtn = el('button', 'btn btn-primary btn-sm', '▶ Start');
   startBtn.style.padding = '0.5rem var(--space-4)';
   breathControls.appendChild(startBtn);
 
@@ -720,16 +757,24 @@ export function renderMindsetPage(container) {
 
   let breathingState = 'off'; // 'off', 'inhale', 'hold1', 'exhale', 'hold2'
   let breathCount = 0;
+  let sessionTimeElapsed = 0;
+  let sessionTimeTarget = 120;
 
   function handleBreathing() {
     if (breathingState === 'off') {
       // Start routine
-      startBtn.textContent = '⏹️ Stop Guide';
+      startBtn.textContent = '⏹️ Stop';
       startBtn.classList.remove('btn-primary');
       startBtn.classList.add('btn-secondary');
       routineSelect.disabled = true;
+      durationSelect.disabled = true;
+      progressBarContainer.style.display = 'block';
+      progressBarFill.style.width = '0%';
+      
       breathingState = 'inhale';
       breathCount = 4;
+      sessionTimeElapsed = 0;
+      sessionTimeTarget = parseInt(durationSelect.value, 10);
       
       triggerStateChange();
     } else {
@@ -744,10 +789,12 @@ export function renderMindsetPage(container) {
       _activeInterval = null;
     }
     breathingState = 'off';
-    startBtn.textContent = '▶ Start Breathing';
+    startBtn.textContent = '▶ Start';
     startBtn.classList.remove('btn-secondary');
     startBtn.classList.add('btn-primary');
     routineSelect.disabled = false;
+    durationSelect.disabled = false;
+    progressBarContainer.style.display = 'none';
     
     breathPrompt.textContent = 'READY';
     breathPrompt.style.color = '#fff';
@@ -758,6 +805,54 @@ export function renderMindsetPage(container) {
     circleOuter.style.boxShadow = '0 0 30px rgba(0, 212, 255, 0.05)';
     circleInner.style.border = '1px solid var(--cyan)';
     circleInner.style.boxShadow = 'var(--cyan-glow)';
+  }
+
+  function completeBreathingSession() {
+    if (_activeInterval) {
+      clearInterval(_activeInterval);
+      _activeInterval = null;
+    }
+    breathingState = 'off';
+    startBtn.textContent = '▶ Start';
+    startBtn.classList.remove('btn-secondary');
+    startBtn.classList.add('btn-primary');
+    routineSelect.disabled = false;
+    durationSelect.disabled = false;
+    progressBarContainer.style.display = 'none';
+
+    // Play success fanfare chime
+    playSynthSound('success');
+    
+    // Haptics
+    nativeHapticNotification('success');
+
+    // Determine reward XP
+    let xpAward = 30;
+    if (sessionTimeTarget === 60) xpAward = 15;
+    else if (sessionTimeTarget === 300) xpAward = 75;
+
+    addXP('Focus Session Completed', xpAward);
+
+    // Save session completion
+    const completedCount = storage.get('mindset_sessions_completed', 0) + 1;
+    storage.set('mindset_sessions_completed', completedCount);
+
+    // Trigger confetti
+    triggerConfetti();
+
+    // Show toast
+    showNotificationToast(`🧘 Focus Session Completed! +${xpAward} XP`, '🎉');
+
+    // Update Circle Visualizer state to celebrate completion
+    breathPrompt.textContent = 'WELL DONE!';
+    breathPrompt.style.color = 'var(--neon-green)';
+    breathTimer.textContent = `+${xpAward} XP Awarded`;
+    
+    circleOuter.style.transform = 'scale(1.1)';
+    circleOuter.style.borderColor = 'var(--neon-green-border)';
+    circleOuter.style.boxShadow = '0 0 40px rgba(57, 255, 20, 0.3)';
+    circleInner.style.border = '1px solid var(--neon-green)';
+    circleInner.style.boxShadow = 'var(--neon-green-glow)';
   }
 
   function triggerStateChange() {
@@ -821,6 +916,16 @@ export function renderMindsetPage(container) {
       
       breathCount--;
       breathTimer.textContent = `${breathCount}s left`;
+      
+      // Increment elapsed session time
+      sessionTimeElapsed++;
+      const progressPercent = Math.min((sessionTimeElapsed / sessionTimeTarget) * 100, 100);
+      progressBarFill.style.width = `${progressPercent}%`;
+      
+      if (sessionTimeElapsed >= sessionTimeTarget) {
+        completeBreathingSession();
+        return;
+      }
       
       if (breathCount <= 0) {
         // Transition state

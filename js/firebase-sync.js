@@ -274,6 +274,7 @@ const SYNC_KEYS = [
   'unlocked_achievements',
   'extra_study_journal',
   'custom_spotify_playlist',
+  'mindset_sessions_completed',
 ];
 
 const NAMESPACE = 'swagga';
