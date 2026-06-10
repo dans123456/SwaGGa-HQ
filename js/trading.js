@@ -314,14 +314,16 @@ export function saveTrade(tradeData) {
     ...tradeData,
     setupQuality,
     riskPercent: Number(tradeData.riskPct) || 1.0,
-    pnl: calculatePnL(
-      tradeData.entry,
-      tradeData.exit,
-      tradeData.size,
-      tradeData.direction,
-      tradeData.fees,
-      tradeData.slippage,
-    ),
+    pnl: tradeData.customPnL !== undefined && tradeData.customPnL !== '' && !isNaN(Number(tradeData.customPnL))
+      ? Number(tradeData.customPnL)
+      : calculatePnL(
+          tradeData.entry,
+          tradeData.exit,
+          tradeData.size,
+          tradeData.direction,
+          tradeData.fees,
+          tradeData.slippage,
+        ),
     rr: calculateRiskReward(tradeData.entry, tradeData.stop, tradeData.exit),
     createdAt: new Date().toISOString(),
   };
@@ -389,14 +391,16 @@ export function updateTrade(id, updatedData) {
       ...original,
       ...updatedData,
       riskPercent: Number(updatedData.riskPct) || 1.0,
-      pnl: calculatePnL(
-        updatedData.entry,
-        updatedData.exit,
-        updatedData.size,
-        updatedData.direction,
-        updatedData.fees || 0,
-        updatedData.slippage || 0
-      ),
+      pnl: updatedData.customPnL !== undefined && updatedData.customPnL !== '' && !isNaN(Number(updatedData.customPnL))
+        ? Number(updatedData.customPnL)
+        : calculatePnL(
+            updatedData.entry,
+            updatedData.exit,
+            updatedData.size,
+            updatedData.direction,
+            updatedData.fees || 0,
+            updatedData.slippage || 0
+          ),
       rr: calculateRiskReward(updatedData.entry, updatedData.stop, updatedData.exit),
       setupQuality: (() => {
         const confCount = Array.isArray(updatedData.confluences) ? updatedData.confluences.length : 0;
@@ -1345,6 +1349,15 @@ export function renderTradeForm(container, onSaved) {
   });
   form.appendChild(formGroup('Outcome', outcomeSelect));
 
+  // ---- Custom P&L (Optional) ----
+  const customPnlInput = document.createElement('input');
+  customPnlInput.type = 'number';
+  customPnlInput.name = 'customPnL';
+  customPnlInput.step = 'any';
+  customPnlInput.placeholder = 'e.g. 26.00 (Leave blank to auto-calculate)';
+  customPnlInput.className = 'form-input';
+  form.appendChild(formGroup('Actual P&L ($) (Optional)', customPnlInput));
+
   // ---- Mistake / Psychology Leak ----
   const mistakeSelect = document.createElement('select');
   mistakeSelect.name = 'mistake';
@@ -1583,6 +1596,7 @@ export function renderTradeForm(container, onSaved) {
       size = riskAmount / slDistance;
     }
 
+    const customPnLVal = fd.get('customPnL');
     const tradeData = {
       asset: fd.get('asset'),
       direction: fd.get('direction'),
@@ -1592,6 +1606,7 @@ export function renderTradeForm(container, onSaved) {
       size,
       fees: 0,
       slippage: 0,
+      customPnL: customPnLVal !== '' && customPnLVal !== null ? Number(customPnLVal) : '',
       date: fd.get('date') || new Date().toISOString().slice(0, 10),
       timeframe: fd.get('timeframe'),
       session: fd.get('session'),
@@ -2224,6 +2239,16 @@ export function openEditTradeModal(trade, onRefresh) {
   });
   form.appendChild(formGroup('Outcome', outcomeSelect));
 
+  // ---- Custom P&L (Optional) ----
+  const customPnlInput = document.createElement('input');
+  customPnlInput.type = 'number';
+  customPnlInput.name = 'customPnL';
+  customPnlInput.step = 'any';
+  customPnlInput.placeholder = 'e.g. 26.00 (Leave blank to auto-calculate)';
+  customPnlInput.className = 'form-input';
+  customPnlInput.value = trade.customPnL !== undefined ? trade.customPnL : '';
+  form.appendChild(formGroup('Actual P&L ($) (Optional)', customPnlInput));
+
   // ---- Mistakes ----
   const mistakeSelect = document.createElement('select');
   mistakeSelect.name = 'mistake';
@@ -2427,6 +2452,7 @@ export function openEditTradeModal(trade, onRefresh) {
       size = riskAmount / slDistance;
     }
 
+    const customPnLVal = form.querySelector('input[name="customPnL"]').value;
     const updatedData = {
       asset: assetSelect.value,
       direction: dirSelect.value,
@@ -2434,6 +2460,7 @@ export function openEditTradeModal(trade, onRefresh) {
       stop,
       exit,
       size,
+      customPnL: customPnLVal !== '' ? Number(customPnLVal) : '',
       date: dateInput.value,
       timeframe: tfSelect.value,
       session: sessionSelect.value,
