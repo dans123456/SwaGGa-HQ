@@ -58,17 +58,70 @@
         div.style.lineHeight = '1.6';
         div.style.boxShadow = '0 24px 60px rgba(0,0,0,0.7), 0 0 40px rgba(142, 14, 0, 0.4)';
         div.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-        div.style.position = 'fixed';
 
-        var titleHtml = '<div style="font-size: 18px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">⚠️ ' + title + '</div>';
-        var bodyHtml = '<div>' + errorMsg + '</div><br>';
-        var fixHtml = '<div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">' +
-                      '💡 <strong>How to Fix:</strong> ' + fixMsg +
-                      '</div>';
-        
-        var closeBtn = '<button onclick="this.parentElement.remove()" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: rgba(255,255,255,0.7); font-size: 18px; cursor: pointer; padding: 4px;">✕</button>';
+        // Title
+        var titleEl = document.createElement('div');
+        titleEl.style.fontSize = '18px';
+        titleEl.style.fontWeight = '800';
+        titleEl.style.marginBottom = '12px';
+        titleEl.style.display = 'flex';
+        titleEl.style.alignItems = 'center';
+        titleEl.style.gap = '8px';
+        titleEl.textContent = '⚠️ ' + title;
+        div.appendChild(titleEl);
 
-        div.innerHTML = titleHtml + bodyHtml + fixHtml + closeBtn;
+        // Body message
+        var bodyEl = document.createElement('div');
+        var parser = new DOMParser();
+        var bodyDoc = parser.parseFromString('<div>' + errorMsg + '</div>', 'text/html');
+        var bodyScripts = bodyDoc.querySelectorAll('script');
+        for (var i = 0; i < bodyScripts.length; i++) {
+          bodyScripts[i].remove();
+        }
+        bodyEl.appendChild(bodyDoc.body.firstChild || document.createTextNode(errorMsg));
+        div.appendChild(bodyEl);
+
+        var br = document.createElement('br');
+        div.appendChild(br);
+
+        // Fix message container
+        var fixEl = document.createElement('div');
+        fixEl.style.background = 'rgba(0,0,0,0.25)';
+        fixEl.style.border = '1px solid rgba(255,255,255,0.1)';
+        fixEl.style.padding = '12px';
+        fixEl.style.borderRadius = '8px';
+
+        var fixTitle = document.createElement('strong');
+        fixTitle.textContent = '💡 How to Fix: ';
+        fixEl.appendChild(fixTitle);
+
+        var fixMsgSpan = document.createElement('span');
+        var fixDoc = parser.parseFromString('<span>' + fixMsg + '</span>', 'text/html');
+        var fixScripts = fixDoc.querySelectorAll('script');
+        for (var j = 0; j < fixScripts.length; j++) {
+          fixScripts[j].remove();
+        }
+        fixMsgSpan.appendChild(fixDoc.body.firstChild || document.createTextNode(fixMsg));
+        fixEl.appendChild(fixMsgSpan);
+        div.appendChild(fixEl);
+
+        // Close button
+        var closeBtn = document.createElement('button');
+        closeBtn.textContent = '✕';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '16px';
+        closeBtn.style.right = '16px';
+        closeBtn.style.background = 'transparent';
+        closeBtn.style.border = 'none';
+        closeBtn.style.color = 'rgba(255,255,255,0.7)';
+        closeBtn.style.fontSize = '18px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.padding = '4px';
+        closeBtn.addEventListener('click', function() {
+          div.remove();
+        });
+        div.appendChild(closeBtn);
+
         document.body.appendChild(div);
       };
 
