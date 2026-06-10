@@ -41,7 +41,7 @@ const config: CapacitorConfig = {
   // Plugin configurations
   plugins: {
     CapacitorHttp: {
-      enabled: true,
+      enabled: false,
     },
     FirebaseAuthentication: {
       skipNativeAuth: false,

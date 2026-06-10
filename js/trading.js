@@ -11,6 +11,8 @@ import {
   calculateRiskReward,
   calculateWinRate,
   sanitizeText,
+  showNotificationToast,
+  triggerConfetti,
 } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
@@ -366,6 +368,85 @@ export function deleteTrade(id) {
   const trades = getTrades().filter((t) => t.id !== id);
   storage.set(STORAGE_KEY, trades);
   nativeHaptic('medium');
+  // Sync to firestore if user signed in
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  }).catch(err => console.warn('Background sync failed:', err));
+}
+
+// Update an existing trade record
+export function updateTrade(id, updatedData) {
+  const trades = getTrades(true);
+  const index = trades.findIndex((t) => t.id === id);
+  if (index !== -1) {
+    const original = trades[index];
+    const merged = {
+      ...original,
+      ...updatedData,
+      riskPercent: Number(updatedData.riskPct) || 1.0,
+      pnl: calculatePnL(
+        updatedData.entry,
+        updatedData.exit,
+        updatedData.size,
+        updatedData.direction,
+        updatedData.fees || 0,
+        updatedData.slippage || 0
+      ),
+      rr: calculateRiskReward(updatedData.entry, updatedData.stop, updatedData.exit),
+      setupQuality: (() => {
+        const confCount = Array.isArray(updatedData.confluences) ? updatedData.confluences.length : 0;
+        if (confCount >= 5) return 'A+';
+        if (confCount === 4) return 'A';
+        if (confCount === 3) return 'B';
+        return 'C';
+      })(),
+    };
+    trades[index] = merged;
+    storage.set(STORAGE_KEY, trades);
+
+    // Sync to firestore if user signed in
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    }).catch(err => console.warn('Background sync failed:', err));
+
+    // Haptics
+    nativeHaptic('medium');
+
+    // Drawdown / revenge check
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayTrades = trades.filter(t => t.date === todayStr || (t.createdAt && t.createdAt.slice(0, 10) === todayStr));
+    const todayNetPnL = todayTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+
+    let isBreached = false;
+    const routine = storage.get('premarket_routine');
+    if (routine && routine.riskLimit) {
+      const limit = parseDrawdownLimit(routine.riskLimit);
+      if (limit) {
+        if (limit.type === 'percent') {
+          const lossPct = (-todayNetPnL / (updatedData.balanceUsed || 10000)) * 100;
+          if (todayNetPnL < 0 && lossPct >= limit.value) {
+            isBreached = true;
+          }
+        } else if (limit.type === 'cash') {
+          if (todayNetPnL < 0 && -todayNetPnL >= limit.value) {
+            isBreached = true;
+          }
+        }
+      }
+    }
+
+    if (updatedData.executionMindset === 'revenge' || isBreached) {
+      const expiryTime = Date.now() + 15 * 60 * 1000;
+      storage.set('cooldown_expiry', expiryTime);
+      playSynthSound('fail');
+      setTimeout(() => {
+        window.location.hash = '#cooldown-lockout';
+      }, 800);
+    }
+
+    return merged;
+  }
+  return null;
 }
 
 // --- Stats Calculations ---
@@ -1602,7 +1683,7 @@ export const MISTAKE_LABELS = {
   no_plan: 'No Trade Plan / Ad-hoc'
 };
 
-function openTradeDetail(trade) {
+function openTradeDetail(trade, onRefresh = null) {
   const overlay = el('div', 'trade-modal-overlay');
   const modal = el('div', 'trade-modal');
 
@@ -1621,6 +1702,25 @@ function openTradeDetail(trade) {
   const pnlVal = Number(trade.pnl) || 0;
   const titleText = `${trade.asset} — ${trade.direction ? trade.direction.toUpperCase() : 'TRADE'}`;
   header.appendChild(el('h2', 'trade-modal__title', titleText));
+
+  // Edit button
+  const editBtn = el('button', 'trade-modal__edit', '✏️ Edit');
+  editBtn.style.background = 'transparent';
+  editBtn.style.border = 'none';
+  editBtn.style.color = 'var(--cyan)';
+  editBtn.style.fontSize = '14px';
+  editBtn.style.cursor = 'pointer';
+  editBtn.style.marginRight = '12px';
+  editBtn.style.fontWeight = 'bold';
+  editBtn.addEventListener('click', () => {
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => {
+      overlay.remove();
+      openEditTradeModal(trade, onRefresh);
+    }, 200);
+  });
+  header.appendChild(editBtn);
+
   const closeBtn = el('button', 'trade-modal__close', '✕');
   closeBtn.addEventListener('click', () => {
     overlay.classList.remove('trade-modal-overlay--visible');
@@ -1996,6 +2096,368 @@ function generateMentorCritique(mentorKey, trade) {
   return '';
 }
 
+// Render form to edit an existing trade
+export function openEditTradeModal(trade, onRefresh) {
+  const overlay = el('div', 'trade-modal-overlay');
+  const modal = el('div', 'trade-modal');
+  modal.style.maxWidth = '600px';
+
+  // Mobile sheet grab bar
+  const grabHandle = el('div', 'modal-swipe-handle');
+  modal.appendChild(grabHandle);
+
+  // Gradient topbar
+  const topbar = el('div', '');
+  topbar.style.height = '3px';
+  topbar.style.background = 'linear-gradient(90deg, var(--cyan), var(--purple), var(--neon-green))';
+  modal.appendChild(topbar);
+
+  // Header
+  const header = el('div', 'trade-modal__header');
+  header.appendChild(el('h2', 'trade-modal__title', `✏️ Edit Trade (${trade.asset})`));
+  const closeBtn = el('button', 'trade-modal__close', '✕');
+  closeBtn.addEventListener('click', () => {
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => overlay.remove(), 250);
+  });
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  // Body
+  const body = el('div', 'trade-modal__body');
+  body.style.maxHeight = '75vh';
+  body.style.overflowY = 'auto';
+  body.style.padding = 'var(--space-6)';
+
+  const form = el('form', 'trade-form');
+  form.setAttribute('novalidate', '');
+
+  // ---- Asset Select ----
+  const assetSelect = document.createElement('select');
+  assetSelect.name = 'asset';
+  assetSelect.required = true;
+  assetSelect.className = 'form-select';
+  
+  for (const [category, symbols] of Object.entries(ASSETS)) {
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = category;
+    symbols.forEach((sym) => {
+      const opt = el('option', '', sym);
+      opt.value = sym;
+      if (sym === trade.asset) opt.selected = true;
+      optgroup.appendChild(opt);
+    });
+    assetSelect.appendChild(optgroup);
+  }
+  form.appendChild(formGroup('Asset', assetSelect));
+
+  // ---- Direction ----
+  const dirSelect = document.createElement('select');
+  dirSelect.name = 'direction';
+  dirSelect.className = 'form-select';
+  ['long', 'short'].forEach((d) => {
+    const opt = el('option', '', d.toUpperCase());
+    opt.value = d;
+    if (d === trade.direction) opt.selected = true;
+    dirSelect.appendChild(opt);
+  });
+  form.appendChild(formGroup('Direction', dirSelect));
+
+  // ---- Price inputs ----
+  const getSelectedAssetConfig = () => getAssetConfig(assetSelect.value);
+
+  const entrySpinner = createSpinnerInput('entry', 'Entry Price', String(trade.entry), true, getSelectedAssetConfig);
+  form.appendChild(formGroup('Entry Price', entrySpinner.container));
+
+  const stopSpinner = createSpinnerInput('stop', 'Stop Loss Price', String(trade.stop || ''), true, getSelectedAssetConfig);
+  form.appendChild(formGroup('Stop Loss', stopSpinner.container));
+
+  const exitSpinner = createSpinnerInput('exit', 'Exit Price', String(trade.exit), true, getSelectedAssetConfig);
+  form.appendChild(formGroup('Exit Price', exitSpinner.container));
+
+  // ---- Date ----
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.name = 'date';
+  dateInput.className = 'form-input';
+  dateInput.value = trade.date || new Date().toISOString().slice(0, 10);
+  form.appendChild(formGroup('Date', dateInput));
+
+  // ---- Timeframe & Session ----
+  const tfSelect = document.createElement('select');
+  tfSelect.name = 'timeframe';
+  tfSelect.className = 'form-select';
+  ['1m', '5m', '15m', '1h', '4h', 'Daily', 'Weekly'].forEach(tf => {
+    const opt = el('option', '', tf);
+    opt.value = tf;
+    if (tf === trade.timeframe) opt.selected = true;
+    tfSelect.appendChild(opt);
+  });
+  form.appendChild(formGroup('Timeframe', tfSelect));
+
+  const sessionSelect = document.createElement('select');
+  sessionSelect.name = 'session';
+  sessionSelect.className = 'form-select';
+  ['Asian', 'London', 'New York', 'London Close'].forEach(s => {
+    const opt = el('option', '', s);
+    opt.value = s.toLowerCase();
+    if (s.toLowerCase() === (trade.session || '').toLowerCase()) opt.selected = true;
+    sessionSelect.appendChild(opt);
+  });
+  form.appendChild(formGroup('Session', sessionSelect));
+
+  // ---- Outcome ----
+  const outcomeSelect = document.createElement('select');
+  outcomeSelect.name = 'outcome';
+  outcomeSelect.className = 'form-select';
+  ['win', 'loss', 'breakeven'].forEach(o => {
+    const opt = el('option', '', o.toUpperCase());
+    opt.value = o;
+    if (o === trade.outcome) opt.selected = true;
+    outcomeSelect.appendChild(opt);
+  });
+  form.appendChild(formGroup('Outcome', outcomeSelect));
+
+  // ---- Mistakes ----
+  const mistakeSelect = document.createElement('select');
+  mistakeSelect.name = 'mistake';
+  mistakeSelect.className = 'form-select';
+  const noMistakeOpt = el('option', '', 'None (Clean Execution)');
+  noMistakeOpt.value = '';
+  mistakeSelect.appendChild(noMistakeOpt);
+  Object.entries(MISTAKE_LABELS).forEach(([k, label]) => {
+    const opt = el('option', '', label);
+    opt.value = k;
+    if (k === trade.mistake) opt.selected = true;
+    mistakeSelect.appendChild(opt);
+  });
+  const mistakeGroup = formGroup('Psychology Leak', mistakeSelect);
+  mistakeGroup.style.display = trade.outcome === 'loss' ? 'block' : 'none';
+  outcomeSelect.addEventListener('change', () => {
+    mistakeGroup.style.display = outcomeSelect.value === 'loss' ? 'block' : 'none';
+  });
+  form.appendChild(mistakeGroup);
+
+  // ---- Execution Mindset ----
+  const mindsetSelect = document.createElement('select');
+  mindsetSelect.name = 'executionMindset';
+  mindsetSelect.className = 'form-select';
+  ['professional', 'anxious', 'revenge'].forEach(m => {
+    const opt = el('option', '', m.toUpperCase());
+    opt.value = m;
+    if (m === trade.executionMindset) opt.selected = true;
+    mindsetSelect.appendChild(opt);
+  });
+  form.appendChild(formGroup('Execution Mindset', mindsetSelect));
+
+  // ---- Guardrails Checklist ----
+  const gData = trade.guardrails || { newsChecked: true, htfBiasAligned: true, killzoneTiming: true, sizeCalculatorUsed: true };
+  const createCheckbox = (label, name, checked) => {
+    const wrap = el('label', 'checkbox-label');
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = 'var(--space-2)';
+    wrap.style.fontSize = 'var(--text-xs)';
+    wrap.style.cursor = 'pointer';
+    wrap.style.marginBottom = 'var(--space-1)';
+
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.name = name;
+    chk.checked = checked;
+    wrap.appendChild(chk);
+    wrap.appendChild(document.createTextNode(label));
+    return { wrap, chk };
+  };
+  const gcNews = createCheckbox('Checked News Calendar 📰', 'guardrail_newsChecked', gData.newsChecked);
+  const gcBias = createCheckbox('HTF Bias Aligned 📈', 'guardrail_htfBiasAligned', gData.htfBiasAligned);
+  const gcKill = createCheckbox('Killzone Session Timing ⏱️', 'guardrail_killzoneTiming', gData.killzoneTiming);
+  const gcSize = createCheckbox('Position Sizer Used 📐', 'guardrail_sizeCalculatorUsed', gData.sizeCalculatorUsed);
+
+  const guardrailsWrap = el('div', '');
+  guardrailsWrap.appendChild(gcNews.wrap);
+  guardrailsWrap.appendChild(gcBias.wrap);
+  guardrailsWrap.appendChild(gcKill.wrap);
+  guardrailsWrap.appendChild(gcSize.wrap);
+  form.appendChild(formGroup('EdgeFlo Guardrails Checklist', guardrailsWrap));
+
+  // ---- Confluences Checklist ----
+  const confTitle = el('label', 'form-label', 'Confluences');
+  const confContainer = el('div', 'confluences-checklist-container');
+  confContainer.style.maxHeight = '140px';
+  confContainer.style.overflowY = 'auto';
+  confContainer.style.border = '1px solid rgba(255,255,255,0.08)';
+  confContainer.style.borderRadius = 'var(--radius-md)';
+  confContainer.style.padding = 'var(--space-2)';
+  confContainer.style.display = 'flex';
+  confContainer.style.flexDirection = 'column';
+  confContainer.style.gap = 'var(--space-1)';
+  confContainer.style.marginBottom = 'var(--space-4)';
+
+  const effectiveOptions = getEffectiveConfluenceOptions();
+  effectiveOptions.forEach(optText => {
+    const isChecked = (trade.confluences || []).includes(optText);
+    const labelEl = el('label', 'checkbox-label');
+    labelEl.style.display = 'flex';
+    labelEl.style.alignItems = 'center';
+    labelEl.style.gap = '6px';
+    labelEl.style.fontSize = '12px';
+    labelEl.style.cursor = 'pointer';
+
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.name = 'confluences';
+    chk.value = optText;
+    chk.checked = isChecked;
+
+    labelEl.appendChild(chk);
+    labelEl.appendChild(document.createTextNode(optText));
+    confContainer.appendChild(labelEl);
+  });
+  
+  const confWrapper = el('div', '');
+  confWrapper.appendChild(confTitle);
+  confWrapper.appendChild(confContainer);
+  form.appendChild(confWrapper);
+
+  // ---- Notes ----
+  const notesArea = document.createElement('textarea');
+  notesArea.name = 'notes';
+  notesArea.className = 'form-input';
+  notesArea.value = trade.notes || '';
+  notesArea.rows = 3;
+  form.appendChild(formGroup('Notes', notesArea));
+
+  // ---- Hidden inputs ----
+  const screenshotHidden = document.createElement('input');
+  screenshotHidden.type = 'hidden';
+  screenshotHidden.name = 'screenshot';
+  screenshotHidden.value = trade.screenshot || '';
+  form.appendChild(screenshotHidden);
+
+  // ---- Actions row ----
+  const actionsRow = el('div', 'modal-actions-row');
+  actionsRow.style.display = 'flex';
+  actionsRow.style.gap = 'var(--space-3)';
+  actionsRow.style.marginTop = 'var(--space-5)';
+
+  const saveBtn = el('button', 'btn btn-primary', 'Save Updates 💾');
+  saveBtn.type = 'submit';
+  saveBtn.style.flex = '1';
+  actionsRow.appendChild(saveBtn);
+
+  const cancelBtn = el('button', 'btn btn-outline', 'Cancel');
+  cancelBtn.type = 'button';
+  cancelBtn.style.flex = '1';
+  cancelBtn.addEventListener('click', () => {
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => overlay.remove(), 250);
+  });
+  actionsRow.appendChild(cancelBtn);
+  form.appendChild(actionsRow);
+
+  body.appendChild(form);
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Animate in
+  requestAnimationFrame(() => overlay.classList.add('trade-modal-overlay--visible'));
+
+  // Submit handler
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const entry = Number(entrySpinner.input.value);
+    const stop = Number(stopSpinner.input.value);
+    const exit = Number(exitSpinner.input.value);
+
+    // Validation
+    if (!entry || !stop || !exit) {
+      showNotificationToast('Please fill in all entry/stop/exit prices.', '⚠️');
+      return;
+    }
+
+    if (entry === stop) {
+      showNotificationToast('Entry and Stop Loss prices cannot be equal.', '⚠️');
+      return;
+    }
+
+    // Collect checklist checkboxes
+    const confluences = [];
+    form.querySelectorAll('input[name="confluences"]:checked').forEach(cb => {
+      confluences.push(cb.value);
+    });
+
+    const newsChecked = gcNews.chk.checked;
+    const htfBiasAligned = gcBias.chk.checked;
+    const killzoneTiming = gcKill.chk.checked;
+    const sizeCalculatorUsed = gcSize.chk.checked;
+
+    let edgeScore = 100;
+    if (!newsChecked) edgeScore -= 15;
+    if (!htfBiasAligned) edgeScore -= 15;
+    if (!killzoneTiming) edgeScore -= 15;
+    if (!sizeCalculatorUsed) edgeScore -= 15;
+
+    const mindset = mindsetSelect.value;
+    if (mindset === 'anxious') edgeScore -= 15;
+    else if (mindset === 'revenge') edgeScore -= 35;
+
+    const outcome = outcomeSelect.value;
+    const mistake = outcome === 'loss' ? mistakeSelect.value : '';
+    if (outcome === 'loss' && mistake) {
+      edgeScore -= 20;
+    }
+    edgeScore = Math.max(0, edgeScore);
+
+    const balanceUsed = trade.balanceUsed || Number(storage.get('preset_balance', '10000'));
+    const riskPct = trade.riskPct || Number(storage.get('preset_risk', '1.0'));
+    const slDistance = Math.abs(entry - stop);
+    
+    let size = 1;
+    if (slDistance > 0) {
+      const riskAmount = (balanceUsed * riskPct) / 100;
+      size = riskAmount / slDistance;
+    }
+
+    const updatedData = {
+      asset: assetSelect.value,
+      direction: dirSelect.value,
+      entry,
+      stop,
+      exit,
+      size,
+      date: dateInput.value,
+      timeframe: tfSelect.value,
+      session: sessionSelect.value,
+      confluences,
+      outcome,
+      mistake,
+      notes: sanitizeText(notesArea.value, 2000),
+      screenshot: screenshotHidden.value,
+      executionMindset: mindset,
+      guardrails: {
+        newsChecked,
+        htfBiasAligned,
+        killzoneTiming,
+        sizeCalculatorUsed,
+      },
+      edgeScore,
+    };
+
+    updateTrade(trade.id, updatedData);
+    playSynthSound('success');
+    showNotificationToast('Trade entry updated successfully! 💾✨');
+
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => {
+      overlay.remove();
+      if (typeof onRefresh === 'function') onRefresh();
+    }, 250);
+  });
+}
+
 /* ---------- Trade History Table ------------------------------------ */
 
 // Build the trade history table.
@@ -2059,6 +2521,12 @@ export function renderTradeHistory(container, onRefresh) {
   const exportBtn = el('button', 'btn btn-outline btn-sm', '📥 Export CSV');
   exportBtn.addEventListener('click', () => exportToCSV(filteredTrades));
   exportBar.appendChild(exportBtn);
+
+  const reviewBtn = el('button', 'btn btn-primary btn-sm review-reset-btn', '🧘 Daily Review & Reset');
+  reviewBtn.style.marginLeft = 'var(--space-2)';
+  reviewBtn.addEventListener('click', () => openDailyReviewModal(onRefresh));
+  exportBar.appendChild(reviewBtn);
+
   container.appendChild(exportBar);
 
   const table = el('table', 'trade-table');
@@ -2081,7 +2549,7 @@ export function renderTradeHistory(container, onRefresh) {
     // Click row to open detail (but not on delete button)
     row.addEventListener('click', (e) => {
       if (e.target.closest('.btn-danger')) return;
-      openTradeDetail(t);
+      openTradeDetail(t, onRefresh);
     });
 
     const confCount = Array.isArray(t.confluences) ? t.confluences.length : 0;
@@ -2158,7 +2626,359 @@ export function renderTradeHistory(container, onRefresh) {
   });
 
   table.appendChild(tbody);
-  container.appendChild(table);
+}
+
+function openDailyReviewModal(onRefresh) {
+  const overlay = el('div', 'trade-modal-overlay');
+  const modal = el('div', 'trade-modal daily-review-modal');
+  modal.style.maxWidth = '550px';
+
+  const grabHandle = el('div', 'modal-swipe-handle');
+  modal.appendChild(grabHandle);
+
+  const topbar = el('div', 'modal__topbar');
+  topbar.style.height = '4px';
+  topbar.style.background = 'linear-gradient(90deg, var(--purple), var(--cyan))';
+  modal.appendChild(topbar);
+
+  const header = el('div', 'trade-modal__header');
+  header.appendChild(el('h2', 'trade-modal__title', '📅 Daily Review & Sanctuary Reset'));
+  const closeBtn = el('button', 'trade-modal__close', '✕');
+  closeBtn.addEventListener('click', () => {
+    stopMeditationAudio();
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => overlay.remove(), 250);
+  });
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const body = el('div', 'trade-modal__body');
+  body.style.padding = 'var(--space-6)';
+  modal.appendChild(body);
+
+  // Modal State
+  let currentStep = 1;
+  let meditationSeconds = 600; // 10 minutes
+  let meditationInterval = null;
+  let audioCtx = null;
+  let osc1 = null;
+  let osc2 = null;
+
+  function stopMeditationAudio() {
+    if (osc1) { try { osc1.stop(); } catch(e){} osc1 = null; }
+    if (osc2) { try { osc2.stop(); } catch(e){} osc2 = null; }
+    if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
+  }
+
+  function startMeditationAudio() {
+    stopMeditationAudio();
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.04; // low volume hum
+
+      osc1 = audioCtx.createOscillator();
+      osc2 = audioCtx.createOscillator();
+
+      osc1.frequency.value = 100; // 100 Hz hum
+      osc2.frequency.value = 104; // 4 Hz binaural brainwave beat
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      osc1.start();
+      osc2.start();
+    } catch(e) {
+      console.error('Web Audio not supported or blocked:', e);
+    }
+  }
+
+  // Calculate Today's Stats
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const trades = getTrades(true);
+  const todayTrades = trades.filter(t => t.date === todayStr || (t.createdAt && t.createdAt.slice(0, 10) === todayStr));
+  const todayPnL = todayTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+  const todayScore = todayTrades.length > 0 ? Math.round(todayTrades.reduce((sum, t) => sum + (t.edgeScore !== undefined ? t.edgeScore : 100), 0) / todayTrades.length) : 100;
+
+  function renderStep() {
+    body.replaceChildren();
+
+    if (currentStep === 1) {
+      // Step 1: Battle Feedback
+      body.appendChild(el('h3', 'step-title', 'Step 1: Daily Battle Feedback (Ep 24)'));
+      body.appendChild(el('p', 'step-hint', 'Evaluate your quantitative trading metrics for today before entering the inner work reflection.'));
+
+      // Stats cards row
+      const statsGrid = el('div', 'step-stats-grid');
+      statsGrid.style.display = 'grid';
+      statsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+      statsGrid.style.gap = 'var(--space-3)';
+      statsGrid.style.margin = 'var(--space-4) 0';
+
+      const addStatCard = (label, val, cls = '') => {
+        const card = el('div', 'step-stat-card glass-card');
+        card.style.padding = 'var(--space-3)';
+        card.style.borderRadius = 'var(--radius-md)';
+        card.style.textAlign = 'center';
+        card.appendChild(el('div', 'step-stat-label', label));
+        
+        const valEl = el('div', 'step-stat-value', val);
+        valEl.style.fontSize = 'var(--text-lg)';
+        valEl.style.fontWeight = 'bold';
+        if (cls) valEl.className += ` ${cls}`;
+        card.appendChild(valEl);
+        statsGrid.appendChild(card);
+      };
+
+      addStatCard('Trades Logged', String(todayTrades.length));
+      
+      const pnlFormatted = todayPnL >= 0 ? `+$${todayPnL.toFixed(2)}` : `-$${Math.abs(todayPnL).toFixed(2)}`;
+      addStatCard('Net P&L', pnlFormatted, todayPnL >= 0 ? 'pnl-positive' : 'pnl-negative');
+      
+      addStatCard('EdgeScore', `${todayScore}%`, todayScore >= 80 ? 'pnl-positive' : 'pnl-negative');
+      body.appendChild(statsGrid);
+
+      // Mentor evaluation text
+      const quoteBox = el('div', 'mentor-quote-box glass-card');
+      quoteBox.style.padding = 'var(--space-4)';
+      quoteBox.style.borderRadius = 'var(--radius-md)';
+      quoteBox.style.borderLeft = '3px solid var(--cyan)';
+      quoteBox.style.background = 'rgba(0, 212, 255, 0.02)';
+      quoteBox.style.margin = 'var(--space-4) 0';
+
+      let mentorQuote = '';
+      if (todayTrades.length === 0) {
+        mentorQuote = 'Brad Goh: "You did not take any trades today. Remember: knowing when NOT to trade is one of the highest levels of discipline. You protected your capital. Excellent job."';
+      } else if (todayPnL >= 0 && todayScore >= 80) {
+        mentorQuote = `Brad Goh: "Excellent performance today! You finished green (${pnlFormatted}) while maintaining a solid discipline score of ${todayScore}%. You waited for your edge and executed cleanly. Let's reset your mind so you remain grounded."`;
+      } else if (todayPnL < 0 && todayScore >= 80) {
+        mentorQuote = `Brad Goh: "You finished red today, but you followed your checklist perfectly (EdgeScore: ${todayScore}%). Taking structured, disciplined losses is just part of the statistical game. Accept it and move on."`;
+      } else {
+        mentorQuote = `Brad Goh: "Your discipline broke today (EdgeScore: ${todayScore}%). You took trades outside your plan. The green or red outcome does not matter—your rules do. Review your logs, identify the emotional leak, and correct it."`;
+      }
+      
+      const quoteText = el('p', 'step-quote', mentorQuote);
+      quoteText.style.fontStyle = 'italic';
+      quoteText.style.fontSize = 'var(--text-xs)';
+      quoteText.style.lineHeight = '1.6';
+      quoteText.style.margin = '0';
+      quoteBox.appendChild(quoteText);
+      body.appendChild(quoteBox);
+
+      // Actions
+      const btnRow = el('div', 'step-btn-row');
+      btnRow.style.display = 'flex';
+      btnRow.style.justifyContent = 'flex-end';
+      btnRow.style.marginTop = 'var(--space-5)';
+
+      const nextBtn = el('button', 'btn btn-primary btn-sm', 'Continue to Inner Work ➔');
+      nextBtn.addEventListener('click', () => {
+        currentStep = 2;
+        renderStep();
+      });
+      btnRow.appendChild(nextBtn);
+      body.appendChild(btnRow);
+
+    } else if (currentStep === 2) {
+      // Step 2: Inner Work
+      body.appendChild(el('h3', 'step-title', 'Step 2: Inner Work Reflection'));
+      body.appendChild(el('p', 'step-hint', 'Brad Goh: "For every hour of chart work, spend an hour on inner work. Reflect on what the market mirrored about you today."'));
+
+      const textareaGroup = el('div', 'form-group');
+      textareaGroup.style.margin = 'var(--space-4) 0';
+      textareaGroup.appendChild(el('label', 'form-label', 'Qualitative Reflection / Mental Leaks'));
+      
+      const reflectionArea = document.createElement('textarea');
+      reflectionArea.className = 'form-textarea';
+      reflectionArea.rows = 4;
+      reflectionArea.placeholder = 'Did you feel FOMO? Did you feel greedy? Did you rush entries? What did you learn about your character today...';
+      textareaGroup.appendChild(reflectionArea);
+      body.appendChild(textareaGroup);
+
+      // Actions
+      const btnRow = el('div', 'step-btn-row');
+      btnRow.style.display = 'flex';
+      btnRow.style.justifyContent = 'space-between';
+      btnRow.style.marginTop = 'var(--space-5)';
+
+      const backBtn = el('button', 'btn btn-outline btn-sm', '◁ Back');
+      backBtn.addEventListener('click', () => {
+        currentStep = 1;
+        renderStep();
+      });
+      btnRow.appendChild(backBtn);
+
+      const nextBtn = el('button', 'btn btn-primary btn-sm', 'Save & Enter Sanctuary 🧘');
+      nextBtn.addEventListener('click', () => {
+        const reflectionText = reflectionArea.value.trim();
+        if (reflectionText) {
+          // Log to Study Journal
+          const journalEntries = storage.get('extra_study_journal', []);
+          const entry = {
+            id: generateId(),
+            title: 'End of Day Reflection (Ep 24)',
+            source: 'Brad Goh',
+            takeaways: reflectionText,
+            category: 'Mindset',
+            createdAt: new Date().toISOString(),
+            localDate: todayStr
+          };
+          journalEntries.push(entry);
+          storage.set('extra_study_journal', journalEntries);
+
+          // Award discipline XP
+          addXP('extra_study', 10);
+          showNotificationToast('Reflection saved to Study Journal! +10 XP 📝', '🧠');
+          
+          // Sync to Cloud if user exists
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          });
+        }
+        
+        currentStep = 3;
+        renderStep();
+      });
+      btnRow.appendChild(nextBtn);
+      body.appendChild(btnRow);
+
+    } else if (currentStep === 3) {
+      // Step 3: Sanctuary
+      body.appendChild(el('h3', 'step-title', 'Step 3: Reset Sanctuary (10-Min Meditation)'));
+      body.appendChild(el('p', 'step-hint', 'Brad Goh: "Use these 10 minutes of meditation to reset your nervous system, let go of today\'s trades, and return to equilibrium."'));
+
+      // Timer Display
+      const timerContainer = el('div', 'meditation-timer-container');
+      timerContainer.style.display = 'flex';
+      timerContainer.style.flexDirection = 'column';
+      timerContainer.style.alignItems = 'center';
+      timerContainer.style.margin = 'var(--space-6) 0';
+
+      const timerCircle = el('div', 'meditation-circle');
+      timerCircle.style.width = '140px';
+      timerCircle.style.height = '140px';
+      timerCircle.style.borderRadius = '50%';
+      timerCircle.style.border = '3px solid var(--purple)';
+      timerCircle.style.display = 'flex';
+      timerCircle.style.alignItems = 'center';
+      timerCircle.style.justifyContent = 'center';
+      timerCircle.style.fontSize = '2rem';
+      timerCircle.style.fontFamily = 'monospace';
+      timerCircle.style.fontWeight = 'bold';
+      timerCircle.style.boxShadow = '0 0 20px rgba(168, 85, 247, 0.2)';
+
+      const formatTime = (sec) => {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      };
+
+      timerCircle.textContent = formatTime(meditationSeconds);
+      timerContainer.appendChild(timerCircle);
+
+      // Audio Toggle Button
+      let audioPlaying = false;
+      const audioBtn = el('button', 'btn btn-ghost btn-sm', '🔊 Play Binaural Brainwave Hum (4Hz Theta)');
+      audioBtn.style.marginTop = 'var(--space-4)';
+      audioBtn.addEventListener('click', () => {
+        audioPlaying = !audioPlaying;
+        if (audioPlaying) {
+          startMeditationAudio();
+          audioBtn.textContent = '🔇 Mute Binaural Brainwave Hum';
+          audioBtn.style.color = 'var(--purple)';
+        } else {
+          stopMeditationAudio();
+          audioBtn.textContent = '🔊 Play Binaural Brainwave Hum (4Hz Theta)';
+          audioBtn.style.color = '';
+        }
+      });
+      timerContainer.appendChild(audioBtn);
+      body.appendChild(timerContainer);
+
+      // Play/Pause Action Button
+      const controls = el('div', 'meditation-controls');
+      controls.style.display = 'flex';
+      controls.style.gap = 'var(--space-3)';
+      controls.style.justifyContent = 'center';
+
+      let timerActive = false;
+      const startBtn = el('button', 'btn btn-outline btn-sm', '▶ Start Sanctuary Session');
+      startBtn.addEventListener('click', () => {
+        timerActive = !timerActive;
+        if (timerActive) {
+          startBtn.textContent = '⏸ Pause Session';
+          if (!audioPlaying) {
+            audioBtn.click(); // auto play audio
+          }
+          meditationInterval = setInterval(() => {
+            if (meditationSeconds > 0) {
+              meditationSeconds--;
+              timerCircle.textContent = formatTime(meditationSeconds);
+              nativeHaptic('light');
+            } else {
+              // Timer Finished
+              clearInterval(meditationInterval);
+              meditationInterval = null;
+              timerActive = false;
+              stopMeditationAudio();
+              triggerConfetti();
+              addXP('meditation', 25);
+              nativeHapticNotification('success');
+              showNotificationToast('Sanctuary Reset Completed! +25 XP 🧘✨', '🏆');
+              
+              // Complete early automatically
+              completeBtn.click();
+            }
+          }, 1000);
+        } else {
+          startBtn.textContent = '▶ Resume Session';
+          clearInterval(meditationInterval);
+          meditationInterval = null;
+          if (audioPlaying) {
+            audioBtn.click(); // mute audio
+          }
+        }
+      });
+      controls.appendChild(startBtn);
+
+      const completeBtn = el('button', 'btn btn-primary btn-sm', 'Complete & Close 🏁');
+      completeBtn.style.marginLeft = 'var(--space-2)';
+      completeBtn.addEventListener('click', () => {
+        clearInterval(meditationInterval);
+        meditationInterval = null;
+        stopMeditationAudio();
+        
+        // Award XP if completed with at least 1 minute of session
+        if (meditationSeconds < 540) {
+          addXP('meditation', 15);
+          triggerConfetti();
+          showNotificationToast('Reset Session Logged! +15 XP 🧘', '⭐');
+        }
+
+        // Sync to cloud
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
+
+        // Close modal
+        overlay.classList.remove('trade-modal-overlay--visible');
+        setTimeout(() => {
+          overlay.remove();
+          if (typeof onRefresh === 'function') onRefresh();
+        }, 250);
+      });
+      controls.appendChild(completeBtn);
+
+      body.appendChild(controls);
+    }
+  }
+
+  // Initial render of first step
+  renderStep();
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('trade-modal-overlay--visible'));
 }
 
 /* ---------- Tabs -------------------------------------------------- */
@@ -2641,6 +3461,165 @@ function buildAdvancedMetricsWidget(trades) {
   return section;
 }
 
+// Build the premium Discipline & Psychology Insights Widget (Ep 23 upgrade)
+function buildPsychologyInsightsWidget(trades) {
+  const stats = calculateStats(trades);
+  if (!stats || stats.totalTrades === 0) return el('div');
+
+  const section = el('div', 'metrics-section psychology-insights-section');
+
+  const header = el('div', 'metrics-header');
+  header.appendChild(el('span', 'metrics-header-icon', '🛡️'));
+  const titleWrap = el('div', 'metrics-title-wrap');
+  titleWrap.appendChild(el('h2', 'metrics-title', 'Discipline & Psychology Insights'));
+  titleWrap.appendChild(el('p', 'metrics-subtitle', 'Personalised mentor feedback derived from your trade journal (Ep 23)'));
+  header.appendChild(titleWrap);
+  section.appendChild(header);
+
+  // Insights Grid
+  const grid = el('div', 'insights-grid');
+
+  // --- Insight 1: Discipline Rating (Brad Goh) ---
+  let disciplineTitle = '';
+  let disciplineText = '';
+  let disciplineBadgeClass = '';
+  const score = stats.avgEdgeScore;
+
+  if (score >= 90) {
+    disciplineTitle = '🏆 Elite Discipline Tier';
+    disciplineBadgeClass = 'badge-green';
+    disciplineText = `Brad Goh: "Phenomenal execution! Your EdgeScore of ${score}% proves you are treating trading as a business, not a hobby. You are strictly waiting for A+ setups and following your rules. Let the mathematical edge play out."`;
+  } else if (score >= 70) {
+    disciplineTitle = '🛡️ Consistent Execution';
+    disciplineBadgeClass = 'badge-cyan';
+    disciplineText = `Brad Goh: "Good job following your plan, but you have minor discipline leaks (EdgeScore: ${score}%). You might be rushing some setups, skipping pre-trade checklists, or neglecting news filters. Tighten your rules to hit that 90%+ tier!"`;
+  } else {
+    disciplineTitle = '🚨 Discipline Warning: Leakage Detected';
+    disciplineBadgeClass = 'badge-red';
+    disciplineText = `Brad Goh: "Your EdgeScore is currently very low (${score}%). This means you are trading with high emotional leakage—jumping into trades, skipping size calculations, or trading outside of killzones. Stop immediately, review your plan, and log back in only when disciplined."`;
+  }
+
+  const discCard = el('div', 'insight-card glass-card');
+  const discHeader = el('div', 'insight-card-header');
+  discHeader.appendChild(el('span', 'insight-card-title', disciplineTitle));
+  discHeader.appendChild(el('span', `insight-badge ${disciplineBadgeClass}`, 'DISCIPLINE'));
+  discCard.appendChild(discHeader);
+  discCard.appendChild(el('p', 'insight-card-quote', disciplineText));
+  grid.appendChild(discCard);
+
+  // --- Insight 2: Psychology Leak (Boss Ackah) ---
+  const losses = trades.filter(t => t.outcome === 'loss');
+  const mistakeCounts = {};
+  let totalMistakes = 0;
+
+  losses.forEach(t => {
+    if (t.mistake) {
+      mistakeCounts[t.mistake] = (mistakeCounts[t.mistake] || 0) + 1;
+      totalMistakes++;
+    }
+  });
+
+  let topMistake = '';
+  let maxCount = 0;
+  Object.entries(mistakeCounts).forEach(([m, count]) => {
+    if (count > maxCount) {
+      maxCount = count;
+      topMistake = m;
+    }
+  });
+
+  const MISTAKE_LABELS = {
+    fomo: 'FOMO (Fear of Missing Out)',
+    revenge: 'Revenge Trading',
+    outside_killzone: 'Outside Killzone Timing',
+    over_leveraging: 'Over-leveraging',
+    moved_sl: 'Moved Stop Loss',
+    early_exit: 'Early Exit (Fear)',
+    chasing_price: 'Chasing Price',
+    no_plan: 'No Plan'
+  };
+
+  let psychTitle = '🧘 Clean Psychological State';
+  let psychText = `Boss Ackah: "No critical execution leaks logged in your recent losses. You accepted your stop-losses cleanly like a professional. The money is embedded in the knowledge and emotional indifference. Excellent focus."`;
+  let psychBadgeClass = 'badge-green';
+
+  if (topMistake) {
+    const label = MISTAKE_LABELS[topMistake] || topMistake;
+    const percentage = Math.round((maxCount / losses.length) * 100);
+    psychTitle = `🧠 Psychology Leak: ${label}`;
+    psychBadgeClass = 'badge-red';
+
+    switch (topMistake) {
+      case 'fomo':
+        psychText = `Boss Ackah: "FOMO is draining your account. It represents ${percentage}% of your losses. You are chasing candles because you're scared of missing the move. Remember: missing a trade doesn't cost you money. Chasing does. Wait for the market to come to you."`;
+        break;
+      case 'revenge':
+        psychText = `Brad Goh: "Revenge trading is the fastest way to blow your account! You traded out of frustration on ${maxCount} occasions. Step away from the screens immediately! A 15-minute cooldown lockout will help reset your emotions."`;
+        break;
+      case 'outside_killzone':
+        psychText = `Brad Goh: "You are executing outside of ICT Killzones. Without high institutional volume, price consolidates and spreads eat your edge. Focus your trading strictly between 2:00-5:00 AM and 7:00-10:00 AM NY time."`;
+        break;
+      case 'over_leveraging':
+        psychText = `Boss Ackah: "Leveraging too much size clouds your judgment. You over-leveraged on ${maxCount} losses. When the risk is too high, you cannot remain emotionally independent. Reduce your size to under 2% immediately."`;
+        break;
+      case 'moved_sl':
+        psychText = `Brad Goh: "Moving your Stop Loss is a fatal mistake. You committed this rule violation on ${maxCount} trades. Accept the risk before entry, and let the market hit your stop. Increasing your risk mid-trade ruins your expectancy."`;
+        break;
+      case 'early_exit':
+        psychText = `Brad Goh: "Exiting early out of fear kills your risk-to-reward ratio. You exited early on ${maxCount} trades. Trust your analysis, set your TP and SL, and let the statistics do the work. Indifference is key."`;
+        break;
+      case 'chasing_price':
+        psychText = `Brad Goh: "Chasing price leads directly to stop-outs. You chased the market on ${maxCount} trades. Never buy green candles or sell red candles. Wait for the discount OTE retracement."`;
+        break;
+      case 'no_plan':
+        psychText = `Boss Ackah: "This is a professional skills acquisition, not a casino! You entered ${maxCount} trades without a plan. Write down your exact entry, target, and invalidation rules before you push any button."`;
+        break;
+      default:
+        psychText = `Boss Ackah: "You logged '${label}' as your primary leak. Every loss is tuition. Focus on identifying why you broke discipline on these ${maxCount} trades and correct it."`;
+    }
+  }
+
+  const psychCard = el('div', 'insight-card glass-card');
+  const psychHeader = el('div', 'insight-card-header');
+  psychHeader.appendChild(el('span', 'insight-card-title', psychTitle));
+  psychHeader.appendChild(el('span', `insight-badge ${psychBadgeClass}`, 'PSYCHOLOGY'));
+  psychCard.appendChild(psychHeader);
+  psychCard.appendChild(el('p', 'insight-card-quote', psychText));
+  grid.appendChild(psychCard);
+
+  // --- Insight 3: Asset focus optimization (Brad Goh) ---
+  const byAsset = {};
+  trades.forEach(t => {
+    if (t.asset) {
+      byAsset[t.asset] = (byAsset[t.asset] || 0) + (Number(t.pnl) || 0);
+    }
+  });
+
+  let bestAsset = '';
+  let bestPnl = -Infinity;
+  Object.entries(byAsset).forEach(([asset, pnl]) => {
+    if (pnl > bestPnl) {
+      bestPnl = pnl;
+      bestAsset = asset;
+    }
+  });
+
+  if (bestAsset && bestPnl > 0) {
+    const focusCard = el('div', 'insight-card glass-card insight-card-full');
+    const focusHeader = el('div', 'insight-card-header');
+    focusHeader.appendChild(el('span', 'insight-card-title', `🎯 Focus Optimization: Trade ${bestAsset}`));
+    focusHeader.appendChild(el('span', 'insight-badge badge-green', 'PERFORMANCE'));
+    focusCard.appendChild(focusHeader);
+    
+    const formattedPnl = bestPnl > 0 ? `+$${bestPnl.toFixed(2)}` : `$${bestPnl.toFixed(2)}`;
+    focusCard.appendChild(el('p', 'insight-card-quote', `Brad Goh: "Your journal statistics show that ${bestAsset} is your highest performing asset, generating a net profit of ${formattedPnl}! Consider hyper-focusing your attention and capital on this pair to maximize your trading efficiency."`));
+    grid.appendChild(focusCard);
+  }
+
+  section.appendChild(grid);
+  return section;
+}
+
 /* ---------- Analytics panel --------------------------------------- */
 
 function renderAnalytics(container) {
@@ -2662,6 +3641,9 @@ function renderAnalytics(container) {
 
   // Advanced Performance Metrics Widget immediately below
   container.appendChild(buildAdvancedMetricsWidget(trades));
+
+  // Psychology and Discipline Insights below metrics
+  container.appendChild(buildPsychologyInsightsWidget(trades));
 
   // Canvas wrappers (Chart.js will render into these).
   const grid = el('div', 'charts-grid');
@@ -2719,6 +3701,30 @@ function buildRiskCalculator() {
 
   const form = el('div', 'risk-calc-form');
 
+  // Asset Select
+  const assetSelect = document.createElement('select');
+  assetSelect.id = 'rc-asset';
+  assetSelect.className = 'form-select';
+  
+  const defaultAssetOpt = el('option', '', 'EUR/USD');
+  defaultAssetOpt.value = 'EUR/USD';
+  defaultAssetOpt.selected = true;
+  assetSelect.appendChild(defaultAssetOpt);
+
+  for (const [category, symbols] of Object.entries(ASSETS)) {
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = category;
+    symbols.forEach((sym) => {
+      if (sym !== 'EUR/USD') {
+        const opt = el('option', '', sym);
+        opt.value = sym;
+        optgroup.appendChild(opt);
+      }
+    });
+    assetSelect.appendChild(optgroup);
+  }
+  form.appendChild(formGroup('Asset / Instrument', assetSelect));
+
   // Account Balance
   const balInput = document.createElement('input');
   balInput.type = 'number';
@@ -2743,8 +3749,8 @@ function buildRiskCalculator() {
   const entryInput = document.createElement('input');
   entryInput.type = 'number';
   entryInput.className = 'form-input';
-  entryInput.placeholder = 'e.g. 2650.50';
-  entryInput.step = 'any';
+  entryInput.placeholder = 'e.g. 1.08500';
+  entryInput.step = '0.00001';
   entryInput.id = 'rc-entry';
   form.appendChild(formGroup('Entry Price', entryInput));
 
@@ -2752,10 +3758,346 @@ function buildRiskCalculator() {
   const stopInput = document.createElement('input');
   stopInput.type = 'number';
   stopInput.className = 'form-input';
-  stopInput.placeholder = 'e.g. 2645.00';
-  stopInput.step = 'any';
+  stopInput.placeholder = 'e.g. 1.08300';
+  stopInput.step = '0.00001';
   stopInput.id = 'rc-stop';
   form.appendChild(formGroup('Stop Loss Price', stopInput));
+
+  // Update step/placeholder on asset change
+  const updateInputPlaceholders = () => {
+    const assetName = assetSelect.value;
+    const config = getAssetConfig(assetName);
+    
+    entryInput.step = config.step;
+    stopInput.step = config.step;
+    
+    if (assetName) {
+      if (assetName.includes('JPY')) {
+        entryInput.placeholder = 'e.g. 156.450';
+        stopInput.placeholder = 'e.g. 156.250';
+      } else if (assetName.includes('/') && !assetName.includes('BTC') && !assetName.includes('XAU') && !assetName.includes('XAG')) {
+        entryInput.placeholder = 'e.g. 1.08500';
+        stopInput.placeholder = 'e.g. 1.08300';
+      } else if (assetName.includes('BTC')) {
+        entryInput.placeholder = 'e.g. 68500';
+        stopInput.placeholder = 'e.g. 68000';
+      } else if (assetName.includes('XAU') || assetName.includes('XAG')) {
+        entryInput.placeholder = 'e.g. 2350.50';
+        stopInput.placeholder = 'e.g. 2345.00';
+      } else {
+        entryInput.placeholder = 'e.g. 100.00';
+        stopInput.placeholder = 'e.g. 95.00';
+      }
+    }
+  };
+  assetSelect.addEventListener('change', updateInputPlaceholders);
+
+  // Stop Loss Assistant Toggle Button
+  const slAssistantToggle = el('button', 'btn btn-outline btn-sm sl-assistant-toggle', '🛡️ Open Stop Loss Assistant (Brad Goh Rules)');
+  slAssistantToggle.type = 'button';
+  slAssistantToggle.style.gridColumn = '1 / -1';
+  slAssistantToggle.style.marginTop = 'var(--space-2)';
+  slAssistantToggle.style.marginBottom = 'var(--space-2)';
+  form.appendChild(slAssistantToggle);
+
+  // Stop Loss Assistant Container
+  const slAssistantContainer = el('div', 'sl-assistant-container collapsed');
+  slAssistantContainer.style.gridColumn = '1 / -1';
+  slAssistantContainer.style.display = 'none';
+  form.appendChild(slAssistantContainer);
+
+  // Assistant Tabs
+  const slTabs = el('div', 'sl-tabs');
+  slAssistantContainer.appendChild(slTabs);
+
+  const slTabContents = el('div', 'sl-tab-contents');
+  slAssistantContainer.appendChild(slTabContents);
+
+  const models = [
+    { id: 'structure', label: 'Structure Low/High', icon: '⛰️' },
+    { id: 'atr', label: 'ATR Volatility', icon: '🌪️' },
+    { id: 'ote', label: 'Fibonacci OTE', icon: '🌀' }
+  ];
+
+  let activeTab = 'structure';
+  const tabButtons = {};
+  const tabPanels = {};
+
+  models.forEach(model => {
+    const tabBtn = el('button', 'sl-tab-btn', `${model.icon} ${model.label}`);
+    tabBtn.type = 'button';
+    tabBtn.addEventListener('click', () => {
+      models.forEach(m => {
+        tabButtons[m.id].classList.remove('active');
+        tabPanels[m.id].style.display = 'none';
+      });
+      tabBtn.classList.add('active');
+      tabPanels[model.id].style.display = 'block';
+      activeTab = model.id;
+      playSynthSound('click');
+      updateLiveCalculation();
+    });
+    slTabs.appendChild(tabBtn);
+    tabButtons[model.id] = tabBtn;
+
+    const panel = el('div', `sl-tab-panel sl-panel-${model.id}`);
+    panel.style.display = 'none';
+    slTabContents.appendChild(panel);
+    tabPanels[model.id] = panel;
+  });
+
+  // Activate first tab by default
+  tabButtons['structure'].classList.add('active');
+  tabPanels['structure'].style.display = 'block';
+
+  // --- Model 1: Structure Invalidation Inputs ---
+  const structurePriceInput = document.createElement('input');
+  structurePriceInput.type = 'number';
+  structurePriceInput.placeholder = 'e.g. 1.08450';
+  structurePriceInput.step = 'any';
+  
+  const structureBufferInput = document.createElement('input');
+  structureBufferInput.type = 'number';
+  structureBufferInput.value = '2';
+  structureBufferInput.step = 'any';
+
+  const structureDirectionSelect = document.createElement('select');
+  const dirOptLong = el('option', '', '🟢 LONG (Buy Setup)');
+  dirOptLong.value = 'long';
+  const dirOptShort = el('option', '', '🔴 SHORT (Sell Setup)');
+  dirOptShort.value = 'short';
+  structureDirectionSelect.appendChild(dirOptLong);
+  structureDirectionSelect.appendChild(dirOptShort);
+
+  const gridStructure = el('div', 'sl-inputs-grid');
+  gridStructure.appendChild(formGroup('Swing High/Low Price', structurePriceInput));
+  gridStructure.appendChild(formGroup('Breathing Buffer (Pips)', structureBufferInput));
+  gridStructure.appendChild(formGroup('Direction', structureDirectionSelect));
+  tabPanels['structure'].appendChild(gridStructure);
+
+  // --- Model 2: ATR Inputs ---
+  const atrEntryInput = document.createElement('input');
+  atrEntryInput.type = 'number';
+  atrEntryInput.placeholder = 'Entry Price';
+  atrEntryInput.step = 'any';
+
+  const atrValueInput = document.createElement('input');
+  atrValueInput.type = 'number';
+  atrValueInput.placeholder = 'e.g. 0.0012';
+  atrValueInput.step = 'any';
+
+  const atrMultiplierInput = document.createElement('input');
+  atrMultiplierInput.type = 'number';
+  atrMultiplierInput.value = '1.5';
+  atrMultiplierInput.step = '0.1';
+
+  const atrDirectionSelect = document.createElement('select');
+  const atrDirLong = el('option', '', '🟢 LONG (Buy Setup)');
+  atrDirLong.value = 'long';
+  const atrDirShort = el('option', '', '🔴 SHORT (Sell Setup)');
+  atrDirShort.value = 'short';
+  atrDirectionSelect.appendChild(atrDirLong);
+  atrDirectionSelect.appendChild(atrDirShort);
+
+  const gridAtr = el('div', 'sl-inputs-grid');
+  gridAtr.appendChild(formGroup('Entry Price Reference', atrEntryInput));
+  gridAtr.appendChild(formGroup('ATR Value', atrValueInput));
+  gridAtr.appendChild(formGroup('ATR Multiplier', atrMultiplierInput));
+  gridAtr.appendChild(formGroup('Direction', atrDirectionSelect));
+  tabPanels['atr'].appendChild(gridAtr);
+
+  // --- Model 3: Fibonacci OTE Inputs ---
+  const fibSwingLowInput = document.createElement('input');
+  fibSwingLowInput.type = 'number';
+  fibSwingLowInput.placeholder = 'e.g. 1.08200';
+  fibSwingLowInput.step = 'any';
+
+  const fibSwingHighInput = document.createElement('input');
+  fibSwingHighInput.type = 'number';
+  fibSwingHighInput.placeholder = 'e.g. 1.09000';
+  fibSwingHighInput.step = 'any';
+
+  const fibBufferInput = document.createElement('input');
+  fibBufferInput.type = 'number';
+  fibBufferInput.value = '2';
+  fibBufferInput.step = 'any';
+
+  const fibDirectionSelect = document.createElement('select');
+  const fibDirLong = el('option', '', '🟢 LONG (Buy Setup)');
+  fibDirLong.value = 'long';
+  const fibDirShort = el('option', '', '🔴 SHORT (Sell Setup)');
+  fibDirShort.value = 'short';
+  fibDirectionSelect.appendChild(fibDirLong);
+  fibDirectionSelect.appendChild(fibDirShort);
+
+  const gridFib = el('div', 'sl-inputs-grid');
+  gridFib.appendChild(formGroup('Swing Low Price', fibSwingLowInput));
+  gridFib.appendChild(formGroup('Swing High Price', fibSwingHighInput));
+  gridFib.appendChild(formGroup('Breathing Buffer (Pips)', fibBufferInput));
+  gridFib.appendChild(formGroup('Direction', fibDirectionSelect));
+  tabPanels['ote'].appendChild(gridFib);
+
+  // Mentor Message Section
+  const mentorQuoteBox = el('div', 'sl-mentor-quote');
+  const mentorQuoteText = el('p', 'sl-mentor-text', '');
+  mentorQuoteBox.appendChild(mentorQuoteText);
+  slAssistantContainer.appendChild(mentorQuoteBox);
+
+  // Result Preview & Action Bar
+  const previewBox = el('div', 'sl-preview-box');
+  const previewLabel = el('span', 'sl-preview-label', 'Live Preview:');
+  const previewValue = el('span', 'sl-preview-value', '—');
+  previewBox.appendChild(previewLabel);
+  previewBox.appendChild(previewValue);
+  slAssistantContainer.appendChild(previewBox);
+
+  const applyBtn = el('button', 'btn btn-primary sl-apply-btn', '🎯 Apply Stop Loss Price');
+  applyBtn.type = 'button';
+  slAssistantContainer.appendChild(applyBtn);
+
+  // Helper to calculate the pip value in price terms
+  const getPipValue = (assetName) => {
+    const name = (assetName || '').toUpperCase();
+    if (name.includes('JPY')) return 0.01;
+    if (name.includes('/') && !name.includes('BTC') && !name.includes('XAU') && !name.includes('XAG')) return 0.0001;
+    if (name.includes('XAU') || name.includes('XAG') || name.includes('GOLD') || name.includes('SILVER')) return 0.1;
+    if (name.includes('BTC')) return 1.0;
+    if (name.includes('VOLATILITY') || name.includes('US30') || name.includes('NAS100') || name.includes('SPX500') || name.includes('GER40') || name.includes('UK100')) return 1.0;
+    return 0.01;
+  };
+
+  let lastCalculatedStopLoss = null;
+
+  const updateLiveCalculation = () => {
+    const assetName = assetSelect.value;
+    const config = getAssetConfig(assetName);
+    const pipVal = getPipValue(assetName);
+
+    let calculatedStop = null;
+    let quote = '';
+
+    if (activeTab === 'structure') {
+      const swing = Number(structurePriceInput.value);
+      const buffer = Number(structureBufferInput.value) || 0;
+      const dir = structureDirectionSelect.value;
+
+      quote = `Brad Goh: "Identify the Order Block or Liquidity Sweep wick, then place your stop ${buffer} pips behind it to prevent spread stop-outs. This is structural invalidation."`;
+
+      if (swing) {
+        if (dir === 'long') {
+          calculatedStop = swing - (buffer * pipVal);
+        } else {
+          calculatedStop = swing + (buffer * pipVal);
+        }
+      }
+    } else if (activeTab === 'atr') {
+      if (!atrEntryInput.value && entryInput.value) {
+        atrEntryInput.value = entryInput.value;
+      }
+      const entry = Number(atrEntryInput.value);
+      const atr = Number(atrValueInput.value);
+      const mult = Number(atrMultiplierInput.value) || 1.5;
+      const dir = atrDirectionSelect.value;
+
+      quote = `Brad Goh: "Using an ATR multiplier of ${mult}x places your stop outside the current market volatility. This gives your trade room to breathe."`;
+
+      if (entry && atr) {
+        if (dir === 'long') {
+          calculatedStop = entry - (atr * mult);
+        } else {
+          calculatedStop = entry + (atr * mult);
+        }
+      }
+    } else if (activeTab === 'ote') {
+      const low = Number(fibSwingLowInput.value);
+      const high = Number(fibSwingHighInput.value);
+      const buffer = Number(fibBufferInput.value) || 0;
+      const dir = fibDirectionSelect.value;
+
+      quote = `Brad Goh: "For Optimal Trade Entry, your structural invalidation is the start of the swing. The stop goes ${buffer} pips beyond the high/low."`;
+
+      if (low && high) {
+        if (dir === 'long') {
+          calculatedStop = low - (buffer * pipVal);
+        } else {
+          calculatedStop = high + (buffer * pipVal);
+        }
+      }
+    }
+
+    mentorQuoteText.textContent = quote;
+
+    if (calculatedStop !== null && !isNaN(calculatedStop)) {
+      lastCalculatedStopLoss = calculatedStop;
+      previewValue.textContent = calculatedStop.toFixed(config.decimals);
+      applyBtn.disabled = false;
+    } else {
+      lastCalculatedStopLoss = null;
+      previewValue.textContent = 'Enter values...';
+      applyBtn.disabled = true;
+    }
+  };
+
+  const allInputs = [
+    assetSelect,
+    structurePriceInput, structureBufferInput, structureDirectionSelect,
+    atrEntryInput, atrValueInput, atrMultiplierInput, atrDirectionSelect,
+    fibSwingLowInput, fibSwingHighInput, fibBufferInput, fibDirectionSelect
+  ];
+
+  allInputs.forEach(inp => {
+    inp.addEventListener('input', updateLiveCalculation);
+    inp.addEventListener('change', updateLiveCalculation);
+  });
+
+  entryInput.addEventListener('input', () => {
+    if (activeTab === 'atr' && !atrEntryInput.value) {
+      atrEntryInput.value = entryInput.value;
+      updateLiveCalculation();
+    }
+  });
+
+  // Toggle open/closed
+  slAssistantToggle.addEventListener('click', () => {
+    const isCollapsed = slAssistantContainer.classList.contains('collapsed');
+    if (isCollapsed) {
+      slAssistantContainer.classList.remove('collapsed');
+      slAssistantContainer.style.display = 'block';
+      slAssistantToggle.textContent = '🛡️ Close Stop Loss Assistant';
+      if (entryInput.value) {
+        atrEntryInput.value = entryInput.value;
+      }
+      updateLiveCalculation();
+    } else {
+      slAssistantContainer.classList.add('collapsed');
+      slAssistantContainer.style.display = 'none';
+      slAssistantToggle.textContent = '🛡️ Open Stop Loss Assistant (Brad Goh Rules)';
+    }
+    playSynthSound('click');
+  });
+
+  // Apply stop loss price
+  applyBtn.addEventListener('click', () => {
+    if (lastCalculatedStopLoss !== null) {
+      const config = getAssetConfig(assetSelect.value);
+      stopInput.value = lastCalculatedStopLoss.toFixed(config.decimals);
+      
+      if (entryInput.value) {
+        calcBtn.click();
+      }
+      
+      showNotificationToast('Stop Loss Applied successfully! 🛑');
+      
+      slAssistantContainer.classList.add('collapsed');
+      slAssistantContainer.style.display = 'none';
+      slAssistantToggle.textContent = '🛡️ Open Stop Loss Assistant (Brad Goh Rules)';
+      
+      playSynthSound('success');
+      if (typeof nativeHapticNotification === 'function') {
+        nativeHapticNotification('success');
+      }
+    }
+  });
 
   // Calculate button
   const calcBtn = el('button', 'btn btn-primary', 'Calculate Position Size 📐');
@@ -2773,6 +4115,8 @@ function buildRiskCalculator() {
     const riskPct = Number(riskInput.value);
     const entry = Number(entryInput.value);
     const stop = Number(stopInput.value);
+    const activeAsset = assetSelect.value;
+    const config = getAssetConfig(activeAsset);
 
     if (!balance || !riskPct || !entry || !stop) {
       results.style.display = 'block';
@@ -2801,12 +4145,19 @@ function buildRiskCalculator() {
 
     const items = [
       { label: 'Risk Amount', value: `$${riskAmount.toFixed(2)}`, icon: '💵' },
-      { label: 'SL Distance', value: `${slDistance.toFixed(5)}`, icon: '📏' },
-      { label: 'Position Size', value: `${positionSize.toFixed(4)} units`, icon: '📐' },
+      { label: 'SL Distance', value: `${slDistance.toFixed(config.decimals)}`, icon: '📏' },
+      { label: 'Position Size', value: `${positionSize.toFixed(config.decimals === 5 ? 0 : 2)} units`, icon: '📐' },
       { label: 'Direction', value: direction, icon: direction === 'LONG' ? '🟢' : '🔴' },
-      { label: 'Risk/Reward at 2R', value: `TP: ${(direction === 'LONG' ? entry + slDistance * 2 : entry - slDistance * 2).toFixed(5)}`, icon: '🎯' },
-      { label: 'Risk/Reward at 3R', value: `TP: ${(direction === 'LONG' ? entry + slDistance * 3 : entry - slDistance * 3).toFixed(5)}`, icon: '🏆' },
+      { label: 'Risk/Reward at 2R', value: `TP: ${(direction === 'LONG' ? entry + slDistance * 2 : entry - slDistance * 2).toFixed(config.decimals)}`, icon: '🎯' },
+      { label: 'Risk/Reward at 3R', value: `TP: ${(direction === 'LONG' ? entry + slDistance * 3 : entry - slDistance * 3).toFixed(config.decimals)}`, icon: '🏆' },
     ];
+
+    // Forex Lot Sizing (1 lot = 100k units)
+    const isForex = activeAsset && activeAsset.includes('/') && !activeAsset.includes('BTC') && !activeAsset.includes('XAU') && !activeAsset.includes('XAG');
+    if (isForex) {
+      const lotSize = positionSize / 100000;
+      items.splice(3, 0, { label: 'Forex Lots', value: `${lotSize.toFixed(2)} lots`, icon: '🪖' });
+    }
 
     items.forEach(({ label, value, icon }) => {
       const card = el('div', 'risk-result-card');

@@ -4,7 +4,7 @@
  * Strategy: Cache-first for static assets, network-first for dynamic.
  */
 
-const CACHE_NAME = 'swagga-hq-v88';
+const CACHE_NAME = 'swagga-hq-v89';
 
 // Core files to cache on install
 const CORE_ASSETS = [
@@ -95,11 +95,13 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(
         fetch(event.request)
           .then((response) => {
-            // Cache a copy for offline
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, clone);
-            });
+            if (response.status === 200 || response.status === 0 || response.type === 'opaque') {
+              // Cache a copy for offline
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, clone);
+              });
+            }
             return response;
           })
           .catch(() => {
@@ -119,18 +121,22 @@ self.addEventListener('fetch', (event) => {
       if (cached) {
         // Return cached, but also update the cache in the background
         fetch(event.request).then((response) => {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, response);
-          });
+          if (response.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, response);
+            });
+          }
         }).catch(() => { /* offline, no update */ });
         return cached;
       }
       // Not cached — fetch and cache
       return fetch(event.request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
-        });
+        if (response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
+        }
         return response;
       });
     })

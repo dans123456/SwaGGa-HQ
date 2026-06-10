@@ -2934,16 +2934,33 @@ export function fetchEconomicCalendar() {
   }
 
   const targetUrl = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
-  const url = isNative() ? targetUrl : ('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
 
+  if (isNative()) {
+    return import('@capacitor/core').then(({ CapacitorHttp }) => {
+      return CapacitorHttp.get({ url: targetUrl });
+    }).then(res => {
+      let data = res.data;
+      if (typeof data === 'string') {
+        data = JSON.parse(data);
+      }
+      if (!Array.isArray(data)) throw new Error('Invalid JSON structure');
+      storage.set(CACHE_KEY, data);
+      storage.set(FETCHED_KEY, now);
+      return data;
+    }).catch(err => {
+      console.warn('Native news calendar fetch failed, using old cache or fallback...', err);
+      if (cachedData && Array.isArray(cachedData)) {
+        return cachedData;
+      }
+      return getCuratedFallbackEvents();
+    });
+  }
+
+  const url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl);
   return fetch(url)
     .then(res => {
       if (!res.ok) throw new Error('API request failed');
-      // CapacitorHttp handles string to JSON conversion natively or returns raw text
-      if (typeof res.json === 'function') {
-        return res.json();
-      }
-      return JSON.parse(res);
+      return res.json();
     })
     .then(events => {
       if (!Array.isArray(events)) throw new Error('Invalid JSON structure');
