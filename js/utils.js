@@ -59,6 +59,21 @@ export function generateId() {
   return `${ts}-${rand}`;
 }
 
+export function getContractMultiplier(assetName) {
+  if (!assetName) return 1;
+  const name = assetName.toUpperCase();
+  if (name.includes('XAU') || name.includes('GOLD')) {
+    return 100; // Gold standard: 1 lot = 100 oz
+  }
+  if (name.includes('XAG') || name.includes('SILVER')) {
+    return 5000; // Silver standard: 1 lot = 5000 oz
+  }
+  if (name.includes('/') && !name.includes('BTC')) {
+    return 100000; // Forex standard: 1 lot = 100,000 units
+  }
+  return 1; // Default multiplier for crypto, indices, etc
+}
+
 /* P&L calc — direction is 'long' or 'short', fees/slippage subtracted from raw */
 export function calculatePnL(entry, exit, size, direction, fees = 0, slippage = 0) {
   const e = Number(entry);

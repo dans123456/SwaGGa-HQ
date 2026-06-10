@@ -13,6 +13,7 @@ import {
   sanitizeText,
   showNotificationToast,
   triggerConfetti,
+  getContractMultiplier,
 } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
@@ -1040,9 +1041,57 @@ export function renderTradeForm(container, onSaved) {
     form.appendChild(formGroup(label, spinnerWrap));
   });
 
+  // ---- Sizing Mode ----
+  const sizingModeSelect = document.createElement('select');
+  sizingModeSelect.name = 'sizingMode';
+  sizingModeSelect.className = 'form-select';
+  
+  const optAuto = el('option', '', 'Auto (Risk Calculator)');
+  optAuto.value = 'auto';
+  const optManual = el('option', '', 'Manual (Lots / Volume)');
+  optManual.value = 'manual';
+  
+  sizingModeSelect.appendChild(optAuto);
+  sizingModeSelect.appendChild(optManual);
+  
+  form.appendChild(formGroup('Sizing Mode', sizingModeSelect));
+
+  // ---- Manual Lots Input ----
+  const manualLotsInput = document.createElement('input');
+  manualLotsInput.type = 'number';
+  manualLotsInput.name = 'manualLots';
+  manualLotsInput.step = 'any';
+  manualLotsInput.placeholder = 'e.g. 0.01';
+  manualLotsInput.className = 'form-input';
+  
+  const manualLotsGroup = formGroup('Position Volume (Lots)', manualLotsInput);
+  manualLotsGroup.style.display = 'none'; // Hidden by default (starts in Auto mode)
+  
+  const lotsHint = el('span', 'input-format-hint');
+  lotsHint.style.fontSize = 'var(--text-xs)';
+  lotsHint.style.color = 'var(--text-muted)';
+  lotsHint.style.marginTop = 'var(--space-1)';
+  lotsHint.style.display = 'block';
+  manualLotsGroup.appendChild(lotsHint);
+  
+  form.appendChild(manualLotsGroup);
+
+  function updateLotsHint() {
+    const assetName = assetSelect.value;
+    const mult = getContractMultiplier(assetName);
+    let assetClass = 'Units';
+    if (assetName) {
+      if (assetName.includes('XAU') || assetName.includes('GOLD')) assetClass = 'Ounces';
+      else if (assetName.includes('XAG') || assetName.includes('SILVER')) assetClass = 'Ounces';
+    }
+    lotsHint.textContent = `1 Standard Lot = ${mult.toLocaleString()} ${assetClass}`;
+  }
+
   function updateAssetHints() {
     const config = getSelectedAssetConfig();
     const formatHintText = `Format: ${config.decimals} decimals · Step: ${config.pipText}`;
+    
+    updateLotsHint();
     
     const fields = [
       { input: entryInput, name: 'entry' },
@@ -1178,6 +1227,17 @@ export function renderTradeForm(container, onSaved) {
 
   form.appendChild(riskHelper);
 
+  sizingModeSelect.addEventListener('change', () => {
+    const isManual = sizingModeSelect.value === 'manual';
+    if (isManual) {
+      riskHelper.style.display = 'none';
+      manualLotsGroup.style.display = 'block';
+    } else {
+      riskHelper.style.display = 'block';
+      manualLotsGroup.style.display = 'none';
+    }
+  });
+
   let tp2Val = null;
   let tp3Val = null;
 
@@ -1224,8 +1284,8 @@ export function renderTradeForm(container, onSaved) {
 
     // Position size calculation
     const units = riskAmount / slDistance;
-    // Assuming standard lots where 1 standard lot = 100,000 units
-    const lots = units / 100000;
+    const multiplier = getContractMultiplier(assetSelect.value);
+    const lots = units / multiplier;
     
     sizeCell.valNode.textContent = `${units.toLocaleString(undefined, { maximumFractionDigits: 2 })} Units (${lots.toFixed(2)} Lots)`;
 
@@ -1586,14 +1646,22 @@ export function renderTradeForm(container, onSaved) {
 
     const entry = Number(fd.get('entry'));
     const stop = Number(fd.get('stop'));
+    const sizingMode = fd.get('sizingMode') || 'auto';
     const balanceUsed = Number(balInput.value) || 10000;
     const riskPct = Number(pctInput.value) || 1.0;
     const slDistance = Math.abs(entry - stop);
     
     let size = 1;
-    if (slDistance > 0) {
-      const riskAmount = (balanceUsed * riskPct) / 100;
-      size = riskAmount / slDistance;
+    let manualLots = '';
+    if (sizingMode === 'manual') {
+      manualLots = Number(fd.get('manualLots')) || 0.01;
+      const multiplier = getContractMultiplier(fd.get('asset'));
+      size = manualLots * multiplier;
+    } else {
+      if (slDistance > 0) {
+        const riskAmount = (balanceUsed * riskPct) / 100;
+        size = riskAmount / slDistance;
+      }
     }
 
     const customPnLVal = fd.get('customPnL');
@@ -1604,6 +1672,8 @@ export function renderTradeForm(container, onSaved) {
       stop,
       exit: Number(fd.get('exit')),
       size,
+      sizingMode,
+      manualLots,
       fees: 0,
       slippage: 0,
       customPnL: customPnLVal !== '' && customPnLVal !== null ? Number(customPnLVal) : '',
@@ -1779,6 +1849,9 @@ function openTradeDetail(trade, onRefresh = null) {
   const scoreVal = trade.edgeScore !== undefined ? trade.edgeScore : 100;
   const grade = getDisciplineGrade(scoreVal);
 
+  const mult = getContractMultiplier(trade.asset);
+  const lotsVal = trade.manualLots !== undefined && trade.manualLots !== '' ? trade.manualLots : (trade.size / mult);
+
   const detailPairs = [
     { label: 'Date', value: formatDate(trade.date) },
     { label: 'Direction', value: trade.direction ? trade.direction.toUpperCase() : '—' },
@@ -1788,6 +1861,7 @@ function openTradeDetail(trade, onRefresh = null) {
     { label: 'Entry Price', value: String(trade.entry) },
     { label: 'Exit Price', value: String(trade.exit) },
     { label: 'Stop Loss', value: String(trade.stop || '—') },
+    { label: 'Volume (Lots)', value: `${Number(lotsVal).toFixed(2)} Lots` },
     { label: 'P&L', value: formatCurrency(pnlVal), cls: pnlVal >= 0 ? 'pnl-positive' : 'pnl-negative' },
     { label: 'Risk:Reward', value: `${trade.rr}R` },
     { label: 'Outcome', value: trade.outcome ? trade.outcome.charAt(0).toUpperCase() + trade.outcome.slice(1) : '—' },
@@ -2196,6 +2270,65 @@ export function openEditTradeModal(trade, onRefresh) {
   const exitSpinner = createSpinnerInput('exit', 'Exit Price', String(trade.exit), true, getSelectedAssetConfig);
   form.appendChild(formGroup('Exit Price', exitSpinner.container));
 
+  // ---- Sizing Mode ----
+  const sizingModeSelect = document.createElement('select');
+  sizingModeSelect.name = 'sizingMode';
+  sizingModeSelect.className = 'form-select';
+  
+  const optAuto = el('option', '', 'Auto (Risk Calculator)');
+  optAuto.value = 'auto';
+  const optManual = el('option', '', 'Manual (Lots / Volume)');
+  optManual.value = 'manual';
+  
+  sizingModeSelect.appendChild(optAuto);
+  sizingModeSelect.appendChild(optManual);
+  
+  const initialSizingMode = trade.sizingMode || 'auto';
+  sizingModeSelect.value = initialSizingMode;
+  form.appendChild(formGroup('Sizing Mode', sizingModeSelect));
+
+  // ---- Manual Lots Input ----
+  const manualLotsInput = document.createElement('input');
+  manualLotsInput.type = 'number';
+  manualLotsInput.name = 'manualLots';
+  manualLotsInput.step = 'any';
+  manualLotsInput.placeholder = 'e.g. 0.01';
+  manualLotsInput.className = 'form-input';
+  
+  const multiplier = getContractMultiplier(trade.asset);
+  const currentLotsVal = trade.manualLots !== undefined && trade.manualLots !== '' ? trade.manualLots : (trade.size / multiplier);
+  manualLotsInput.value = currentLotsVal ? Number(currentLotsVal).toFixed(2) : '';
+  
+  const manualLotsGroup = formGroup('Position Volume (Lots)', manualLotsInput);
+  manualLotsGroup.style.display = initialSizingMode === 'manual' ? 'block' : 'none';
+  
+  const lotsHint = el('span', 'input-format-hint');
+  lotsHint.style.fontSize = 'var(--text-xs)';
+  lotsHint.style.color = 'var(--text-muted)';
+  lotsHint.style.marginTop = 'var(--space-1)';
+  lotsHint.style.display = 'block';
+  manualLotsGroup.appendChild(lotsHint);
+  
+  form.appendChild(manualLotsGroup);
+
+  function updateLotsHint() {
+    const assetName = assetSelect.value;
+    const mult = getContractMultiplier(assetName);
+    let assetClass = 'Units';
+    if (assetName) {
+      if (assetName.includes('XAU') || assetName.includes('GOLD')) assetClass = 'Ounces';
+      else if (assetName.includes('XAG') || assetName.includes('SILVER')) assetClass = 'Ounces';
+    }
+    lotsHint.textContent = `1 Standard Lot = ${mult.toLocaleString()} ${assetClass}`;
+  }
+
+  updateLotsHint();
+  assetSelect.addEventListener('change', updateLotsHint);
+
+  sizingModeSelect.addEventListener('change', () => {
+    manualLotsGroup.style.display = sizingModeSelect.value === 'manual' ? 'block' : 'none';
+  });
+
   // ---- Date ----
   const dateInput = document.createElement('input');
   dateInput.type = 'date';
@@ -2442,14 +2575,22 @@ export function openEditTradeModal(trade, onRefresh) {
     }
     edgeScore = Math.max(0, edgeScore);
 
+    const sizingMode = sizingModeSelect.value;
     const balanceUsed = trade.balanceUsed || Number(storage.get('preset_balance', '10000'));
     const riskPct = trade.riskPct || Number(storage.get('preset_risk', '1.0'));
     const slDistance = Math.abs(entry - stop);
     
     let size = 1;
-    if (slDistance > 0) {
-      const riskAmount = (balanceUsed * riskPct) / 100;
-      size = riskAmount / slDistance;
+    let manualLots = '';
+    if (sizingMode === 'manual') {
+      manualLots = Number(manualLotsInput.value) || 0.01;
+      const multiplier = getContractMultiplier(assetSelect.value);
+      size = manualLots * multiplier;
+    } else {
+      if (slDistance > 0) {
+        const riskAmount = (balanceUsed * riskPct) / 100;
+        size = riskAmount / slDistance;
+      }
     }
 
     const customPnLVal = form.querySelector('input[name="customPnL"]').value;
@@ -2460,6 +2601,8 @@ export function openEditTradeModal(trade, onRefresh) {
       stop,
       exit,
       size,
+      sizingMode,
+      manualLots,
       customPnL: customPnLVal !== '' ? Number(customPnLVal) : '',
       date: dateInput.value,
       timeframe: tfSelect.value,
@@ -4188,12 +4331,28 @@ function buildRiskCalculator() {
       { label: 'Risk/Reward at 3R', value: `TP: ${(direction === 'LONG' ? entry + slDistance * 3 : entry - slDistance * 3).toFixed(config.decimals)}`, icon: '🏆' },
     ];
 
-    // Forex Lot Sizing (1 lot = 100k units)
-    const isForex = activeAsset && activeAsset.includes('/') && !activeAsset.includes('BTC') && !activeAsset.includes('XAU') && !activeAsset.includes('XAG');
-    if (isForex) {
-      const lotSize = positionSize / 100000;
-      items.splice(3, 0, { label: 'Forex Lots', value: `${lotSize.toFixed(2)} lots`, icon: '🪖' });
+    // Lot Sizing based on contract multiplier
+    const multiplier = getContractMultiplier(activeAsset);
+    const lotSize = positionSize / multiplier;
+    let lotLabel = 'Suggested Lots';
+    let lotIcon = '🪖';
+    if (activeAsset.includes('XAU') || activeAsset.includes('GOLD')) {
+      lotLabel = 'Gold Lots (100oz)';
+      lotIcon = '🏆';
+    } else if (activeAsset.includes('XAG') || activeAsset.includes('SILVER')) {
+      lotLabel = 'Silver Lots (5koz)';
+      lotIcon = '🥈';
+    } else if (activeAsset.includes('/') && !activeAsset.includes('BTC')) {
+      lotLabel = 'Forex Lots (100k)';
+      lotIcon = '🪖';
+    } else if (activeAsset.includes('BTC')) {
+      lotLabel = 'Crypto Coins / Lots';
+      lotIcon = '🪙';
+    } else {
+      lotLabel = 'Contracts / Lots';
+      lotIcon = '📈';
     }
+    items.splice(3, 0, { label: lotLabel, value: `${lotSize.toFixed(2)} lots`, icon: lotIcon });
 
     items.forEach(({ label, value, icon }) => {
       const card = el('div', 'risk-result-card');
@@ -4204,6 +4363,76 @@ function buildRiskCalculator() {
     });
 
     results.appendChild(grid);
+
+    // Auto-Fill Button
+    const autoFillBtn = el('button', 'btn btn-secondary sl-autofill-btn', '🎯 Auto-Fill into Log Form');
+    autoFillBtn.type = 'button';
+    autoFillBtn.style.marginTop = 'var(--space-4)';
+    autoFillBtn.style.width = '100%';
+    autoFillBtn.style.color = 'var(--cyan)';
+    autoFillBtn.style.border = '1px solid var(--cyan)';
+    autoFillBtn.style.background = 'rgba(0, 212, 255, 0.05)';
+    autoFillBtn.addEventListener('click', () => {
+      const logForm = document.querySelector('.tab-panel form.trade-form');
+      if (logForm) {
+        // Set Asset
+        const assetEl = logForm.querySelector('select[name="asset"]');
+        if (assetEl) {
+          assetEl.value = activeAsset;
+          assetEl.dispatchEvent(new Event('change'));
+        }
+        
+        // Set Entry Price
+        const entryEl = logForm.querySelector('input[name="entry"]');
+        if (entryEl) {
+          entryEl.value = entry.toFixed(config.decimals);
+          entryEl.dispatchEvent(new Event('input'));
+        }
+        
+        // Set Stop Loss Price
+        const stopEl = logForm.querySelector('input[name="stop"]');
+        if (stopEl) {
+          stopEl.value = stop.toFixed(config.decimals);
+          stopEl.dispatchEvent(new Event('input'));
+        }
+        
+        // Set Sizing Mode to manual
+        const modeEl = logForm.querySelector('select[name="sizingMode"]');
+        if (modeEl) {
+          modeEl.value = 'manual';
+          modeEl.dispatchEvent(new Event('change'));
+        }
+        
+        // Set Manual Lots to the calculated lotSize
+        const lotsEl = logForm.querySelector('input[name="manualLots"]');
+        if (lotsEl) {
+          lotsEl.value = lotSize.toFixed(2);
+          lotsEl.dispatchEvent(new Event('input'));
+        }
+        
+        // Check "Used suggested position size calculator?" checkbox
+        const gcSizeEl = logForm.querySelector('input[name="guardrail_sizeCalculatorUsed"]');
+        if (gcSizeEl) {
+          gcSizeEl.checked = true;
+        }
+
+        showNotificationToast('Calculated trade size loaded into Log Form! 📝✨');
+        playSynthSound('success');
+        if (typeof nativeHapticNotification === 'function') {
+          nativeHapticNotification('success');
+        }
+
+        // Switch tab to "Log Trade"
+        const logTabBtn = document.querySelector('button[data-tab="form"]');
+        if (logTabBtn) {
+          logTabBtn.click();
+        }
+      } else {
+        showNotificationToast('Could not find the Log Trade form.', '⚠️');
+      }
+    });
+
+    results.appendChild(autoFillBtn);
   });
 
   return section;
