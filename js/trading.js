@@ -2632,6 +2632,7 @@ export function renderTradeHistory(container, onRefresh) {
   });
 
   table.appendChild(tbody);
+  container.appendChild(table);
 }
 
 function openDailyReviewModal(onRefresh) {
