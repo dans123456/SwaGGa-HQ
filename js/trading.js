@@ -328,6 +328,11 @@ export function saveTrade(tradeData) {
   trades.push(trade);
   storage.set(STORAGE_KEY, trades);
 
+  // Sync to firestore if user signed in
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  }).catch(err => console.warn('Background sync failed:', err));
+
   // Check for Revenge Trading Cool-down Lockout or Max Daily Drawdown breach
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayTrades = trades.filter(t => t.date === todayStr || (t.createdAt && t.createdAt.slice(0, 10) === todayStr));
@@ -1608,6 +1613,7 @@ export function renderTradeForm(container, onSaved) {
     };
 
     saveTrade(tradeData);
+    showNotificationToast('Trade entry logged successfully! 💾✨');
     addXP('trade', 25);
     nativeHaptic('medium');
 
@@ -1634,7 +1640,7 @@ export function renderTradeForm(container, onSaved) {
     const activeNotice = form.querySelector('.trade-validation-notice');
     if (activeNotice) activeNotice.remove();
 
-    if (typeof onSaved === 'function') onSaved();
+    if (typeof onSaved === 'function') onSaved(true);
   });
 
   // Initialize hints and calculations on load
@@ -4208,11 +4214,16 @@ export function renderTradingPage(container) {
   container.appendChild(historyPanel);
   container.appendChild(analyticsPanel);
 
-  function refresh() {
+  function refresh(switchToHistory = false) {
     const trades = getTrades();
     const stats = calculateStats(trades);
     renderStatsBar(statsContainer, stats);
     renderTradeHistory(historyPanel, refresh);
+
+    if (switchToHistory) {
+      const historyTabBtn = tabs.querySelector('button[data-tab="history"]');
+      if (historyTabBtn) historyTabBtn.click();
+    }
   }
 
   // Initial render.
