@@ -12,8 +12,10 @@ const config: CapacitorConfig = {
 
   // Server settings
   server: {
-    // Allow the native app to use live Firebase Auth redirects
+    url: 'https://dans123456.github.io/SwaGGa-HQ/',
+    // Allow the native app to load resources and use redirects
     allowNavigation: [
+      'dans123456.github.io',
       'swagga-hq.web.app',
       'swagga-hq.firebaseapp.com',
       '*.googleapis.com',
