@@ -390,6 +390,50 @@ function renderPremarketLockoutScreen(container) {
   wrap.appendChild(el('h1', 'premarket-lockout-title', 'PRE-MARKET ROUTINE LOCKED'));
   wrap.appendChild(el('p', 'premarket-lockout-subtitle', 'Enforce professional trading discipline. Enacting your daily routine is required to unlock the Simulator and Trading Log pages.'));
 
+  // Dev Bypass Button
+  const bypassBtn = el('button', 'btn btn-ghost dev-bypass-btn', '🔓 Dev Mode: Skip & Unlock Journal');
+  bypassBtn.style.marginTop = 'var(--space-4)';
+  bypassBtn.style.color = 'var(--cyan)';
+  bypassBtn.style.border = '1px dashed var(--cyan)';
+  bypassBtn.style.width = '100%';
+  bypassBtn.addEventListener('click', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const routine = {
+      date: today,
+      completed: true,
+      newsChecked: true,
+      htfBias: 'bullish',
+      htfLogic: 'Developer Bypass',
+      keyLevels: 'Developer Bypass',
+      riskChecked: true,
+      riskLimit: 'Developer Bypass',
+      rulesChecked: true,
+      focusRule: 'Developer Bypass'
+    };
+    storage.set('premarket_routine', routine);
+
+    const history = storage.get('premarket_history', {});
+    history[today] = { ...routine, completedAt: new Date().toISOString() };
+    storage.set('premarket_history', history);
+
+    import('./xp.js').then(({ addXP }) => {
+      addXP('Pre-Market Discipline Bonus', 20);
+    });
+    
+    showNotificationToast('Pre-Market Routine bypassed! 🔓');
+
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
+
+    updateFocusBanner();
+
+    const originalTarget = storage.get('premarket_original_target') || '#dashboard';
+    storage.delete('premarket_original_target');
+    router.navigate(originalTarget);
+  });
+  wrap.appendChild(bypassBtn);
+
   // Checklist content
   const card = el('div', 'premarket-routine-card lockout-card');
   renderPremarketWidget(card, true); // True means render in lockout mode

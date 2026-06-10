@@ -2662,6 +2662,8 @@ function openDailyReviewModal(onRefresh) {
   body.style.padding = 'var(--space-6)';
   modal.appendChild(body);
 
+  overlay.appendChild(modal);
+
   // Modal State
   let currentStep = 1;
   let meditationSeconds = 600; // 10 minutes
