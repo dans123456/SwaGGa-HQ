@@ -39,6 +39,7 @@ export function renderMindsetPage(container) {
   layout.style.display = 'grid';
   layout.style.gridTemplateColumns = '1fr 340px';
   layout.style.gap = 'var(--space-6)';
+  layout.style.overflow = 'hidden';
   
   // Left Column: Breathing Guide
   const leftCol = el('div', 'mindset-main');
@@ -57,7 +58,7 @@ export function renderMindsetPage(container) {
   breathCard.style.flexDirection = 'column';
   breathCard.style.alignItems = 'center';
   breathCard.style.justifyContent = 'center';
-  breathCard.style.minHeight = '360px';
+  breathCard.style.minHeight = '280px';
   breathCard.style.position = 'relative';
   
   const breathTitle = el('h2', '', 'Interactive Box Breathing Guide');
@@ -134,10 +135,14 @@ export function renderMindsetPage(container) {
   breathControls.style.gap = 'var(--space-3)';
   breathControls.style.marginTop = 'var(--space-6)';
   breathControls.style.alignItems = 'center';
+  breathControls.style.flexWrap = 'wrap';
+  breathControls.style.justifyContent = 'center';
 
   const routineSelect = document.createElement('select');
   routineSelect.className = 'form-select';
-  routineSelect.style.width = '160px';
+  routineSelect.style.width = '140px';
+  routineSelect.style.minWidth = '0';
+  routineSelect.style.flex = '1 1 auto';
   routineSelect.style.fontSize = 'var(--text-xs)';
   
   const optBox = el('option', '', 'Box Breath (4-4-4-4)');
@@ -150,7 +155,9 @@ export function renderMindsetPage(container) {
 
   const durationSelect = document.createElement('select');
   durationSelect.className = 'form-select';
-  durationSelect.style.width = '90px';
+  durationSelect.style.width = '80px';
+  durationSelect.style.minWidth = '0';
+  durationSelect.style.flex = '0 1 auto';
   durationSelect.style.fontSize = 'var(--text-xs)';
   
   const opt1m = el('option', '', '1 Min');

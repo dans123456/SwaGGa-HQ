@@ -931,6 +931,61 @@
   .mindset-layout {
     grid-template-columns: 1fr !important;
   }
+  .mindset-layout .mindset-sidebar {
+    order: 2;
+  }
+  .mindset-layout .mindset-main {
+    order: 1;
+  }
+  /* Breathing card mobile padding */
+  .mindset-layout .overview-panel {
+    padding: var(--space-4) !important;
+    min-height: auto !important;
+  }
+  /* Breathing controls: wrap on mobile */
+  .mindset-layout .overview-panel > div:last-of-type {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  /* Breathing circle: scale down */
+  .breathing-circle-outer {
+    width: 140px !important;
+    height: 140px !important;
+  }
+  .breathing-circle-inner {
+    width: 90px !important;
+    height: 90px !important;
+  }
+  /* End mood picker in daily review */
+  .end-mood-picker {
+    flex-wrap: wrap !important;
+  }
+}
+
+/* Mindset Room — Small Phone Refinements */
+@media (max-width: 480px) {
+  .breathing-circle-outer {
+    width: 120px !important;
+    height: 120px !important;
+  }
+  .breathing-circle-inner {
+    width: 75px !important;
+    height: 75px !important;
+  }
+  .breath-prompt {
+    font-size: 11px !important;
+  }
+  .breath-timer {
+    font-size: 9px !important;
+  }
+  /* Mood logs: stack vertically on tiny screens */
+  .mindset-layout .overview-panel .glass-card {
+    min-width: 0;
+  }
+  /* Sound preset buttons: full width */
+  .sound-preset-btn {
+    padding: var(--space-2) var(--space-3) !important;
+  }
 }
 
 
