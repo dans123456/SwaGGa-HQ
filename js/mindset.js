@@ -180,6 +180,141 @@ export function renderMindsetPage(container) {
   hintText.style.marginTop = 'var(--space-3)';
   leftCol.appendChild(hintText);
 
+  // --- Mindset Sanctuary Session Mood Logs & History ---
+  const mindsetCard = el('div', 'overview-panel glass-card');
+  mindsetCard.style.padding = 'var(--space-6)';
+  mindsetCard.style.marginTop = 'var(--space-6)';
+  mindsetCard.style.display = 'flex';
+  mindsetCard.style.flexDirection = 'column';
+  mindsetCard.style.gap = 'var(--space-4)';
+
+  const mindsetTitle = el('h2', '', '🧘 Session Mindset Logs');
+  mindsetTitle.style.fontSize = 'var(--text-sm)';
+  mindsetTitle.style.fontWeight = '800';
+  mindsetTitle.style.textTransform = 'uppercase';
+  mindsetTitle.style.letterSpacing = '0.08em';
+  mindsetTitle.style.color = 'var(--purple)';
+  mindsetCard.appendChild(mindsetTitle);
+
+  // Today's Check-ins (Premarket start vs EOD end)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const routine = storage.get('premarket_routine');
+  const hasPremarketToday = routine && routine.date === todayStr;
+  const startMoodKey = hasPremarketToday ? routine.startMood : '';
+
+  const journalEntries = storage.get('extra_study_journal', []);
+  const todayReflection = journalEntries.find(e => e.localDate === todayStr && e.title.includes('End of Day'));
+  const endMoodKey = todayReflection ? todayReflection.endMood : '';
+
+  const moodsMap = {
+    hyped: { label: '🤩 Hyped', emoji: '🤩' },
+    calm: { label: '🧘 Calm', emoji: '🧘' },
+    neutral: { label: '😐 Neutral', emoji: '😐' },
+    anxious: { label: '😰 Anxious', emoji: '😰' },
+    angry: { label: '😡 Impatient', emoji: '😡' },
+    happy: { label: '😃 Good', emoji: '😃' }
+  };
+
+  const statusRow = el('div');
+  statusRow.style.display = 'grid';
+  statusRow.style.gridTemplateColumns = '1fr 1fr';
+  statusRow.style.gap = 'var(--space-4)';
+
+  // Start Mood block
+  const startBlock = el('div', 'glass-card');
+  startBlock.style.padding = 'var(--space-3)';
+  startBlock.style.borderRadius = 'var(--radius-md)';
+  startBlock.style.textAlign = 'center';
+  startBlock.appendChild(el('div', '', 'Starting Session Mood'));
+  const startVal = el('div', '', startMoodKey && moodsMap[startMoodKey] ? moodsMap[startMoodKey].label : '⏳ Not Started');
+  startVal.style.fontSize = 'var(--text-md)';
+  startVal.style.fontWeight = 'bold';
+  startVal.style.marginTop = '4px';
+  startVal.style.color = startMoodKey ? 'var(--cyan)' : 'var(--text-muted)';
+  startBlock.appendChild(startVal);
+  statusRow.appendChild(startBlock);
+
+  // End Mood block
+  const endBlock = el('div', 'glass-card');
+  endBlock.style.padding = 'var(--space-3)';
+  endBlock.style.borderRadius = 'var(--radius-md)';
+  endBlock.style.textAlign = 'center';
+  endBlock.appendChild(el('div', '', 'Ending Session Mood'));
+  const endVal = el('div', '', endMoodKey && moodsMap[endMoodKey] ? moodsMap[endMoodKey].label : '⏳ Not Reviewed');
+  endVal.style.fontSize = 'var(--text-md)';
+  endVal.style.fontWeight = 'bold';
+  endVal.style.marginTop = '4px';
+  endVal.style.color = endMoodKey ? 'var(--neon-green)' : 'var(--text-muted)';
+  endBlock.appendChild(endVal);
+  statusRow.appendChild(endBlock);
+
+  mindsetCard.appendChild(statusRow);
+
+  // Reflection History Title
+  const historyTitle = el('h3', '', 'Recent Mindset Reflections (Past 7 Days)');
+  historyTitle.style.fontSize = 'var(--text-xs)';
+  historyTitle.style.fontWeight = 'bold';
+  historyTitle.style.color = 'var(--text-secondary)';
+  historyTitle.style.marginTop = 'var(--space-2)';
+  mindsetCard.appendChild(historyTitle);
+
+  // List of reflections
+  const historyList = el('div');
+  historyList.style.display = 'flex';
+  historyList.style.flexDirection = 'column';
+  historyList.style.gap = 'var(--space-3)';
+
+  const recentReflections = journalEntries
+    .filter(e => e.title.includes('End of Day') || e.category === 'Mindset')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
+
+  if (recentReflections.length === 0) {
+    const emptyMsg = el('p', '', 'No recent mindset reflections found. Complete your daily review journal to see logs here.');
+    emptyMsg.style.fontSize = 'var(--text-xs)';
+    emptyMsg.style.color = 'var(--text-muted)';
+    emptyMsg.style.fontStyle = 'italic';
+    historyList.appendChild(emptyMsg);
+  } else {
+    recentReflections.forEach(ref => {
+      const item = el('div', 'glass-card');
+      item.style.padding = 'var(--space-3)';
+      item.style.borderRadius = 'var(--radius-md)';
+      item.style.display = 'flex';
+      item.style.flexDirection = 'column';
+      item.style.gap = '4px';
+
+      const headerRow = el('div');
+      headerRow.style.display = 'flex';
+      headerRow.style.justifyContent = 'space-between';
+      headerRow.style.fontSize = '11px';
+      headerRow.style.fontWeight = 'bold';
+
+      const dateStr = ref.localDate || ref.createdAt.slice(0, 10);
+      const dateEl = el('span', '', dateStr);
+      dateEl.style.color = 'var(--cyan)';
+
+      const moodEmoji = ref.endMood && moodsMap[ref.endMood] ? moodsMap[ref.endMood].emoji : '📝';
+      const moodEl = el('span', '', `End Mood: ${moodEmoji}`);
+
+      headerRow.appendChild(dateEl);
+      headerRow.appendChild(moodEl);
+      item.appendChild(headerRow);
+
+      const noteText = el('p', '', ref.takeaways);
+      noteText.style.fontSize = '11px';
+      noteText.style.color = 'var(--text-secondary)';
+      noteText.style.margin = '4px 0 0 0';
+      noteText.style.lineHeight = '1.4';
+      item.appendChild(noteText);
+
+      historyList.appendChild(item);
+    });
+  }
+
+  mindsetCard.appendChild(historyList);
+  leftCol.appendChild(mindsetCard);
+
   // --- Right Column: Sound Synth Controls ---
   const soundCard = el('div', 'overview-panel glass-card');
   soundCard.style.padding = 'var(--space-4)';

@@ -19,6 +19,8 @@ import { renderSimulatorPage } from './simulator.js';
 import { initNative, nativeHaptic, nativeHapticNotification, isNative } from './native-bridge.js';
 import { renderMindsetPage } from './mindset.js';
 import { renderBlitzPage } from './blitz.js';
+import { renderReviewPage } from './review.js';
+import { renderNotebookPage } from './notebook.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -38,6 +40,8 @@ const NAV_ITEMS = [
   { hash: '#simulator', label: 'Simulator', icon: '🎮' },
   { hash: '#mindset', label: 'Mindset Room', icon: '🧘' },
   { hash: '#blitz', label: 'SMC Blitz', icon: '⚡' },
+  { hash: '#review', label: 'Review Hub', icon: '📊' },
+  { hash: '#notebook', label: 'Notebook', icon: '📝' },
 ];
 
 let _killzonesInterval = null;
@@ -800,6 +804,57 @@ function renderPremarketWidget(container, isLockout = false) {
   step5.appendChild(focusInput);
   form.appendChild(step5);
 
+  // Step 6: Start Mood Selector
+  const step6 = el('div', 'premarket-step');
+  const { header: step6Header, status: step6Status } = createStepHeader('Step 6: Starting Session Mood 🧘');
+  step6.appendChild(step6Header);
+
+  const moodWrapper = el('div', 'mood-picker');
+  moodWrapper.style.display = 'flex';
+  moodWrapper.style.gap = 'var(--space-2)';
+  moodWrapper.style.marginTop = 'var(--space-2)';
+
+  const moods = [
+    { key: 'hyped', label: '🤩 Hyped' },
+    { key: 'calm', label: '🧘 Calm' },
+    { key: 'neutral', label: '😐 Neutral' },
+    { key: 'anxious', label: '😰 Anxious' },
+    { key: 'angry', label: '😡 Impatient' }
+  ];
+
+  moods.forEach(m => {
+    const pill = el('button', 'btn btn-outline btn-sm mood-pill', m.label);
+    pill.type = 'button';
+    pill.style.padding = '4px 8px';
+    pill.style.fontSize = '11px';
+    
+    if (routine.startMood === m.key) {
+      pill.style.background = 'var(--purple-bg)';
+      pill.style.borderColor = 'var(--purple)';
+      pill.style.color = '#fff';
+    }
+    
+    pill.addEventListener('click', () => {
+      playSynthSound('click');
+      routine.startMood = m.key;
+      storage.set('premarket_routine', routine);
+      
+      moodWrapper.querySelectorAll('.mood-pill').forEach(btn => {
+        btn.style.background = 'transparent';
+        btn.style.borderColor = 'var(--cyan)';
+        btn.style.color = 'var(--cyan)';
+      });
+      pill.style.background = 'var(--purple-bg)';
+      pill.style.borderColor = 'var(--purple)';
+      pill.style.color = '#fff';
+      
+      validateForm();
+    });
+    moodWrapper.appendChild(pill);
+  });
+  step6.appendChild(moodWrapper);
+  form.appendChild(step6);
+
   // Unlock button
   const submitBtn = el('button', 'btn btn-primary btn-block premarket-submit-btn', '🔓 Complete Routine & Unlock Pages');
   submitBtn.type = 'submit';
@@ -851,6 +906,7 @@ function renderPremarketWidget(container, isLockout = false) {
     const isStep3 = !!(routine.riskLimit && routine.riskLimit.trim());
     const isStep4 = checkedRulesCount === rulesToUse.length;
     const isStep5 = !!(routine.focusRule && routine.focusRule.trim());
+    const isStep6 = !!routine.startMood;
 
     // Update status labels in real-time
     updateIndicator(step1Status, isStep1);
@@ -859,8 +915,9 @@ function renderPremarketWidget(container, isLockout = false) {
     updateIndicator(step3Status, isStep3);
     updateIndicator(step4Status, isStep4, `${checkedRulesCount}/${rulesToUse.length}`);
     updateIndicator(step5Status, isStep5);
+    updateIndicator(step6Status, isStep6);
 
-    const allValid = isStep1 && isStep2 && isStepLevels && isStep3 && isStep4 && isStep5;
+    const allValid = isStep1 && isStep2 && isStepLevels && isStep3 && isStep4 && isStep5 && isStep6;
     submitBtn.disabled = !allValid;
   }
 
@@ -890,6 +947,203 @@ function renderPremarketWidget(container, isLockout = false) {
 
   // Initialize rules count and run validation check on load
   updateRulesChecked();
+}
+
+// --- Discipline Dashboard & Guardrails ---
+
+function renderDisciplineWidget(container) {
+  container.replaceChildren();
+
+  const trades = getTrades();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todaysTrades = trades.filter(t => {
+    const d = t.date || (t.createdAt ? t.createdAt.slice(0, 10) : '');
+    return d === todayStr;
+  });
+
+  // Rule breaks checklist for today
+  const ruleBreaks = [];
+
+  // 1. Skipped Pre-market Routine
+  const routine = storage.get('premarket_routine');
+  const premarketCompleted = routine && routine.date === todayStr && routine.completed === true;
+  if (!premarketCompleted) {
+    ruleBreaks.push({ cat: 'Skipped Pre-Market', desc: 'Pre-market routine not completed today.' });
+  }
+
+  // 2. Cooldown active
+  const cooldownExpiry = storage.get('cooldown_expiry', 0);
+  const isCooldownActive = cooldownExpiry > Date.now();
+  if (isCooldownActive) {
+    ruleBreaks.push({ cat: 'Revenge Cooldown', desc: 'Daily loss limit or revenge trade cooldown active.' });
+  }
+
+  // 3. Trade guardrail breaks
+  todaysTrades.forEach((t, idx) => {
+    const tradeNum = idx + 1;
+    const g = t.guardrails || { newsChecked: true, htfBiasAligned: true, killzoneTiming: true, sizeCalculatorUsed: true };
+    if (!g.newsChecked) {
+      ruleBreaks.push({ cat: 'News Violation', desc: `Trade #${tradeNum} (${t.asset}): Traded before checking news.` });
+    }
+    if (!g.htfBiasAligned) {
+      ruleBreaks.push({ cat: 'Bias Violation', desc: `Trade #${tradeNum} (${t.asset}): Traded against narrative HTF bias.` });
+    }
+    if (!g.killzoneTiming) {
+      ruleBreaks.push({ cat: 'Outside Killzone', desc: `Trade #${tradeNum} (${t.asset}): Traded outside ICT Killzone hours.` });
+    }
+    if (!g.sizeCalculatorUsed) {
+      ruleBreaks.push({ cat: 'Over-leveraged', desc: `Trade #${tradeNum} (${t.asset}): Position size calculator skipped.` });
+    }
+    if (t.emotionTag === 'revenge' || t.executionMindset === 'revenge' || t.mistake === 'revenge') {
+      ruleBreaks.push({ cat: 'Revenge Traded', desc: `Trade #${tradeNum} (${t.asset}): Executed with a revenge mindset.` });
+    }
+  });
+
+  // Calculate score
+  let score = 100;
+  if (!premarketCompleted) score -= 20;
+  todaysTrades.forEach(t => {
+    const g = t.guardrails || { newsChecked: true, htfBiasAligned: true, killzoneTiming: true, sizeCalculatorUsed: true };
+    if (!g.newsChecked) score -= 15;
+    if (!g.htfBiasAligned) score -= 15;
+    if (!g.killzoneTiming) score -= 15;
+    if (!g.sizeCalculatorUsed) score -= 10;
+    if (t.emotionTag === 'revenge' || t.executionMindset === 'revenge' || t.mistake === 'revenge') score -= 30;
+  });
+  score = Math.max(0, score);
+
+  // Sparkline history (rolling 7 days)
+  const historyData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dayStr = d.toISOString().slice(0, 10);
+    const dayTrades = trades.filter(t => {
+      const td = t.date || (t.createdAt ? t.createdAt.slice(0, 10) : '');
+      return td === dayStr;
+    });
+    const dayHistory = storage.get('premarket_history', {});
+    const dayRoutine = dayHistory[dayStr] || (dayStr === todayStr ? routine : null);
+    const dayPremarket = dayRoutine && dayRoutine.completed === true;
+
+    let dayScore = 100;
+    if (!dayPremarket) dayScore -= 20;
+    dayTrades.forEach(t => {
+      const g = t.guardrails || { newsChecked: true, htfBiasAligned: true, killzoneTiming: true, sizeCalculatorUsed: true };
+      if (!g.newsChecked) dayScore -= 15;
+      if (!g.htfBiasAligned) dayScore -= 15;
+      if (!g.killzoneTiming) dayScore -= 15;
+      if (!g.sizeCalculatorUsed) dayScore -= 10;
+      if (t.emotionTag === 'revenge' || t.executionMindset === 'revenge' || t.mistake === 'revenge') dayScore -= 30;
+    });
+    historyData.push({ date: dayStr, score: Math.max(0, dayScore) });
+  }
+
+  // Render elements
+  const title = el('h3', 'overview-panel__title', '🛡️ Discipline Score');
+  container.appendChild(title);
+
+  const scoreContainer = el('div', 'discipline-score-container');
+
+  // Gauge
+  const gaugeBox = el('div', 'discipline-gauge-box');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('class', 'discipline-svg-gauge');
+
+  const circleBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circleBg.setAttribute('cx', '50');
+  circleBg.setAttribute('cy', '50');
+  circleBg.setAttribute('r', '40');
+  circleBg.setAttribute('class', 'gauge-circle-bg');
+
+  const circleVal = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circleVal.setAttribute('cx', '50');
+  circleVal.setAttribute('cy', '50');
+  circleVal.setAttribute('r', '40');
+  circleVal.setAttribute('class', 'gauge-circle-val');
+
+  const circumference = 2 * Math.PI * 40; // ~251.3
+  circleVal.style.strokeDasharray = circumference;
+  const offset = circumference - (score / 100) * circumference;
+  circleVal.style.strokeDashoffset = offset;
+
+  let scoreColor = 'var(--neon-green)';
+  if (score < 50) scoreColor = 'var(--neon-red)';
+  else if (score < 80) scoreColor = 'var(--purple)'; // acid purple
+  circleVal.style.stroke = scoreColor;
+
+  svg.appendChild(circleBg);
+  svg.appendChild(circleVal);
+  gaugeBox.appendChild(svg);
+
+  const scoreValText = el('span', 'discipline-score-val-text', `${score}%`);
+  scoreValText.style.color = scoreColor;
+  gaugeBox.appendChild(scoreValText);
+
+  scoreContainer.appendChild(gaugeBox);
+
+  // Stats / breaks list
+  const breaksBox = el('div', 'discipline-breaks-box');
+  if (ruleBreaks.length === 0) {
+    const perfectText = el('p', 'discipline-perfect-text', '✨ 100% disciplined today! All rules followed.');
+    perfectText.style.color = 'var(--neon-green)';
+    breaksBox.appendChild(perfectText);
+  } else {
+    const subtitle = el('span', 'discipline-breaks-subtitle', `Rule Breaks today:`);
+    subtitle.style.color = 'var(--neon-red)';
+    breaksBox.appendChild(subtitle);
+
+    const breaksList = el('ul', 'discipline-breaks-list');
+    ruleBreaks.forEach(b => {
+      const item = el('li', 'discipline-break-item');
+      
+      const badge = el('span', 'discipline-break-badge', b.cat);
+      badge.style.color = 'var(--neon-red)';
+      badge.style.background = 'rgba(255, 71, 87, 0.1)';
+      badge.style.padding = '2px 6px';
+      badge.style.borderRadius = '4px';
+      badge.style.fontSize = '10px';
+      badge.style.fontWeight = 'bold';
+      badge.style.marginRight = '8px';
+      
+      const desc = el('span', 'discipline-break-desc', b.desc);
+      desc.style.fontSize = '11px';
+      desc.style.color = 'var(--text-muted)';
+      
+      item.appendChild(badge);
+      item.appendChild(desc);
+      breaksList.appendChild(item);
+    });
+    breaksBox.appendChild(breaksList);
+  }
+  scoreContainer.appendChild(breaksBox);
+  container.appendChild(scoreContainer);
+
+  // Sparkline
+  const sparklineContainer = el('div', 'discipline-sparkline-container');
+  sparklineContainer.appendChild(el('span', 'sparkline-title', 'Discipline History (7-Day):'));
+  const sparklineRow = el('div', 'discipline-sparkline-row');
+  historyData.forEach(day => {
+    const dayCol = el('div', 'sparkline-day-col');
+    dayCol.setAttribute('title', `${day.date}: ${day.score}%`);
+    
+    const barTrack = el('div', 'sparkline-bar-track');
+    const barFill = el('div', 'sparkline-bar-fill');
+    barFill.style.height = `${day.score}%`;
+    let color = 'var(--neon-green)';
+    if (day.score < 50) color = 'var(--neon-red)';
+    else if (day.score < 80) color = 'var(--purple)';
+    barFill.style.background = color;
+    barTrack.appendChild(barFill);
+    
+    const label = el('span', 'sparkline-bar-label', day.date.slice(8, 10)); // e.g. "11"
+    dayCol.appendChild(barTrack);
+    dayCol.appendChild(label);
+    sparklineRow.appendChild(dayCol);
+  });
+  sparklineContainer.appendChild(sparklineRow);
+  container.appendChild(sparklineContainer);
 }
 
 // --- Dashboard ---
@@ -1307,6 +1561,11 @@ function renderDashboard(container) {
     rankXpFooter.appendChild(el('span', 'rank-xp-next', `Next: ${prog.nextEmoji} ${prog.nextTitle}`));
   }
   rankPanel.appendChild(rankXpFooter);
+  // Discipline Score Widget
+  const disciplineWidget = el('div', 'overview-panel discipline-widget');
+  renderDisciplineWidget(disciplineWidget);
+  panelsCol.appendChild(disciplineWidget);
+
   // Pre-Market Routine Checklist Widget
   const premarketWidget = el('div', 'overview-panel premarket-routine-card');
   renderPremarketWidget(premarketWidget);
@@ -2398,7 +2657,7 @@ function buildAppShell() {
   focusBanner.style.display = 'none';
   main.appendChild(focusBanner);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'mindset', 'blitz'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'mindset', 'blitz', 'review', 'notebook'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -2672,6 +2931,8 @@ async function launchApp() {
   router.registerRoute('#simulator', renderSimulatorPage);
   router.registerRoute('#mindset', renderMindsetPage);
   router.registerRoute('#blitz', renderBlitzPage);
+  router.registerRoute('#review', renderReviewPage);
+  router.registerRoute('#notebook', renderNotebookPage);
   router.registerRoute('#premarket-lockout', renderPremarketLockoutScreen);
   router.registerRoute('#cooldown-lockout', renderCooldownLockoutScreen);
 

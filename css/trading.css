@@ -2684,3 +2684,50 @@
     right: var(--space-3);
   }
 }
+
+/* ── Emotion Tag Picker & Badges (Premium Upgrade 2) ── */
+
+.emotion-tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.emotion-pill {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.emotion-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.emotion-pill--active {
+  background: var(--purple-bg);
+  border-color: var(--purple);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: var(--purple-glow);
+}
+
+.emotion-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: help;
+}

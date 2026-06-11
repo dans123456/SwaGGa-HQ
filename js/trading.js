@@ -359,10 +359,25 @@ export function saveTrade(tradeData) {
     }
   }
 
-  if (tradeData.executionMindset === 'revenge' || isBreached) {
+  // Tilt Protection System: Check if the last 2 consecutive trades are losses
+  let isTilted = false;
+  const sortedTodayTrades = [...todayTrades].sort((a, b) => new Date(a.createdAt || a.date) - new Date(b.createdAt || b.date));
+  if (sortedTodayTrades.length >= 2) {
+    const len = sortedTodayTrades.length;
+    const last1 = sortedTodayTrades[len - 1];
+    const last2 = sortedTodayTrades[len - 2];
+    if (last1.outcome === 'loss' && last2.outcome === 'loss') {
+      isTilted = true;
+    }
+  }
+
+  if (tradeData.executionMindset === 'revenge' || isBreached || isTilted) {
     const expiryTime = Date.now() + 15 * 60 * 1000; // 15 minutes lockout
     storage.set('cooldown_expiry', expiryTime);
     playSynthSound('fail');
+    if (isTilted) {
+      showNotificationToast('Tilt Protection: 2 consecutive losses. 15-min cooldown activated! 🛡️', '🚨');
+    }
     setTimeout(() => {
       window.location.hash = '#cooldown-lockout';
     }, 800);
@@ -1455,6 +1470,46 @@ export function renderTradeForm(container, onSaved) {
     }
   });
 
+  // ---- Emotion Tag Picker ----
+  const emotionInput = document.createElement('input');
+  emotionInput.type = 'hidden';
+  emotionInput.name = 'emotionTag';
+  emotionInput.value = '';
+
+  const emotionWrapper = el('div', 'emotion-tag-picker');
+  const emotions = [
+    { key: 'fomo', label: 'FOMO 😨' },
+    { key: 'greed', label: 'Greed 🤑' },
+    { key: 'calm', label: 'Calm 🧘' },
+    { key: 'impatient', label: 'Impatient ⏳' },
+    { key: 'confident', label: 'Confident 😎' },
+    { key: 'anxious', label: 'Anxious 😰' },
+    { key: 'revenge', label: 'Revenge 😡' }
+  ];
+
+  emotions.forEach(e => {
+    const pill = el('button', 'emotion-pill', e.label);
+    pill.type = 'button';
+    pill.className = 'emotion-pill';
+    pill.addEventListener('click', () => {
+      const active = emotionInput.value === e.key;
+      emotionWrapper.querySelectorAll('.emotion-pill').forEach(btn => {
+        btn.classList.remove('emotion-pill--active');
+      });
+      if (active) {
+        emotionInput.value = '';
+      } else {
+        emotionInput.value = e.key;
+        pill.classList.add('emotion-pill--active');
+        nativeHaptic('light');
+      }
+    });
+    emotionWrapper.appendChild(pill);
+  });
+
+  form.appendChild(emotionInput);
+  form.appendChild(formGroup('Emotion at Execution', emotionWrapper));
+
   // ---- Execution Mindset ----
   const mindsetSelect = document.createElement('select');
   mindsetSelect.name = 'executionMindset';
@@ -1478,6 +1533,25 @@ export function renderTradeForm(container, onSaved) {
   notes.rows = 3;
   notes.placeholder = 'Trade notes, lessons, emotions…';
   form.appendChild(formGroup('Notes', notes));
+
+  // ---- Post-Trade Reflection Fields ----
+  const wellTextarea = document.createElement('textarea');
+  wellTextarea.name = 'reflection_well';
+  wellTextarea.rows = 2;
+  wellTextarea.placeholder = 'What went well with this execution?';
+  form.appendChild(formGroup('🌟 What Went Well?', wellTextarea));
+
+  const leakTextarea = document.createElement('textarea');
+  leakTextarea.name = 'reflection_leak';
+  leakTextarea.rows = 2;
+  leakTextarea.placeholder = 'What was your biggest leak / mistake here?';
+  form.appendChild(formGroup('🩸 Biggest Leak?', leakTextarea));
+
+  const patternTextarea = document.createElement('textarea');
+  patternTextarea.name = 'reflection_pattern';
+  patternTextarea.rows = 2;
+  patternTextarea.placeholder = 'What setup/pattern did you identify?';
+  form.appendChild(formGroup('📐 Pattern Identified?', patternTextarea));
 
   // ---- Attachment & Canvas Annotator ----
   const fileGroup = el('div', 'form-group screenshot-form-group');
@@ -1637,6 +1711,13 @@ export function renderTradeForm(container, onSaved) {
     if (mindset === 'anxious') edgeScore -= 15;
     else if (mindset === 'revenge') edgeScore -= 35;
 
+    const emotionTag = fd.get('emotionTag') || '';
+    if (emotionTag === 'fomo') edgeScore -= 20;
+    else if (emotionTag === 'greed') edgeScore -= 15;
+    else if (emotionTag === 'impatient') edgeScore -= 15;
+    else if (emotionTag === 'revenge') edgeScore -= 30;
+    else if (emotionTag === 'anxious') edgeScore -= 15;
+
     const outcome = fd.get('outcome');
     const mistake = outcome === 'loss' ? fd.get('mistake') : '';
     if (outcome === 'loss' && mistake) {
@@ -1688,6 +1769,10 @@ export function renderTradeForm(container, onSaved) {
       balanceUsed,
       riskPct,
       executionMindset: fd.get('executionMindset') || 'professional',
+      emotionTag: fd.get('emotionTag') || '',
+      reflection_well: sanitizeText(fd.get('reflection_well') || '', 1000),
+      reflection_leak: sanitizeText(fd.get('reflection_leak') || '', 1000),
+      reflection_pattern: sanitizeText(fd.get('reflection_pattern') || '', 1000),
       guardrails: {
         newsChecked,
         htfBiasAligned,
@@ -1711,6 +1796,13 @@ export function renderTradeForm(container, onSaved) {
       console.error(e);
     }
     form.reset();
+
+    // Box breathing suggest modal if outcome is loss and not locked out
+    const cooldownExpiry = storage.get('cooldown_expiry', 0);
+    const isCooldownActive = cooldownExpiry > Date.now();
+    if (!isCooldownActive && tradeData.outcome === 'loss') {
+      openPostLossBreathingModal();
+    }
     
     // Reset screenshot upload container
     screenshotInput.value = '';
@@ -1881,6 +1973,22 @@ function openTradeDetail(trade, onRefresh = null) {
     });
   }
 
+  if (trade.emotionTag) {
+    const emotionLabels = {
+      fomo: 'FOMO 😨',
+      greed: 'Greed 🤑',
+      calm: 'Calm 🧘',
+      impatient: 'Impatient ⏳',
+      confident: 'Confident 😎',
+      anxious: 'Anxious 😰',
+      revenge: 'Revenge 😡'
+    };
+    detailPairs.push({
+      label: 'Emotion State',
+      value: emotionLabels[trade.emotionTag] || trade.emotionTag
+    });
+  }
+
   detailPairs.forEach(({ label, value, cls }) => {
     const item = el('div', 'trade-detail-item');
     item.appendChild(el('span', 'trade-detail-item__label', label));
@@ -1945,6 +2053,44 @@ function openTradeDetail(trade, onRefresh = null) {
     notesSection.appendChild(el('div', 'trade-modal__notes-title', 'Notes'));
     notesSection.appendChild(el('div', 'trade-modal__notes-body', trade.notes));
     body.appendChild(notesSection);
+  }
+
+  if (trade.reflection_well || trade.reflection_leak || trade.reflection_pattern) {
+    const refSection = el('div', 'trade-modal__notes');
+    refSection.appendChild(el('div', 'trade-modal__notes-title', '📓 Post-Trade Reflections'));
+    
+    const refBody = el('div', 'trade-modal__notes-body');
+    refBody.style.display = 'flex';
+    refBody.style.flexDirection = 'column';
+    refBody.style.gap = 'var(--space-3)';
+    refBody.style.marginTop = 'var(--space-2)';
+    
+    if (trade.reflection_well) {
+      const p = el('p', '');
+      p.appendChild(el('strong', '', '🌟 What went well: '));
+      p.appendChild(document.createTextNode(trade.reflection_well));
+      p.style.fontSize = '12px';
+      refBody.appendChild(p);
+    }
+    
+    if (trade.reflection_leak) {
+      const p = el('p', '');
+      p.appendChild(el('strong', '', '🩸 Biggest leak: '));
+      p.appendChild(document.createTextNode(trade.reflection_leak));
+      p.style.fontSize = '12px';
+      refBody.appendChild(p);
+    }
+    
+    if (trade.reflection_pattern) {
+      const p = el('p', '');
+      p.appendChild(el('strong', '', '📐 Best pattern: '));
+      p.appendChild(document.createTextNode(trade.reflection_pattern));
+      p.style.fontSize = '12px';
+      refBody.appendChild(p);
+    }
+    
+    refSection.appendChild(refBody);
+    body.appendChild(refSection);
   }
 
   // Attached Chart Screenshot
@@ -2402,6 +2548,49 @@ export function openEditTradeModal(trade, onRefresh) {
   });
   form.appendChild(mistakeGroup);
 
+  // ---- Emotion Tag Picker ----
+  const emotionInput = document.createElement('input');
+  emotionInput.type = 'hidden';
+  emotionInput.name = 'emotionTag';
+  emotionInput.value = trade.emotionTag || '';
+
+  const emotionWrapper = el('div', 'emotion-tag-picker');
+  const emotions = [
+    { key: 'fomo', label: 'FOMO 😨' },
+    { key: 'greed', label: 'Greed 🤑' },
+    { key: 'calm', label: 'Calm 🧘' },
+    { key: 'impatient', label: 'Impatient ⏳' },
+    { key: 'confident', label: 'Confident 😎' },
+    { key: 'anxious', label: 'Anxious 😰' },
+    { key: 'revenge', label: 'Revenge 😡' }
+  ];
+
+  emotions.forEach(e => {
+    const pill = el('button', 'emotion-pill', e.label);
+    pill.type = 'button';
+    pill.className = 'emotion-pill';
+    if (trade.emotionTag === e.key) {
+      pill.classList.add('emotion-pill--active');
+    }
+    pill.addEventListener('click', () => {
+      const active = emotionInput.value === e.key;
+      emotionWrapper.querySelectorAll('.emotion-pill').forEach(btn => {
+        btn.classList.remove('emotion-pill--active');
+      });
+      if (active) {
+        emotionInput.value = '';
+      } else {
+        emotionInput.value = e.key;
+        pill.classList.add('emotion-pill--active');
+        nativeHaptic('light');
+      }
+    });
+    emotionWrapper.appendChild(pill);
+  });
+
+  form.appendChild(emotionInput);
+  form.appendChild(formGroup('Emotion at Execution', emotionWrapper));
+
   // ---- Execution Mindset ----
   const mindsetSelect = document.createElement('select');
   mindsetSelect.name = 'executionMindset';
@@ -2492,6 +2681,28 @@ export function openEditTradeModal(trade, onRefresh) {
   notesArea.rows = 3;
   form.appendChild(formGroup('Notes', notesArea));
 
+  // ---- Post-Trade Reflection Fields ----
+  const wellTextarea = document.createElement('textarea');
+  wellTextarea.name = 'reflection_well';
+  wellTextarea.rows = 2;
+  wellTextarea.value = trade.reflection_well || '';
+  wellTextarea.placeholder = 'What went well with this execution?';
+  form.appendChild(formGroup('🌟 What Went Well?', wellTextarea));
+
+  const leakTextarea = document.createElement('textarea');
+  leakTextarea.name = 'reflection_leak';
+  leakTextarea.rows = 2;
+  leakTextarea.value = trade.reflection_leak || '';
+  leakTextarea.placeholder = 'What was your biggest leak / mistake here?';
+  form.appendChild(formGroup('🩸 Biggest Leak?', leakTextarea));
+
+  const patternTextarea = document.createElement('textarea');
+  patternTextarea.name = 'reflection_pattern';
+  patternTextarea.rows = 2;
+  patternTextarea.value = trade.reflection_pattern || '';
+  patternTextarea.placeholder = 'What setup/pattern did you identify?';
+  form.appendChild(formGroup('📐 Pattern Identified?', patternTextarea));
+
   // ---- Hidden inputs ----
   const screenshotHidden = document.createElement('input');
   screenshotHidden.type = 'hidden';
@@ -2568,6 +2779,13 @@ export function openEditTradeModal(trade, onRefresh) {
     if (mindset === 'anxious') edgeScore -= 15;
     else if (mindset === 'revenge') edgeScore -= 35;
 
+    const emotionTag = form.querySelector('input[name="emotionTag"]').value;
+    if (emotionTag === 'fomo') edgeScore -= 20;
+    else if (emotionTag === 'greed') edgeScore -= 15;
+    else if (emotionTag === 'impatient') edgeScore -= 15;
+    else if (emotionTag === 'revenge') edgeScore -= 30;
+    else if (emotionTag === 'anxious') edgeScore -= 15;
+
     const outcome = outcomeSelect.value;
     const mistake = outcome === 'loss' ? mistakeSelect.value : '';
     if (outcome === 'loss' && mistake) {
@@ -2613,6 +2831,10 @@ export function openEditTradeModal(trade, onRefresh) {
       notes: sanitizeText(notesArea.value, 2000),
       screenshot: screenshotHidden.value,
       executionMindset: mindset,
+      emotionTag: form.querySelector('input[name="emotionTag"]').value,
+      reflection_well: sanitizeText(form.querySelector('textarea[name="reflection_well"]').value, 1000),
+      reflection_leak: sanitizeText(form.querySelector('textarea[name="reflection_leak"]').value, 1000),
+      reflection_pattern: sanitizeText(form.querySelector('textarea[name="reflection_pattern"]').value, 1000),
       guardrails: {
         newsChecked,
         htfBiasAligned,
@@ -2772,6 +2994,21 @@ export function renderTradeHistory(container, onRefresh) {
           const clip = el('span', 'attachment-icon', ' 🖼️');
           clip.title = 'Screenshot Attached';
           td.appendChild(clip);
+        }
+        if (t.emotionTag) {
+          const emotionEmojis = {
+            fomo: '😨',
+            greed: '🤑',
+            calm: '🧘',
+            impatient: '⏳',
+            confident: '😎',
+            anxious: '😰',
+            revenge: '😡'
+          };
+          const emoBadge = el('span', `emotion-badge emotion-badge--${t.emotionTag}`);
+          emoBadge.textContent = ` ${emotionEmojis[t.emotionTag] || ''}`;
+          emoBadge.title = `Emotion: ${t.emotionTag}`;
+          td.appendChild(emoBadge);
         }
       } else if (idx === 7) {
         td.textContent = val;
@@ -2973,6 +3210,88 @@ function openDailyReviewModal(onRefresh) {
       reflectionArea.rows = 4;
       reflectionArea.placeholder = 'Did you feel FOMO? Did you feel greedy? Did you rush entries? What did you learn about your character today...';
       textareaGroup.appendChild(reflectionArea);
+
+      // Session End Mood Picker
+      const moodLabel = el('label', 'form-label', 'Session End Mood 🧘');
+      moodLabel.style.marginTop = 'var(--space-4)';
+      textareaGroup.appendChild(moodLabel);
+
+      const endMoodWrapper = el('div', 'end-mood-picker');
+      endMoodWrapper.style.display = 'flex';
+      endMoodWrapper.style.gap = 'var(--space-2)';
+      endMoodWrapper.style.marginTop = 'var(--space-2)';
+
+      const endMoods = [
+        { key: 'hyped', label: '🤩', name: 'Hyped' },
+        { key: 'happy', label: '😃', name: 'Good' },
+        { key: 'neutral', label: '😐', name: 'Calm' },
+        { key: 'anxious', label: '😰', name: 'Anxious' },
+        { key: 'angry', label: '😡', name: 'Impatient' }
+      ];
+
+      let selectedEndMood = 'neutral';
+
+      endMoods.forEach(em => {
+        const btn = el('button', 'btn btn-outline end-mood-btn', `${em.label} ${em.name}`);
+        btn.type = 'button';
+        btn.style.padding = '6px 12px';
+        btn.style.fontSize = '12px';
+        btn.style.borderRadius = 'var(--radius-md)';
+        btn.style.transition = 'all 0.2s ease';
+        
+        const updateBtnStyle = () => {
+          if (selectedEndMood === em.key) {
+            btn.style.background = 'var(--purple-bg)';
+            btn.style.borderColor = 'var(--purple)';
+            btn.style.color = '#fff';
+            btn.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.3)';
+          } else {
+            btn.style.background = 'rgba(255, 255, 255, 0.02)';
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            btn.style.color = 'var(--text-secondary)';
+            btn.style.boxShadow = 'none';
+          }
+        };
+
+        updateBtnStyle();
+
+        btn.addEventListener('click', () => {
+          selectedEndMood = em.key;
+          endMoodWrapper.querySelectorAll('.end-mood-btn').forEach((otherBtn, idx) => {
+            const otherKey = endMoods[idx].key;
+            if (otherKey === selectedEndMood) {
+              otherBtn.style.background = 'var(--purple-bg)';
+              otherBtn.style.borderColor = 'var(--purple)';
+              otherBtn.style.color = '#fff';
+              otherBtn.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.3)';
+            } else {
+              otherBtn.style.background = 'rgba(255, 255, 255, 0.02)';
+              otherBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              otherBtn.style.color = 'var(--text-secondary)';
+              otherBtn.style.boxShadow = 'none';
+            }
+          });
+        });
+
+        btn.addEventListener('mouseenter', () => {
+          if (selectedEndMood !== em.key) {
+            btn.style.background = 'rgba(255, 255, 255, 0.06)';
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            btn.style.color = '#fff';
+          }
+        });
+        btn.addEventListener('mouseleave', () => {
+          if (selectedEndMood !== em.key) {
+            btn.style.background = 'rgba(255, 255, 255, 0.02)';
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            btn.style.color = 'var(--text-secondary)';
+          }
+        });
+
+        endMoodWrapper.appendChild(btn);
+      });
+
+      textareaGroup.appendChild(endMoodWrapper);
       body.appendChild(textareaGroup);
 
       // Actions
@@ -2991,30 +3310,33 @@ function openDailyReviewModal(onRefresh) {
       const nextBtn = el('button', 'btn btn-primary btn-sm', 'Save & Enter Sanctuary 🧘');
       nextBtn.addEventListener('click', () => {
         const reflectionText = reflectionArea.value.trim();
-        if (reflectionText) {
-          // Log to Study Journal
-          const journalEntries = storage.get('extra_study_journal', []);
-          const entry = {
-            id: generateId(),
-            title: 'End of Day Reflection (Ep 24)',
-            source: 'Brad Goh',
-            takeaways: reflectionText,
-            category: 'Mindset',
-            createdAt: new Date().toISOString(),
-            localDate: todayStr
-          };
-          journalEntries.push(entry);
-          storage.set('extra_study_journal', journalEntries);
+        // Log to Study Journal (always create or at least save mood)
+        const journalEntries = storage.get('extra_study_journal', []);
+        const entry = {
+          id: generateId(),
+          title: 'End of Day Reflection (Ep 24)',
+          source: 'Brad Goh',
+          takeaways: reflectionText || 'Completed EOD Mindset Sanctuary Routine.',
+          category: 'Mindset',
+          createdAt: new Date().toISOString(),
+          localDate: todayStr,
+          endMood: selectedEndMood
+        };
+        journalEntries.push(entry);
+        storage.set('extra_study_journal', journalEntries);
 
+        if (reflectionText) {
           // Award discipline XP
           addXP('extra_study', 10);
           showNotificationToast('Reflection saved to Study Journal! +10 XP 📝', '🧠');
-          
-          // Sync to Cloud if user exists
-          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-            if (getCurrentUser()) pushToCloud();
-          });
+        } else {
+          showNotificationToast('Mood check-in saved! 🧘', '🧠');
         }
+        
+        // Sync to Cloud if user exists
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
         
         currentStep = 3;
         renderStep();
@@ -3156,6 +3478,84 @@ function openDailyReviewModal(onRefresh) {
   // Initial render of first step
   renderStep();
 
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('trade-modal-overlay--visible'));
+}
+
+function openPostLossBreathingModal() {
+  const overlay = el('div', 'trade-modal-overlay');
+  const modal = el('div', 'trade-modal post-loss-modal');
+  modal.style.maxWidth = '450px';
+
+  const grabHandle = el('div', 'modal-swipe-handle');
+  modal.appendChild(grabHandle);
+
+  const topbar = el('div', 'modal__topbar');
+  topbar.style.height = '4px';
+  topbar.style.background = 'linear-gradient(90deg, var(--neon-red), var(--purple))';
+  modal.appendChild(topbar);
+
+  const header = el('div', 'trade-modal__header');
+  header.appendChild(el('h2', 'trade-modal__title', '🛡️ Nervous System Reset Suggestion'));
+  const closeBtn = el('button', 'trade-modal__close', '✕');
+  closeBtn.addEventListener('click', () => {
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => overlay.remove(), 250);
+  });
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const body = el('div', 'trade-modal__body');
+  body.style.padding = 'var(--space-6)';
+  body.style.display = 'flex';
+  body.style.flexDirection = 'column';
+  body.style.gap = 'var(--space-4)';
+  body.style.textAlign = 'center';
+
+  const iconEl = el('div', '', '🧘');
+  iconEl.style.fontSize = '3.5rem';
+  iconEl.style.animation = 'pulse 2s infinite';
+  body.appendChild(iconEl);
+
+  const titleEl = el('h3', '', 'Reset Your Baseline');
+  titleEl.style.color = '#fff';
+  titleEl.style.fontWeight = 'bold';
+  body.appendChild(titleEl);
+
+  const textEl = el('p', '', 'Brad Goh says: "When you experience a loss, your nervous system triggers a fight-or-flight response. Taking a 2-minute box breathing session resets your baseline, preventing emotional revenge trading."');
+  textEl.style.fontSize = 'var(--text-xs)';
+  textEl.style.lineHeight = '1.6';
+  textEl.style.color = 'var(--text-secondary)';
+  body.appendChild(textEl);
+
+  // Actions
+  const controls = el('div', '');
+  controls.style.display = 'flex';
+  controls.style.flexDirection = 'column';
+  controls.style.gap = 'var(--space-3)';
+  controls.style.marginTop = 'var(--space-4)';
+
+  const acceptBtn = el('button', 'btn btn-primary btn-block', '🧘 Enter Mindset Sanctuary');
+  acceptBtn.addEventListener('click', () => {
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => {
+      overlay.remove();
+      window.location.hash = '#mindset';
+    }, 250);
+  });
+
+  const dismissBtn = el('button', 'btn btn-outline btn-block', 'Keep Trading (Dismiss)');
+  dismissBtn.addEventListener('click', () => {
+    overlay.classList.remove('trade-modal-overlay--visible');
+    setTimeout(() => overlay.remove(), 250);
+  });
+
+  controls.appendChild(acceptBtn);
+  controls.appendChild(dismissBtn);
+  body.appendChild(controls);
+
+  modal.appendChild(body);
+  overlay.appendChild(modal);
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('trade-modal-overlay--visible'));
 }

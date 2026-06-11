@@ -4,7 +4,7 @@
  * Strategy: Cache-first for static assets, network-first for dynamic.
  */
 
-const CACHE_NAME = 'swagga-hq-v92';
+const CACHE_NAME = 'swagga-hq-v93';
 
 // Core files to cache on install
 const CORE_ASSETS = [
@@ -18,6 +18,8 @@ const CORE_ASSETS = [
   './css/learning.css',
   './css/streaks.css',
   './css/simulator.css',
+  './css/review.css',
+  './css/notebook.css',
   './js/app.js',
   './js/charts.js',
   './js/learning.js',
@@ -38,6 +40,8 @@ const CORE_ASSETS = [
   './js/native-bridge.js',
   './js/mindset.js',
   './js/blitz.js',
+  './js/review.js',
+  './js/notebook.js',
   './img/icon-512.png',
   './img/brad-goh.png',
   './img/boss-ackah.png',
