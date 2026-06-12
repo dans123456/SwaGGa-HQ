@@ -1217,6 +1217,186 @@ function renderDashboard(container) {
     container.appendChild(alert);
   }
 
+  // ── Review Reminders Due Alerts ──
+  const reviews = storage.get('reviews', []) || [];
+  const reviewAlertsContainer = el('div', 'dashboard-review-alerts');
+  reviewAlertsContainer.style.display = 'flex';
+  reviewAlertsContainer.style.flexDirection = 'column';
+  reviewAlertsContainer.style.gap = 'var(--space-3)';
+  reviewAlertsContainer.style.marginBottom = 'var(--space-4)';
+
+  let hasReviewAlert = false;
+
+  // 1. Check Weekly Review
+  const day = now.getDay();
+  const daysToLastMonday = (day === 0 ? 6 : day - 1) + 7;
+  const lastMonday = new Date(now);
+  lastMonday.setDate(now.getDate() - daysToLastMonday);
+  const lastSunday = new Date(lastMonday);
+  lastSunday.setDate(lastMonday.getDate() + 6);
+
+  const lastMondayStr = lastMonday.toISOString().slice(0, 10);
+  const lastSundayStr = lastSunday.toISOString().slice(0, 10);
+  
+  const weeklyCompleted = reviews.some(r => r.type === 'weekly' && r.startDate <= lastMondayStr && r.endDate >= lastSundayStr);
+
+  if (!weeklyCompleted) {
+    hasReviewAlert = true;
+    const alert = el('div', 'dashboard-discipline-alert');
+    alert.style.background = 'rgba(0, 212, 255, 0.06)';
+    alert.style.border = '1px solid var(--cyan)';
+    alert.style.borderRadius = 'var(--radius-md)';
+    alert.style.padding = 'var(--space-3) var(--space-4)';
+    alert.style.display = 'flex';
+    alert.style.alignItems = 'center';
+    alert.style.justifyContent = 'space-between';
+    alert.style.gap = 'var(--space-3)';
+    alert.style.animation = 'fadeIn 0.3s ease';
+
+    const left = el('div', '');
+    left.style.display = 'flex';
+    left.style.alignItems = 'center';
+    left.style.gap = 'var(--space-3)';
+    left.appendChild(el('span', '', '📅'));
+    
+    const textWrap = el('div', '');
+    const title = el('h4', '', 'Weekly Review Pending');
+    title.style.color = 'var(--cyan)';
+    title.style.margin = '0';
+    title.style.fontSize = '13px';
+    title.style.fontWeight = '800';
+    textWrap.appendChild(title);
+
+    const desc = el('p', '', `Your Weekly review for ${lastMondayStr} to ${lastSundayStr} is due. Reflect on your performance and earn +30 XP!`);
+    desc.style.margin = 'var(--space-1) 0 0 0';
+    desc.style.fontSize = '12px';
+    desc.style.color = 'var(--text-muted)';
+    textWrap.appendChild(desc);
+    left.appendChild(textWrap);
+    alert.appendChild(left);
+
+    const actionBtn = el('button', 'btn btn-sm btn-secondary', 'Review Now');
+    actionBtn.addEventListener('click', () => {
+      storage.set('active_review_tab', 'weekly');
+      router.navigate('#review');
+    });
+    alert.appendChild(actionBtn);
+    reviewAlertsContainer.appendChild(alert);
+  }
+
+  // 2. Check Monthly Review
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastMonthStartStr = lastMonthStart.toISOString().slice(0, 10);
+  const lastMonthEndStr = lastMonthEnd.toISOString().slice(0, 10);
+  const monthlyCompleted = reviews.some(r => r.type === 'monthly' && r.startDate <= lastMonthStartStr && r.endDate >= lastMonthEndStr);
+
+  if (!monthlyCompleted) {
+    hasReviewAlert = true;
+    const alert = el('div', 'dashboard-discipline-alert');
+    alert.style.background = 'rgba(168, 85, 247, 0.06)';
+    alert.style.border = '1px solid var(--purple)';
+    alert.style.borderRadius = 'var(--radius-md)';
+    alert.style.padding = 'var(--space-3) var(--space-4)';
+    alert.style.display = 'flex';
+    alert.style.alignItems = 'center';
+    alert.style.justifyContent = 'space-between';
+    alert.style.gap = 'var(--space-3)';
+    alert.style.animation = 'fadeIn 0.3s ease';
+
+    const left = el('div', '');
+    left.style.display = 'flex';
+    left.style.alignItems = 'center';
+    left.style.gap = 'var(--space-3)';
+    left.appendChild(el('span', '', '📆'));
+    
+    const textWrap = el('div', '');
+    const title = el('h4', '', 'Monthly Review Pending');
+    title.style.color = 'var(--purple)';
+    title.style.margin = '0';
+    title.style.fontSize = '13px';
+    title.style.fontWeight = '800';
+    textWrap.appendChild(title);
+
+    const desc = el('p', '', `Your Monthly review for the previous month is due. Analyze your setups and earn +30 XP!`);
+    desc.style.margin = 'var(--space-1) 0 0 0';
+    desc.style.fontSize = '12px';
+    desc.style.color = 'var(--text-muted)';
+    textWrap.appendChild(desc);
+    left.appendChild(textWrap);
+    alert.appendChild(left);
+
+    const actionBtn = el('button', 'btn btn-sm btn-secondary', 'Review Now');
+    actionBtn.addEventListener('click', () => {
+      storage.set('active_review_tab', 'monthly');
+      router.navigate('#review');
+    });
+    alert.appendChild(actionBtn);
+    reviewAlertsContainer.appendChild(alert);
+  }
+
+  // 3. Check Quarterly Review
+  const currentQuarter = Math.floor(now.getMonth() / 3);
+  let prevQuarter = currentQuarter - 1;
+  let prevQuarterYear = now.getFullYear();
+  if (prevQuarter < 0) {
+    prevQuarter = 3;
+    prevQuarterYear--;
+  }
+  const lastQuarterStart = new Date(prevQuarterYear, prevQuarter * 3, 1);
+  const lastQuarterEnd = new Date(prevQuarterYear, (prevQuarter + 1) * 3, 0);
+  const lastQuarterStartStr = lastQuarterStart.toISOString().slice(0, 10);
+  const lastQuarterEndStr = lastQuarterEnd.toISOString().slice(0, 10);
+  const quarterlyCompleted = reviews.some(r => r.type === 'quarterly' && r.startDate <= lastQuarterStartStr && r.endDate >= lastQuarterEndStr);
+
+  if (!quarterlyCompleted) {
+    hasReviewAlert = true;
+    const alert = el('div', 'dashboard-discipline-alert');
+    alert.style.background = 'rgba(236, 72, 153, 0.06)';
+    alert.style.border = '1px solid #ec4899';
+    alert.style.borderRadius = 'var(--radius-md)';
+    alert.style.padding = 'var(--space-3) var(--space-4)';
+    alert.style.display = 'flex';
+    alert.style.alignItems = 'center';
+    alert.style.justifyContent = 'space-between';
+    alert.style.gap = 'var(--space-3)';
+    alert.style.animation = 'fadeIn 0.3s ease';
+
+    const left = el('div', '');
+    left.style.display = 'flex';
+    left.style.alignItems = 'center';
+    left.style.gap = 'var(--space-3)';
+    left.appendChild(el('span', '', '📊'));
+    
+    const textWrap = el('div', '');
+    const title = el('h4', '', 'Quarterly Review Pending');
+    title.style.color = '#ec4899';
+    title.style.margin = '0';
+    title.style.fontSize = '13px';
+    title.style.fontWeight = '800';
+    textWrap.appendChild(title);
+
+    const desc = el('p', '', `Your Quarterly review is due. Reflect on your strategy and mindset evolution (+30 XP)!`);
+    desc.style.margin = 'var(--space-1) 0 0 0';
+    desc.style.fontSize = '12px';
+    desc.style.color = 'var(--text-muted)';
+    textWrap.appendChild(desc);
+    left.appendChild(textWrap);
+    alert.appendChild(left);
+
+    const actionBtn = el('button', 'btn btn-sm btn-secondary', 'Review Now');
+    actionBtn.addEventListener('click', () => {
+      storage.set('active_review_tab', 'quarterly');
+      router.navigate('#review');
+    });
+    alert.appendChild(actionBtn);
+    reviewAlertsContainer.appendChild(alert);
+  }
+
+  if (hasReviewAlert) {
+    container.appendChild(reviewAlertsContainer);
+  }
+
   /* ---- Live stats grid ---- */
   const habits = getHabits();
   const _todayKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();

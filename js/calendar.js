@@ -75,6 +75,7 @@ export function renderCalendarPage(container) {
     const lessons = getLessons();
     const habits = getHabits();
     const dailyGrades = storage.get('daily_grades', {});
+    const reviews = storage.get('reviews', []) || [];
 
     for (let i = 0; i < firstDayIndex; i++) {
       daysGrid.appendChild(el('div', 'calendar-day calendar-day--empty'));
@@ -144,6 +145,18 @@ export function renderCalendarPage(container) {
         indicators.appendChild(lsIndicator);
       }
 
+      const dayReviews = reviews.filter(r => {
+        const rd = (r.createdAt || '').slice(0, 10);
+        return rd === dateKey;
+      });
+
+      if (dayReviews.length > 0) {
+        const revIndicator = el('span', 'calendar-day-indicator calendar-day-indicator--review');
+        const types = dayReviews.map(r => r.type === 'weekly' ? 'W' : r.type === 'monthly' ? 'M' : 'Q').join('/');
+        revIndicator.textContent = `📝 Review (${types})`;
+        indicators.appendChild(revIndicator);
+      }
+
       const pomoCount = 0;
 
       dayCell.appendChild(indicators);
@@ -155,7 +168,7 @@ export function renderCalendarPage(container) {
 
       dayCell.classList.add('calendar-day--active');
       dayCell.addEventListener('click', () => {
-        openDayPopover(dateKey, dayTrades, checkedHabits, frozenHabits, dayLessons, pomoCount, grade);
+        openDayPopover(dateKey, dayTrades, checkedHabits, frozenHabits, dayLessons, pomoCount, grade, dayReviews);
       });
 
       daysGrid.appendChild(dayCell);
@@ -165,7 +178,7 @@ export function renderCalendarPage(container) {
   updateCalendar();
 }
 
-function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount = 0, grade = null) {
+function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount = 0, grade = null, dayReviews = []) {
 
   const existing = document.getElementById('calendar-popover');
   if (existing) existing.remove();
@@ -273,6 +286,33 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
     container.appendChild(pomoSection);
   }
 
+  if (dayReviews.length > 0) {
+    const section = el('div', 'popover-section');
+    section.style.marginTop = 'var(--space-4)';
+    section.appendChild(el('h3', 'popover-section-title', '📊 Completed Reflections'));
+    const list = el('div', 'popover-list');
+    dayReviews.forEach(r => {
+      const item = el('div', 'popover-list-item');
+      item.style.display = 'flex';
+      item.style.justifyContent = 'space-between';
+      item.style.alignItems = 'center';
+      
+      const details = el('span', 'popover-item-details');
+      const typeName = r.type.charAt(0).toUpperCase() + r.type.slice(1);
+      details.appendChild(el('strong', '', `📝 ${typeName} Review`));
+      details.appendChild(el('span', 'text-muted', ` | Range: ${r.startDate} to ${r.endDate}`));
+      item.appendChild(details);
+
+      if (r.rating) {
+        const stars = el('span', 'review-history-stars', '⭐'.repeat(r.rating));
+        item.appendChild(stars);
+      }
+      list.appendChild(item);
+    });
+    section.appendChild(list);
+    container.appendChild(section);
+  }
+
   // grade selection
   const gradeSection = el('div', 'popover-section');
   gradeSection.style.marginTop = 'var(--space-4)';
@@ -310,11 +350,10 @@ function openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, p
 
       const renderWrapper = document.getElementById('page-calendar');
       if (renderWrapper) {
-
         renderCalendarPage(renderWrapper);
       }
 
-      openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount, g === 'None' ? null : g);
+      openDayPopover(dateKey, trades, checkedHabits, frozenHabits, lessons, pomoCount, g === 'None' ? null : g, dayReviews);
     });
     gradeSelectRow.appendChild(btn);
   });

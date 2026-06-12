@@ -205,7 +205,9 @@ export function renderReviewPage(container) {
     bodyContainer.replaceChildren();
 
     // Period tabs
-    let activeTab = 'weekly';
+    const targetTab = storage.get('active_review_tab', 'weekly');
+    storage.delete('active_review_tab');
+    let activeTab = targetTab;
     const tabBar = el('div', 'review-tab-bar');
 
     const tabs = [
@@ -230,17 +232,124 @@ export function renderReviewPage(container) {
       tabBar.appendChild(btn);
     });
 
-    tabButtons['weekly'].classList.add('review-tab-btn--active');
+    tabButtons[targetTab].classList.add('review-tab-btn--active');
     bodyContainer.appendChild(tabBar);
     bodyContainer.appendChild(contentArea);
 
-    renderReviewContent(contentArea, 'weekly');
+    renderReviewContent(contentArea, targetTab);
 
     // Past Reviews Section
     const historySection = el('div', 'review-history-section');
     historySection.appendChild(el('h2', 'review-section-title', '📂 Past Reviews'));
     renderReviewHistory(historySection);
     bodyContainer.appendChild(historySection);
+
+    // Reminder Settings Section
+    const settingsSection = el('div', 'review-settings-section glass-card');
+    settingsSection.style.marginTop = 'var(--space-6)';
+    settingsSection.style.padding = 'var(--space-5)';
+    
+    const settingsTitle = el('h3', 'review-form-title', '🔔 Review Reminder Settings');
+    settingsTitle.style.margin = '0 0 var(--space-1) 0';
+    settingsSection.appendChild(settingsTitle);
+    
+    const settingsDesc = el('p', '', 'Configure weekly, monthly, and quarterly native push notifications to maintain your review discipline.');
+    settingsDesc.style.fontSize = 'var(--text-xs)';
+    settingsDesc.style.color = 'var(--text-muted)';
+    settingsDesc.style.margin = '0 0 var(--space-4) 0';
+    settingsSection.appendChild(settingsDesc);
+
+    const settingsGrid = el('div', 'review-settings-grid');
+    settingsGrid.style.display = 'flex';
+    settingsGrid.style.flexDirection = 'column';
+    settingsGrid.style.gap = 'var(--space-3)';
+
+    const reminderTypes = [
+      { id: 'weekly', label: 'Weekly Review', defaultTime: '18:00', defaultEnabled: true, desc: 'Every Sunday at the specified time' },
+      { id: 'monthly', label: 'Monthly Review', defaultTime: '09:00', defaultEnabled: true, desc: '1st of the month at the specified time' },
+      { id: 'quarterly', label: 'Quarterly Review', defaultTime: '10:00', defaultEnabled: true, desc: '1st day of the quarter at the specified time' },
+    ];
+
+    reminderTypes.forEach(rt => {
+      const enabledKey = `review_${rt.id}_reminder_enabled`;
+      const timeKey = `review_${rt.id}_reminder_time`;
+      
+      const isEnabled = storage.get(enabledKey, rt.defaultEnabled);
+      const timeVal = storage.get(timeKey, rt.defaultTime);
+
+      const row = el('div', 'review-setting-row');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.justifyContent = 'space-between';
+      row.style.padding = 'var(--space-2) var(--space-3)';
+      row.style.background = 'rgba(255, 255, 255, 0.01)';
+      row.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+      row.style.borderRadius = 'var(--radius-md)';
+
+      const infoCol = el('div', '');
+      const rowLabel = el('strong', '', rt.label);
+      rowLabel.style.fontSize = 'var(--text-sm)';
+      infoCol.appendChild(rowLabel);
+      
+      const rowDesc = el('div', '', rt.desc);
+      rowDesc.style.fontSize = '10px';
+      rowDesc.style.color = 'var(--text-muted)';
+      infoCol.appendChild(rowDesc);
+      row.appendChild(infoCol);
+
+      const controls = el('div', '');
+      controls.style.display = 'flex';
+      controls.style.alignItems = 'center';
+      controls.style.gap = 'var(--space-3)';
+
+      // Time Input
+      const timeInput = document.createElement('input');
+      timeInput.type = 'time';
+      timeInput.className = 'form-input';
+      timeInput.style.padding = '0.2rem 0.4rem';
+      timeInput.style.fontSize = '12px';
+      timeInput.style.width = '100px';
+      timeInput.style.background = 'rgba(0,0,0,0.2)';
+      timeInput.style.border = '1px solid rgba(255,255,255,0.1)';
+      timeInput.style.borderRadius = 'var(--radius-sm)';
+      timeInput.style.color = '#fff';
+      timeInput.value = timeVal;
+      timeInput.disabled = !isEnabled;
+      controls.appendChild(timeInput);
+
+      // Toggle Switch
+      const toggle = el('button', `btn btn-sm ${isEnabled ? 'btn-secondary' : 'btn-outline'}`);
+      toggle.textContent = isEnabled ? 'Enabled' : 'Disabled';
+      toggle.addEventListener('click', async () => {
+        const currentEnabled = storage.get(enabledKey, rt.defaultEnabled);
+        const newEnabled = !currentEnabled;
+        storage.set(enabledKey, newEnabled);
+        
+        toggle.textContent = newEnabled ? 'Enabled' : 'Disabled';
+        toggle.className = `btn btn-sm ${newEnabled ? 'btn-secondary' : 'btn-outline'}`;
+        timeInput.disabled = !newEnabled;
+        
+        // reschedule
+        import('./native-bridge.js').then(async (nb) => {
+          await nb.scheduleReviewReminders();
+        });
+      });
+      controls.appendChild(toggle);
+
+      timeInput.addEventListener('change', () => {
+        storage.set(timeKey, timeInput.value);
+        // reschedule
+        import('./native-bridge.js').then(async (nb) => {
+          await nb.scheduleReviewReminders();
+        });
+      });
+
+      row.appendChild(controls);
+      settingsGrid.appendChild(row);
+    });
+
+    settingsSection.appendChild(settingsGrid);
+    bodyContainer.appendChild(settingsSection);
   };
 
   const renderStrategyLabView = () => {

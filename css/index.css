@@ -1577,6 +1577,11 @@ body, .sidebar, .main-content, .card, .stat-card, .dash-card, .nav-item,
   color: var(--cyan);
 }
 
+.calendar-day-indicator--review {
+  background: rgba(236, 72, 153, 0.08);
+  color: #ec4899;
+}
+
 /* Day states */
 .calendar-day--today {
   border-color: var(--cyan) !important;

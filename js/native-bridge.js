@@ -320,6 +320,166 @@ export async function cancelNotification(id) {
 }
 
 /**
+ * Schedules Weekly, Monthly, and Quarterly performance reviews notifications.
+ */
+export async function scheduleReviewReminders() {
+  if (!isNative()) {
+    console.log('[NativeBridge] Web Fallback: Mock scheduling review reminders');
+    return;
+  }
+  try {
+    const LocalNotifications = window.Capacitor?.Plugins?.LocalNotifications;
+    if (!LocalNotifications) return;
+
+    // 1. Weekly Reminder (ID: 2001)
+    const weeklyEnabled = storage.get('review_weekly_reminder_enabled', true);
+    if (weeklyEnabled) {
+      const timeStr = storage.get('review_weekly_reminder_time', '18:00');
+      const [h, m] = timeStr.split(':').map(Number);
+      
+      const fireAt = new Date();
+      const currentDay = fireAt.getDay(); // 0 is Sunday, 1 is Monday...
+      let daysToAdd = (0 - currentDay + 7) % 7; // Sunday is 0
+      fireAt.setHours(h !== undefined && !isNaN(h) ? h : 18, m !== undefined && !isNaN(m) ? m : 0, 0, 0);
+      if (daysToAdd === 0 && fireAt < new Date()) {
+        daysToAdd = 7;
+      }
+      fireAt.setDate(fireAt.getDate() + daysToAdd);
+
+      // Cancel existing if scheduled
+      const pending = await LocalNotifications.getPending();
+      const existing = pending.notifications.filter(n => n.id === 2001);
+      if (existing.length) {
+        await LocalNotifications.cancel({ notifications: existing });
+      }
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 2001,
+            title: '🪖 Weekly Performance Review',
+            body: 'Stop escaping! Weekly reflection is due now. Open the app, review your leaks, and face the data. No excuses!',
+            schedule: {
+              at: fireAt,
+              repeats: true,
+              every: 'week',
+            },
+            sound: 'default',
+            smallIcon: 'ic_stat_icon_config_sample',
+            iconColor: '#00d4ff',
+          }
+        ]
+      });
+      console.log(`[NativeBridge] Scheduled Weekly review reminder for ${fireAt.toString()}`);
+    } else {
+      await cancelNotification(2001);
+    }
+
+    // 2. Monthly Reminder (ID: 2002)
+    const monthlyEnabled = storage.get('review_monthly_reminder_enabled', true);
+    if (monthlyEnabled) {
+      const timeStr = storage.get('review_monthly_reminder_time', '09:00');
+      const [h, m] = timeStr.split(':').map(Number);
+
+      const fireAt = new Date();
+      fireAt.setDate(1); // Set to 1st
+      fireAt.setHours(h !== undefined && !isNaN(h) ? h : 9, m !== undefined && !isNaN(m) ? m : 0, 0, 0);
+      if (fireAt < new Date()) {
+        fireAt.setMonth(fireAt.getMonth() + 1);
+      }
+
+      // Cancel existing
+      const pending = await LocalNotifications.getPending();
+      const existing = pending.notifications.filter(n => n.id === 2002);
+      if (existing.length) {
+        await LocalNotifications.cancel({ notifications: existing });
+      }
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 2002,
+            title: '📆 Monthly Trading Audit',
+            body: 'A month of trading has passed. Are you actually getting better, or just repeating mistakes? Audit your setups now!',
+            schedule: {
+              at: fireAt,
+              repeats: true,
+              every: 'month',
+            },
+            sound: 'default',
+            smallIcon: 'ic_stat_icon_config_sample',
+            iconColor: '#00d4ff',
+          }
+        ]
+      });
+      console.log(`[NativeBridge] Scheduled Monthly review reminder for ${fireAt.toString()}`);
+    } else {
+      await cancelNotification(2002);
+    }
+
+    // 3. Quarterly Reminder (ID: 2003)
+    const quarterlyEnabled = storage.get('review_quarterly_reminder_enabled', true);
+    if (quarterlyEnabled) {
+      const timeStr = storage.get('review_quarterly_reminder_time', '10:00');
+      const [h, m] = timeStr.split(':').map(Number);
+
+      const fireAt = new Date();
+      const currentMonth = fireAt.getMonth();
+      let targetMonth;
+      if (currentMonth < 3) {
+        targetMonth = 3;
+      } else if (currentMonth < 6) {
+        targetMonth = 6;
+      } else if (currentMonth < 9) {
+        targetMonth = 9;
+      } else {
+        targetMonth = 0;
+      }
+
+      fireAt.setMonth(targetMonth);
+      fireAt.setDate(1);
+      fireAt.setHours(h !== undefined && !isNaN(h) ? h : 10, m !== undefined && !isNaN(m) ? m : 0, 0, 0);
+      if (targetMonth === 0 && currentMonth >= 9) {
+        fireAt.setFullYear(fireAt.getFullYear() + 1);
+      }
+      if (fireAt < new Date()) {
+        fireAt.setMonth(fireAt.getMonth() + 3);
+      }
+
+      // Cancel existing
+      const pending = await LocalNotifications.getPending();
+      const existing = pending.notifications.filter(n => n.id === 2003);
+      if (existing.length) {
+        await LocalNotifications.cancel({ notifications: existing });
+      }
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 2003,
+            title: '📊 Quarterly Strategy Alignment',
+            body: 'Time to audit the macro strategy. Look at your progress, refine your setups, and level up. DO IT NOW!',
+            schedule: {
+              at: fireAt,
+              repeats: false, // scheduled once, will reschedule when app opens next quarter
+            },
+            sound: 'default',
+            smallIcon: 'ic_stat_icon_config_sample',
+            iconColor: '#00d4ff',
+          }
+        ]
+      });
+      console.log(`[NativeBridge] Scheduled Quarterly review reminder for ${fireAt.toString()}`);
+    } else {
+      await cancelNotification(2003);
+    }
+
+  } catch (err) {
+    console.warn('[NativeBridge] scheduleReviewReminders error:', err);
+  }
+}
+
+/**
  * One-shot initialiser — call this once when the app mounts (in app.js).
  * Handles all native bootstrapping: status bar, splash screen, notifications.
  */
@@ -361,6 +521,8 @@ export async function initNative() {
         m !== undefined && !isNaN(m) ? m : 0
       );
     }
+    // Schedule the review reminders
+    await scheduleReviewReminders();
   }
 
   console.log('[NativeBridge] Native init complete');
