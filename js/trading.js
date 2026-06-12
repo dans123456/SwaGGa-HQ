@@ -345,6 +345,11 @@ function parseDrawdownLimit(limitStr) {
   if (cashMatch) {
     const val = parseFloat(cashMatch[1]);
     if (!isNaN(val)) {
+      // If the user typed a small number like 1, 2, 5 (<= 20) without a dollar sign,
+      // treat it as a percentage (1%, 2%, 5%) as they likely forgot the % sign.
+      if (val <= 20 && !cleaned.includes('$')) {
+        return { type: 'percent', value: val };
+      }
       return { type: 'cash', value: val };
     }
   }
