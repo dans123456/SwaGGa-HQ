@@ -315,16 +315,27 @@ export function saveTrade(tradeData) {
     ...tradeData,
     setupQuality,
     riskPercent: Number(tradeData.riskPct) || 1.0,
-    pnl: tradeData.customPnL !== undefined && tradeData.customPnL !== '' && !isNaN(Number(tradeData.customPnL))
-      ? Number(tradeData.customPnL)
-      : calculatePnL(
+    pnl: (() => {
+      let val;
+      if (tradeData.customPnL !== undefined && tradeData.customPnL !== '' && !isNaN(Number(tradeData.customPnL))) {
+        val = Number(tradeData.customPnL);
+      } else {
+        val = calculatePnL(
           tradeData.entry,
           tradeData.exit,
           tradeData.size,
           tradeData.direction,
           tradeData.fees,
           tradeData.slippage,
-        ),
+        );
+      }
+      if (tradeData.outcome === 'loss') {
+        return -Math.abs(val);
+      } else if (tradeData.outcome === 'win') {
+        return Math.abs(val);
+      }
+      return val;
+    })(),
     rr: calculateRiskReward(tradeData.entry, tradeData.stop, tradeData.exit),
     createdAt: new Date().toISOString(),
   };
@@ -407,16 +418,27 @@ export function updateTrade(id, updatedData) {
       ...original,
       ...updatedData,
       riskPercent: Number(updatedData.riskPct) || 1.0,
-      pnl: updatedData.customPnL !== undefined && updatedData.customPnL !== '' && !isNaN(Number(updatedData.customPnL))
-        ? Number(updatedData.customPnL)
-        : calculatePnL(
+      pnl: (() => {
+        let val;
+        if (updatedData.customPnL !== undefined && updatedData.customPnL !== '' && !isNaN(Number(updatedData.customPnL))) {
+          val = Number(updatedData.customPnL);
+        } else {
+          val = calculatePnL(
             updatedData.entry,
             updatedData.exit,
             updatedData.size,
             updatedData.direction,
             updatedData.fees || 0,
             updatedData.slippage || 0
-          ),
+          );
+        }
+        if (updatedData.outcome === 'loss') {
+          return -Math.abs(val);
+        } else if (updatedData.outcome === 'win') {
+          return Math.abs(val);
+        }
+        return val;
+      })(),
       rr: calculateRiskReward(updatedData.entry, updatedData.stop, updatedData.exit),
       setupQuality: (() => {
         const confCount = Array.isArray(updatedData.confluences) ? updatedData.confluences.length : 0;
@@ -494,6 +516,54 @@ export function calculateStats(trades) {
     avgRR: parseFloat(avgRR.toFixed(2)),
     avgEdgeScore,
   };
+}
+
+export function updateEdgePreviewBadge(fieldset, badgeEl) {
+  const selectedConfs = Array.from(fieldset.querySelectorAll('input[name="confluences"]:checked')).map(cb => cb.value);
+  if (selectedConfs.length === 0) {
+    badgeEl.style.display = 'none';
+    return;
+  }
+  
+  const trades = getTrades();
+  const matchingTrades = trades.filter(t => 
+    Array.isArray(t.confluences) && selectedConfs.every(sc => t.confluences.includes(sc))
+  );
+  
+  badgeEl.style.display = 'block';
+  if (matchingTrades.length === 0) {
+    badgeEl.textContent = `⚡ Edge: No data (${matchingTrades.length} trades)`;
+    badgeEl.style.background = 'rgba(255, 255, 255, 0.04)';
+    badgeEl.style.color = 'var(--text-muted)';
+    badgeEl.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+    return;
+  }
+  
+  const wins = matchingTrades.filter(t => t.outcome === 'win' || (t.outcome !== 'loss' && Number(t.pnl) > 0));
+  const losses = matchingTrades.filter(t => t.outcome === 'loss' || (t.outcome !== 'win' && Number(t.pnl) < 0));
+  const winRate = wins.length / matchingTrades.length;
+  const avgWinR = wins.length > 0 ? wins.reduce((sum, t) => sum + (Number(t.rr) || 0), 0) / wins.length : 0;
+  const avgLossR = losses.length > 0 ? losses.reduce((sum, t) => sum + (Number(t.rr) || 1), 0) / losses.length : 1;
+  const expectancy = (winRate * avgWinR) - ((1 - winRate) * avgLossR);
+  
+  const formattedEdge = expectancy.toFixed(2);
+  
+  if (expectancy >= 1.0) {
+    badgeEl.textContent = `🔥 A+ Setup (Edge: +${formattedEdge}R | ${matchingTrades.length} trades)`;
+    badgeEl.style.background = 'rgba(57, 255, 20, 0.08)';
+    badgeEl.style.color = 'var(--neon-green)';
+    badgeEl.style.border = '1px solid rgba(57, 255, 20, 0.2)';
+  } else if (expectancy >= 0.2) {
+    badgeEl.textContent = `⚡ B Setup (Edge: +${formattedEdge}R | ${matchingTrades.length} trades)`;
+    badgeEl.style.background = 'rgba(245, 158, 11, 0.08)';
+    badgeEl.style.color = '#f59e0b';
+    badgeEl.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+  } else {
+    badgeEl.textContent = `⚠️ Avoid (Edge: ${formattedEdge}R | ${matchingTrades.length} trades)`;
+    badgeEl.style.background = 'rgba(255, 59, 59, 0.08)';
+    badgeEl.style.color = 'var(--neon-red)';
+    badgeEl.style.border = '1px solid rgba(255, 59, 59, 0.2)';
+  }
 }
 
 // --- DOM Builders (exclusively createElement + textContent for safety) ---
@@ -1372,13 +1442,28 @@ export function renderTradeForm(container, onSaved) {
   const confFieldset = el('fieldset', 'confluence-fieldset');
   const confLegend = el('legend', '', 'Confluences');
   confFieldset.appendChild(confLegend);
+
+  const edgePreviewBadge = el('div', 'edge-preview-badge');
+  edgePreviewBadge.style.display = 'none';
+  edgePreviewBadge.style.marginTop = 'var(--space-2)';
+  edgePreviewBadge.style.marginBottom = 'var(--space-3)';
+  edgePreviewBadge.style.padding = 'var(--space-2) var(--space-3)';
+  edgePreviewBadge.style.borderRadius = 'var(--radius-md)';
+  edgePreviewBadge.style.fontSize = 'var(--text-xs)';
+  edgePreviewBadge.style.fontWeight = '700';
+  edgePreviewBadge.style.width = 'fit-content';
+  confFieldset.appendChild(edgePreviewBadge);
+
   getEffectiveConfluenceOptions().forEach((c) => {
     const wrapper = el('label', 'form-check');
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.name = 'confluences';
     cb.value = c;
-    cb.addEventListener('change', () => nativeHaptic('light'));
+    cb.addEventListener('change', () => {
+      nativeHaptic('light');
+      updateEdgePreviewBadge(confFieldset, edgePreviewBadge);
+    });
     wrapper.appendChild(cb);
     const span = el('span', 'form-check-label', c);
     wrapper.appendChild(span);
@@ -1757,7 +1842,13 @@ export function renderTradeForm(container, onSaved) {
       manualLots,
       fees: 0,
       slippage: 0,
-      customPnL: customPnLVal !== '' && customPnLVal !== null ? Number(customPnLVal) : '',
+      customPnL: (() => {
+        if (customPnLVal === '' || customPnLVal === null) return '';
+        const val = Number(customPnLVal);
+        if (fd.get('outcome') === 'loss') return -Math.abs(val);
+        if (fd.get('outcome') === 'win') return Math.abs(val);
+        return val;
+      })(),
       date: fd.get('date') || new Date().toISOString().slice(0, 10),
       timeframe: fd.get('timeframe'),
       session: fd.get('session'),
@@ -2636,6 +2727,17 @@ export function openEditTradeModal(trade, onRefresh) {
 
   // ---- Confluences Checklist ----
   const confTitle = el('label', 'form-label', 'Confluences');
+  
+  const edgePreviewBadge = el('div', 'edge-preview-badge');
+  edgePreviewBadge.style.display = 'none';
+  edgePreviewBadge.style.marginTop = 'var(--space-1)';
+  edgePreviewBadge.style.marginBottom = 'var(--space-2)';
+  edgePreviewBadge.style.padding = 'var(--space-2) var(--space-3)';
+  edgePreviewBadge.style.borderRadius = 'var(--radius-md)';
+  edgePreviewBadge.style.fontSize = 'var(--text-xs)';
+  edgePreviewBadge.style.fontWeight = '700';
+  edgePreviewBadge.style.width = 'fit-content';
+
   const confContainer = el('div', 'confluences-checklist-container');
   confContainer.style.maxHeight = '140px';
   confContainer.style.overflowY = 'auto';
@@ -2662,6 +2764,9 @@ export function openEditTradeModal(trade, onRefresh) {
     chk.name = 'confluences';
     chk.value = optText;
     chk.checked = isChecked;
+    chk.addEventListener('change', () => {
+      updateEdgePreviewBadge(confWrapper, edgePreviewBadge);
+    });
 
     labelEl.appendChild(chk);
     labelEl.appendChild(document.createTextNode(optText));
@@ -2670,8 +2775,12 @@ export function openEditTradeModal(trade, onRefresh) {
   
   const confWrapper = el('div', '');
   confWrapper.appendChild(confTitle);
+  confWrapper.appendChild(edgePreviewBadge);
   confWrapper.appendChild(confContainer);
   form.appendChild(confWrapper);
+
+  // Trigger initial calculation if confluences are checked
+  updateEdgePreviewBadge(confWrapper, edgePreviewBadge);
 
   // ---- Notes ----
   const notesArea = document.createElement('textarea');
@@ -2821,7 +2930,13 @@ export function openEditTradeModal(trade, onRefresh) {
       size,
       sizingMode,
       manualLots,
-      customPnL: customPnLVal !== '' ? Number(customPnLVal) : '',
+      customPnL: (() => {
+        if (customPnLVal === '') return '';
+        const val = Number(customPnLVal);
+        if (outcome === 'loss') return -Math.abs(val);
+        if (outcome === 'win') return Math.abs(val);
+        return val;
+      })(),
       date: dateInput.value,
       timeframe: tfSelect.value,
       session: sessionSelect.value,

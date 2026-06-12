@@ -1853,7 +1853,23 @@ const ACHIEVEMENTS = [
     }
     return maxStreak >= 5;
   }},
-  { id: 'mindset-master', emoji: '🧘', name: 'Mindset Master', desc: 'Complete 10 focus or breathing sessions', check: () => storage.get('mindset_sessions_completed', 0) >= 10 }
+  { id: 'mindset-master', emoji: '🧘', name: 'Mindset Master', desc: 'Complete 10 focus or breathing sessions', check: () => storage.get('mindset_sessions_completed', 0) >= 10 },
+  { id: 'clean-trader', emoji: '🧘', name: 'Clean Trader', desc: 'Log 10 consecutive trades without a psychological mistake', check: () => {
+    const trades = getTrades();
+    if (trades.length < 10) return false;
+    const sorted = [...trades].sort((a,b) => new Date(a.date) - new Date(b.date));
+    let run = 0;
+    for (const t of sorted) {
+      const hasMistake = t.mistake && t.mistake !== '' && t.mistake !== 'none';
+      if (!hasMistake) {
+        run++;
+        if (run >= 10) return true;
+      } else {
+        run = 0;
+      }
+    }
+    return false;
+  }}
 ];
 
 function renderAchievementBadges(container, trades, tradeStats, lessons, habits) {

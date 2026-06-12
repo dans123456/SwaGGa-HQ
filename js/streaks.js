@@ -1046,6 +1046,13 @@ export const ACHIEVEMENT_DEFS = {
     desc: 'Log 3 losses with a psychological mistake tagged',
     emoji: '🧠',
     xpReward: 100,
+  },
+  clean_trader: {
+    id: 'clean_trader',
+    name: 'Clean Trader',
+    desc: 'Log 10 consecutive trades without any psychological mistakes',
+    emoji: '🧘',
+    xpReward: 200,
   }
 };
 
@@ -1151,6 +1158,23 @@ export function checkAndUnlockAchievements(triggerType) {
         const lossesWithMistakes = sorted.filter(t => t.outcome === 'loss' && t.mistake && t.mistake !== '').length;
         if (lossesWithMistakes >= 3) {
           unlock('psychology_shield');
+        }
+      }
+
+      // Check "Clean Trader" (10 consecutive trades without any psychological mistakes)
+      if (!unlocked.clean_trader) {
+        let cleanStreak = 0;
+        for (const t of sorted) {
+          const hasMistake = t.mistake && t.mistake !== '' && t.mistake !== 'none';
+          if (!hasMistake) {
+            cleanStreak++;
+            if (cleanStreak >= 10) {
+              unlock('clean_trader');
+              break;
+            }
+          } else {
+            cleanStreak = 0;
+          }
         }
       }
     });

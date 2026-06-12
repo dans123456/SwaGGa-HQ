@@ -510,3 +510,149 @@ export function createSessionPerformanceChart(canvasId, trades) {
     },
   });
 }
+
+export function createSetupWinRateChart(canvasId, labels, winRates, tradeCounts) {
+  const ctx = getCtx(canvasId);
+  if (!ctx) return null;
+
+  const bgColors = winRates.map(wr => {
+    if (wr >= 60) return 'rgba(57, 255, 20, 0.7)';
+    if (wr >= 40) return 'rgba(255, 200, 0, 0.7)';
+    return 'rgba(255, 59, 59, 0.6)';
+  });
+
+  return createTrackedChart(canvasId, ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Win Rate (%)',
+        data: winRates,
+        backgroundColor: bgColors,
+        borderRadius: 4,
+        barPercentage: 0.75,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        ...darkPluginOptions('Win Rate by Setup'),
+        tooltip: {
+          ...darkPluginOptions().tooltip,
+          callbacks: {
+            label: (context) => {
+              const idx = context.dataIndex;
+              return `Win Rate: ${winRates[idx]}% (${tradeCounts[idx]} trades)`;
+            },
+          },
+        },
+      },
+      scales: {
+        ...darkScaleOptions(true),
+        x: {
+          ...darkScaleOptions(true).x,
+          beginAtZero: true,
+          max: 100,
+          ticks: { ...darkScaleOptions(true).x.ticks, callback: v => v + '%' },
+        },
+        y: {
+          ...darkScaleOptions(true).y,
+          ticks: { ...darkScaleOptions(true).y.ticks, font: { size: 11 } },
+        },
+      },
+    },
+  });
+}
+
+export function createEvolutionChart(canvasId, labels, winRates, rrs, expectancies, mistakeRates) {
+  const ctx = getCtx(canvasId);
+  if (!ctx) return null;
+
+  return createTrackedChart(canvasId, ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Win Rate (%)',
+          data: winRates,
+          borderColor: COLORS.green,
+          backgroundColor: 'rgba(57, 255, 20, 0.05)',
+          yAxisID: 'yPercent',
+          tension: 0.3,
+          pointRadius: 4,
+        },
+        {
+          label: 'Mistake Rate (%)',
+          data: mistakeRates,
+          borderColor: COLORS.red,
+          backgroundColor: 'rgba(255, 59, 59, 0.05)',
+          yAxisID: 'yPercent',
+          tension: 0.3,
+          pointRadius: 4,
+        },
+        {
+          label: 'Avg R:R (R)',
+          data: rrs,
+          borderColor: COLORS.purple,
+          backgroundColor: 'rgba(180, 77, 255, 0.05)',
+          yAxisID: 'yRValue',
+          tension: 0.3,
+          pointRadius: 4,
+        },
+        {
+          label: 'Expectancy (R)',
+          data: expectancies,
+          borderColor: COLORS.cyan,
+          backgroundColor: 'rgba(0, 229, 255, 0.05)',
+          yAxisID: 'yRValue',
+          tension: 0.3,
+          pointRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: darkPluginOptions('Strategy Evolution Timeline'),
+      scales: {
+        x: {
+          ticks: { color: COLORS.text },
+          grid: { color: COLORS.gridLine },
+        },
+        yPercent: {
+          type: 'linear',
+          position: 'left',
+          min: 0,
+          max: 100,
+          ticks: {
+            color: COLORS.text,
+            callback: v => v + '%',
+          },
+          grid: { color: COLORS.gridLine },
+          title: {
+            display: true,
+            text: 'Percentage',
+            color: COLORS.text,
+          }
+        },
+        yRValue: {
+          type: 'linear',
+          position: 'right',
+          ticks: {
+            color: COLORS.text,
+            callback: v => v + 'R',
+          },
+          grid: { drawOnChartArea: false },
+          title: {
+            display: true,
+            text: 'R-Value',
+            color: COLORS.text,
+          }
+        }
+      }
+    }
+  });
+}

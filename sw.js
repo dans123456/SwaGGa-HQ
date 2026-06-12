@@ -4,7 +4,7 @@
  * Strategy: Cache-first for static assets, network-first for dynamic.
  */
 
-const CACHE_NAME = 'swagga-hq-v93';
+const CACHE_NAME = 'swagga-hq-v95';
 
 // Core files to cache on install
 const CORE_ASSETS = [
@@ -119,22 +119,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Local assets — cache first, network fallback
+  // Local assets — network first, cache fallback
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        // Return cached, but also update the cache in the background
-        fetch(event.request).then((response) => {
-          if (response.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, response);
-            });
-          }
-        }).catch(() => { /* offline, no update */ });
-        return cached;
-      }
-      // Not cached — fetch and cache
-      return fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         if (response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -142,7 +130,9 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return response;
-      });
-    })
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
   );
 });
