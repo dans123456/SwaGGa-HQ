@@ -18,7 +18,8 @@
   flex-direction: column;
   z-index: var(--z-sticky);
   transition: transform var(--transition-base), width var(--transition-base);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Subtle gradient overlay on sidebar */
@@ -411,6 +412,8 @@
     width: 280px;
     z-index: var(--z-overlay);
     box-shadow: var(--shadow-xl);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .sidebar.open {
@@ -434,6 +437,28 @@
     margin-left: 0;
     padding: var(--space-4);
     padding-top: 72px;
+  }
+
+  /* Theme color switcher — full width on mobile */
+  .theme-switch-label {
+    white-space: nowrap;
+  }
+
+  .theme-switch-btn,
+  .audio-mute-btn {
+    width: calc(100% - var(--space-6)) !important;
+    margin-left: var(--space-3) !important;
+    margin-right: var(--space-3) !important;
+    overflow: visible !important;
+    white-space: nowrap;
+  }
+
+  /* Sync buttons full width */
+  .sidebar-sync__sync-btn,
+  .sidebar-sync__signout,
+  .sidebar-sync__btn {
+    white-space: nowrap;
+    overflow: visible;
   }
 }
 
