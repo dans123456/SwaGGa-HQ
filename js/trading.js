@@ -126,9 +126,59 @@ let _pendingChartSymbol = null;
 
 // --- Data Layer ---
 
-// Gets all trades saved in storage
+// Gets all trades saved in storage and runs sign self-correction migrations
+function runMigrations(allTrades) {
+  let changed = false;
+  const migrated = allTrades.map(t => {
+    let pnlVal = Number(t.pnl);
+    if (isNaN(pnlVal)) return t;
+
+    let newPnl = pnlVal;
+    let newCustomPnl = t.customPnL;
+
+    if (t.outcome === 'loss') {
+      if (pnlVal > 0) {
+        newPnl = -pnlVal;
+        changed = true;
+      }
+      if (t.customPnL !== undefined && t.customPnL !== '' && t.customPnL !== null && Number(t.customPnL) > 0) {
+        newCustomPnl = -Number(t.customPnL);
+        changed = true;
+      }
+    } else if (t.outcome === 'win') {
+      if (pnlVal < 0) {
+        newPnl = Math.abs(pnlVal);
+        changed = true;
+      }
+      if (t.customPnL !== undefined && t.customPnL !== '' && t.customPnL !== null && Number(t.customPnL) < 0) {
+        newCustomPnl = Math.abs(Number(t.customPnL));
+        changed = true;
+      }
+    }
+
+    if (newPnl !== pnlVal || newCustomPnl !== t.customPnL) {
+      return {
+        ...t,
+        pnl: newPnl,
+        customPnL: newCustomPnl
+      };
+    }
+    return t;
+  });
+
+  if (changed) {
+    storage.set(STORAGE_KEY, migrated);
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    }).catch(() => {});
+    return migrated;
+  }
+  return allTrades;
+}
+
 export function getTrades(includeSimulated = false) {
-  const allTrades = storage.get(STORAGE_KEY, []);
+  let allTrades = storage.get(STORAGE_KEY, []);
+  allTrades = runMigrations(allTrades);
   if (includeSimulated) return allTrades;
   return allTrades.filter(t => !t.simulated);
 }
