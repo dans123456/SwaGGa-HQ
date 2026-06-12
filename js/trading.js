@@ -667,17 +667,20 @@ function renderStatsBar(container, stats) {
     { label: 'Win Rate', value: `${stats.winRate}%`, icon: '🎯' },
     { label: 'Total P&L', value: formatCurrency(stats.totalPnL), icon: '💰' },
     { label: 'Avg R:R', value: `${stats.avgRR}R`, icon: '⚖️' },
-    { label: 'EdgeScore 🛡️', value: scoreDisplay, icon: '🛡️' },
+    { label: 'EdgeScore', value: scoreDisplay, icon: '🛡️' },
   ];
 
   items.forEach(({ label, value, icon }) => {
     const card = el('div', 'stat-card');
     const iconSpan = el('span', 'stat-icon', icon);
+    const infoDiv = el('div', 'stat-info');
     const labelSpan = el('span', 'stat-label', label);
     const valueSpan = el('span', 'stat-value', value);
+    
+    infoDiv.appendChild(labelSpan);
+    infoDiv.appendChild(valueSpan);
     card.appendChild(iconSpan);
-    card.appendChild(labelSpan);
-    card.appendChild(valueSpan);
+    card.appendChild(infoDiv);
     bar.appendChild(card);
   });
 
