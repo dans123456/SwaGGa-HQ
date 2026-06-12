@@ -437,6 +437,8 @@
     margin-left: 0;
     padding: var(--space-4);
     padding-top: 72px;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   /* Theme color switcher — full width on mobile */
