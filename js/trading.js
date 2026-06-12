@@ -2651,7 +2651,7 @@ export function openEditTradeModal(trade, onRefresh) {
   const outcomeSelect = document.createElement('select');
   outcomeSelect.name = 'outcome';
   outcomeSelect.className = 'form-select';
-  ['win', 'loss', 'breakeven'].forEach(o => {
+  ['win', 'loss', 'break-even'].forEach(o => {
     const opt = el('option', '', o.toUpperCase());
     opt.value = o;
     if (o === trade.outcome) opt.selected = true;
