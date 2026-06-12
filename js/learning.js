@@ -2116,7 +2116,15 @@ const FLASHCARD_DATA = [
   { emoji: '🧊', concept: 'Liquidity Sweep', answer: 'A liquidity sweep occurs when price pushes past a swing point to trigger stop-losses, then reverses sharply. This is smart money collecting orders. The reversal after a sweep is a high-probability entry.' },
   { emoji: '📏', concept: 'Position Sizing (Ep 19)', answer: 'How to calculate lot size based on account balance, risk %, and stop loss distance. Professional traders always size their position so that hitting the stop loss results in losing exactly the risk percentage defined.' },
   { emoji: '🛑', concept: 'Drawdown Circuit Breaker (Ep 19)', answer: 'A maximum loss limit (e.g. 5% daily limit) that, when hit, immediately locks you out of trading for the day to prevent emotional revenge trading and protect capital.' },
-  { emoji: '📐', concept: 'Kelly Criterion (Ep 19)', answer: 'A mathematical formula [K% = W - ((1-W)/R)] that determines optimal trade size based on win rate (W) and Risk-to-Reward ratio (R) to maximize long-term account growth.' },
+  { emoji: '📊', concept: 'Kelly Criterion (Ep 19)', answer: 'A mathematical formula [K% = W - ((1-W)/R)] that determines optimal trade size based on win rate (W) and Risk-to-Reward ratio (R) to maximize long-term account growth.' },
+  { emoji: '🔁', concept: 'Flip Zones (Ep 14)', answer: 'A zone where supply fails and flips into demand, or demand fails and flips into supply, showing a clear transition of institutional order flow.' },
+  { emoji: '📼', concept: 'Tape Reading (Ep 15)', answer: 'Analyzing the time & sales logs and market depth (bid-ask) in real time to sense buying/selling momentum and predict breakouts.' },
+  { emoji: '🔺', concept: 'Power of Three / AMD (Ep 17)', answer: 'The institutional daily price cycle consisting of Accumulation during the Asian session, Manipulation during London Open, and Distribution in New York.' },
+  { emoji: '⚡', concept: 'Breaker Block (Ep 18)', answer: 'A failed order block that was broken during a liquidity sweep and has flipped into a key support or resistance POI for a re-entry.' },
+  { emoji: '🎯', concept: 'Dealing Range (Ep 20)', answer: 'The price boundary defined by a major swing high and swing low where institutional orders are engineered and run.' },
+  { emoji: '🧪', concept: 'Edge Backtesting (Ep 22)', answer: 'Testing a strategy against historical data across 100+ samples to validate the true win rate, average R:R, and statistical expectancy.' },
+  { emoji: '🛡️', concept: 'Discipline EdgeScore (Ep 23)', answer: 'A score (0-100%) calculated per trade based on how strictly you followed your checklist rules and stayed emotional-leakage free.' },
+  { emoji: '🧘', concept: 'Sanctuary Reset (Ep 24)', answer: 'Brad Goh\'s recommended 10-minute post-trading meditation session to reset the nervous system, release adrenaline, and prevent emotional revenge tendencies.' }
 ];
 
 function renderFlashcardMode() {
@@ -3133,6 +3141,86 @@ const FLASHCARD_TERMS = [
     concept: 'Discipline',
     title: 'Adhering to Rules',
     definition: 'Executing trades exactly according to rules, checklists, and position sizing models regardless of current emotions.',
+    emoji: '🧘'
+  },
+  {
+    id: 'tapereading',
+    category: 'smc',
+    concept: 'Tape Reading',
+    title: 'Velocity Analysis',
+    definition: 'Analyzing the time & sales logs and market depth (bid-ask) in real time to sense buying/selling momentum and predict breakouts.',
+    emoji: '📼'
+  },
+  {
+    id: 'amd',
+    category: 'smc',
+    concept: 'Power of Three',
+    title: 'AMD Strategy',
+    definition: 'The institutional daily cycle consisting of Accumulation during the Asian session, Manipulation during London Open, and Distribution in New York.',
+    emoji: '🔺'
+  },
+  {
+    id: 'breakerblock',
+    category: 'smc',
+    concept: 'Breaker Block',
+    title: 'Swept Order Block',
+    definition: 'A failed order block that was broken during a liquidity sweep and has flipped into a key support or resistance POI for a re-entry.',
+    emoji: '⚡'
+  },
+  {
+    id: 'positionsizing',
+    category: 'forex',
+    concept: 'Position Sizing',
+    title: 'Sizing Risk',
+    definition: 'Calculating the lot size based on stop loss distance and risk target to lose exactly the defined account balance percentage.',
+    emoji: '📏'
+  },
+  {
+    id: 'circuitbreaker',
+    category: 'psychology',
+    concept: 'Circuit Breaker',
+    title: 'Drawdown Circuit Breaker',
+    definition: 'A hard loss limit (e.g. 5% daily limit) that automatically triggers a cooldown lock, protecting your capital from emotional overtrading.',
+    emoji: '🛑'
+  },
+  {
+    id: 'kelly',
+    category: 'psychology',
+    concept: 'Kelly Criterion',
+    title: 'Optimal Sizing',
+    definition: 'A mathematical formula [K% = W - ((1-W)/R)] that determines the optimal trade size to maximize long-term geometric account growth.',
+    emoji: '📊'
+  },
+  {
+    id: 'dealingrange',
+    category: 'smc',
+    concept: 'Dealing Range',
+    title: 'Range Boundaries',
+    definition: 'The price boundary defined by a major swing high and swing low where institutional orders are engineered and run.',
+    emoji: '🎯'
+  },
+  {
+    id: 'backtesting',
+    category: 'forex',
+    concept: 'Edge Backtesting',
+    title: 'Edge Validation',
+    definition: 'Testing a strategy against historical data across 100+ samples to validate the true win rate, average R:R, and statistical expectancy.',
+    emoji: '🧪'
+  },
+  {
+    id: 'edgescore',
+    category: 'psychology',
+    concept: 'Discipline EdgeScore',
+    title: 'Checklist Compliance',
+    definition: 'A score (0-100%) calculated per trade based on how strictly you followed your checklist rules and stayed emotional-leakage free.',
+    emoji: '🛡️'
+  },
+  {
+    id: 'sanctuary',
+    category: 'psychology',
+    concept: 'Sanctuary Reset',
+    title: 'Meditation Sanctuary',
+    definition: 'Brad Goh\'s recommended 10-minute post-trading meditation session to reset the nervous system, release adrenaline, and prevent emotional revenge tendencies.',
     emoji: '🧘'
   }
 ];
