@@ -85,6 +85,10 @@ const QUIZ_BANK = [
   { concept: 'position-sizing', q: 'Position sizing determines:', choices: ['How many lots or units to trade based on balance and SL distance', 'Which direction the market will go next', 'When high-impact news releases occur', 'The maximum number of trades you can take in a day'], answer: 0 },
   { concept: 'drawdown-control', q: 'A drawdown circuit breaker should trigger when:', choices: ['Your daily loss reaches a predefined maximum limit', 'You lose three trades in a row', 'The market is in consolidation', 'High-impact news is released'], answer: 0 },
   { concept: 'kelly-criterion', q: 'The Kelly Criterion formula calculates:', choices: ['The optimal percentage of capital to risk based on win rate and R:R', 'The exact price level of an institutional Order Block', 'The daily drawdown lockout cooldown duration', 'The average win-to-loss ratio split'], answer: 0 },
+  { concept: 'mitigation', q: 'In SMC/ICT, what is "mitigation"?', choices: ['Price returning to an Order Block to close drawing-down positions at break-even', 'Setting a trailing stop loss to lock in profits', 'Diversifying your trading capital across multiple assets', 'A type of automated bot that executes trades'], answer: 0 },
+  { concept: 'mitigation-block', q: 'A Mitigation Block is best described as:', choices: ['A broken order block that did not sweep liquidity before a structural break', 'An indicator that overlays daily trading volume', 'A high-impact news event that stops market movement', 'A daily range high that is never revisited'], answer: 0 },
+  { concept: 'market-maker-model', q: 'What do MMBM and MMSM represent in Market Maker Models?', choices: ['Market Maker Buy Model and Market Maker Sell Model', 'Momentum Moving Average Buy and Sell Methods', 'Multi-Market Balance Model and Swing Margin', 'Margin Minimum Balance Multiplier'], answer: 0 },
+  { concept: 'premarket-routine', q: 'Why is a pre-market routine critical for professional trading?', choices: ['It establishes HTF bias, news filters, and rules to eliminate emotional errors', 'It guarantees that every trade taken will be profitable', 'It allows you to trade without any risk or stop losses', 'It automatically calculates commissions and spreads'], answer: 0 },
 ];
 
 const OPEN_ENDED_TEMPLATES = [
@@ -2124,7 +2128,15 @@ const FLASHCARD_DATA = [
   { emoji: '🎯', concept: 'Dealing Range (Ep 20)', answer: 'The price boundary defined by a major swing high and swing low where institutional orders are engineered and run.' },
   { emoji: '🧪', concept: 'Edge Backtesting (Ep 22)', answer: 'Testing a strategy against historical data across 100+ samples to validate the true win rate, average R:R, and statistical expectancy.' },
   { emoji: '🛡️', concept: 'Discipline EdgeScore (Ep 23)', answer: 'A score (0-100%) calculated per trade based on how strictly you followed your checklist rules and stayed emotional-leakage free.' },
-  { emoji: '🧘', concept: 'Sanctuary Reset (Ep 24)', answer: 'Brad Goh\'s recommended 10-minute post-trading meditation session to reset the nervous system, release adrenaline, and prevent emotional revenge tendencies.' }
+  { emoji: '🧘', concept: 'Sanctuary Reset (Ep 24)', answer: 'Brad Goh\'s recommended 10-minute post-trading meditation session to reset the nervous system, release adrenaline, and prevent emotional revenge tendencies.' },
+  { emoji: '🧱', concept: 'Order Block (OB) (Ep 10)', answer: 'A validated institutional Order Block is the last opposite candle before a strong impulse leg that breaks structure, representing where bank/institution orders are concentrated.' },
+  { emoji: '⏳', concept: 'Mitigation (Ep 10)', answer: 'Mitigation happens when price returns to a previously created Order Block to close out drawing-down positions at break-even before starting the true expansion.' },
+  { emoji: '🎯', concept: 'HTF Bias (Ep 11)', answer: 'Directional bias established on Higher Time Frames (like D1 or H4) to determine daily market direction. Always execute in the direction of the HTF bias.' },
+  { emoji: '🕸️', concept: 'Retail Traps (Ep 13)', answer: 'Retail traps are chart patterns (like double tops/bottoms, trendlines) engineered by smart money to entice retail traders into early positions so their stops can be swept for liquidity.' },
+  { emoji: '🛡️', concept: 'Emotional Independence (Ep 16)', answer: 'The professional state of mind where your emotions are completely detached from individual trade outcomes, allowing mechanical execution of your edge.' },
+  { emoji: '⛓️', concept: 'Mitigation Block (Ep 18)', answer: 'A support/resistance level formed when price fails to sweep liquidity before breaking structure, turning the old order block into a mitigation point.' },
+  { emoji: '🤖', concept: 'Market Maker Models (Ep 20)', answer: 'The Market Maker Buy Model (MMBM) and Sell Model (MMSM) describe the complete cycle of retail accumulation, smart money manipulation, and final distribution.' },
+  { emoji: '📋', concept: 'Pre-market Routine (Ep 21)', answer: 'A structured preparation routine (checking news, identifying HTF zones, marking key ranges) executed before session open to eliminate emotional trading errors.' }
 ];
 
 function renderFlashcardMode() {
@@ -3222,6 +3234,70 @@ const FLASHCARD_TERMS = [
     title: 'Meditation Sanctuary',
     definition: 'Brad Goh\'s recommended 10-minute post-trading meditation session to reset the nervous system, release adrenaline, and prevent emotional revenge tendencies.',
     emoji: '🧘'
+  },
+  {
+    id: 'topdown',
+    category: 'smc',
+    concept: 'Top-Down Analysis',
+    title: 'Multi-Timeframe context',
+    definition: 'Analyzing charts from highest timeframe (D1) down to lowest (M5) to establish bias, find key zones, and refine entry timing.',
+    emoji: '🔝'
+  },
+  {
+    id: 'mitigation',
+    category: 'smc',
+    concept: 'Mitigation',
+    title: 'Reducing Risk',
+    definition: 'When price returns to a previously created Order Block to close drawing-down positions at break-even before expanding.',
+    emoji: '⏳'
+  },
+  {
+    id: 'htfbias',
+    category: 'smc',
+    concept: 'HTF Bias',
+    title: 'Directional Bias',
+    definition: 'The dominant market direction established on Higher Time Frames (D1/H4) that filters trade ideas on lower timeframes.',
+    emoji: '🎯'
+  },
+  {
+    id: 'retailtraps',
+    category: 'smc',
+    concept: 'Retail Traps',
+    title: 'Smart Money Traps',
+    definition: 'Chart patterns (like double tops/bottoms, trendlines) engineered to lure retail traders so their stops can be swept for liquidity.',
+    emoji: '🕸️'
+  },
+  {
+    id: 'emotionalind',
+    category: 'psychology',
+    concept: 'Emotional Independence',
+    title: 'Detached Mindset',
+    definition: 'A state of mind where your emotions are completely detached from individual trade outcomes, focusing purely on execution consistency.',
+    emoji: '🛡️'
+  },
+  {
+    id: 'mitigationblock',
+    category: 'smc',
+    concept: 'Mitigation Block',
+    title: 'Unswept Re-entry',
+    definition: 'A broken order block that failed to sweep liquidity before the structural break, flipping into support/resistance for a clean re-entry.',
+    emoji: '⛓️'
+  },
+  {
+    id: 'marketmakermodel',
+    category: 'smc',
+    concept: 'Market Maker Model',
+    title: 'MMBM & MMSM',
+    definition: 'The complete cycle of price delivery consisting of retail accumulation, smart money manipulation, and distribution.',
+    emoji: '🤖'
+  },
+  {
+    id: 'premarketroutine',
+    category: 'forex',
+    concept: 'Pre-market Routine',
+    title: 'Daily Session Prep',
+    definition: 'A structured checklist (checking news, marking key levels, setting risk limits) executed before trading to eliminate emotional execution errors.',
+    emoji: '📋'
   }
 ];
 
