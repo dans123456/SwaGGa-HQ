@@ -529,20 +529,31 @@ export function renderMindsetPage(container) {
 
     const presetButtons = [];
     presets.forEach((p, idx) => {
+      const isActive = idx === activePresetIdx;
       const btn = el('button', `btn btn-sm`, p.label);
       btn.style.flex = '1';
       btn.style.minWidth = '75px';
       btn.style.fontSize = '11px';
+      btn.style.transition = 'all 0.2s ease';
+      
+      btn.style.background = isActive ? 'rgba(0, 212, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)';
+      btn.style.borderColor = isActive ? 'var(--cyan)' : 'rgba(255, 255, 255, 0.08)';
+      btn.style.color = isActive ? '#fff' : 'var(--text-secondary)';
+      if (isActive) {
+        btn.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.2)';
+      }
       
       const updatePresetSelection = () => {
         presetButtons.forEach(b => {
-          b.style.background = 'transparent';
+          b.style.background = 'rgba(255, 255, 255, 0.03)';
           b.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-          b.style.color = 'var(--text-muted)';
+          b.style.color = 'var(--text-secondary)';
+          b.style.boxShadow = 'none';
         });
         btn.style.background = 'rgba(0, 212, 255, 0.1)';
         btn.style.borderColor = 'var(--cyan)';
         btn.style.color = '#fff';
+        btn.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.2)';
 
         if (p.sec > 0) {
           customTimeInputs.style.display = 'none';
@@ -562,13 +573,22 @@ export function renderMindsetPage(container) {
       };
 
       btn.addEventListener('click', updatePresetSelection);
+      
+      btn.addEventListener('mouseenter', () => {
+        if (btn.style.borderColor !== 'var(--cyan)') {
+          btn.style.background = 'rgba(255, 255, 255, 0.06)';
+          btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+        }
+      });
+      btn.addEventListener('mouseleave', () => {
+        if (btn.style.borderColor !== 'var(--cyan)') {
+          btn.style.background = 'rgba(255, 255, 255, 0.03)';
+          btn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+        }
+      });
+
       presetRow.appendChild(btn);
       presetButtons.push(btn);
-      if (idx === activePresetIdx) {
-        btn.style.background = 'rgba(0, 212, 255, 0.1)';
-        btn.style.borderColor = 'var(--cyan)';
-        btn.style.color = '#fff';
-      }
     });
 
     const updateCustomTime = () => {
@@ -644,31 +664,45 @@ export function renderMindsetPage(container) {
     ambientList.style.paddingBottom = '4px';
 
     AMBIENT_PRESETS.forEach(p => {
-      const btn = el('button', `btn btn-sm sound-preset-btn ${p.key === _meditationAmbientSound ? 'active' : ''}`);
+      const isActive = p.key === _meditationAmbientSound;
+      const btn = el('button', `btn btn-sm sound-preset-btn ${isActive ? 'active' : ''}`, p.label);
       btn.style.fontSize = '10px';
       btn.style.padding = '6px 12px';
       btn.style.whiteSpace = 'nowrap';
-      btn.style.background = p.key === _meditationAmbientSound ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255, 255, 255, 0.02)';
-      btn.style.borderColor = p.key === _meditationAmbientSound ? 'var(--purple)' : 'rgba(255, 255, 255, 0.08)';
+      btn.style.transition = 'all 0.2s ease';
+      
+      btn.style.background = isActive ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255, 255, 255, 0.03)';
+      btn.style.borderColor = isActive ? 'var(--purple)' : 'rgba(255, 255, 255, 0.08)';
+      btn.style.color = isActive ? '#fff' : 'var(--text-secondary)';
 
       btn.addEventListener('click', () => {
         _meditationAmbientSound = p.key;
         ambientList.querySelectorAll('button').forEach(b => {
-          b.style.background = 'rgba(255, 255, 255, 0.02)';
+          b.style.background = 'rgba(255, 255, 255, 0.03)';
           b.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+          b.style.color = 'var(--text-secondary)';
         });
         btn.style.background = 'rgba(168, 85, 247, 0.15)';
         btn.style.borderColor = 'var(--purple)';
+        btn.style.color = '#fff';
         playSynthSound('click');
       });
 
       // Hover Sound Preview trigger
       btn.addEventListener('mouseenter', () => {
+        if (btn.style.borderColor !== 'var(--purple)') {
+          btn.style.background = 'rgba(255, 255, 255, 0.06)';
+          btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+        }
         if (p.url && p.key !== _meditationAmbientSound) {
           playHoverPreview(p.url);
         }
       });
       btn.addEventListener('mouseleave', () => {
+        if (btn.style.borderColor !== 'var(--purple)') {
+          btn.style.background = 'rgba(255, 255, 255, 0.03)';
+          btn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+        }
         stopHoverPreview();
       });
 
