@@ -248,3 +248,45 @@ export function showNotificationToast(message, iconChar = '⚡') {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+
+export function el(tag, cls = '', text = '') {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text) node.textContent = text;
+  return node;
+}
+
+export function createModal(title) {
+  const overlay = el('div', 'modal-overlay');
+  const modal = el('div', 'modal');
+
+  // Mobile sheet grab bar
+  const grabHandle = el('div', 'modal-swipe-handle');
+  modal.appendChild(grabHandle);
+
+  // Top bar with colored stripe
+  const topBar = el('div', 'modal__topbar');
+  modal.appendChild(topBar);
+
+  const header = el('div', 'modal__header');
+  header.appendChild(el('h2', 'modal__title', title));
+  const closeBtn = el('button', 'modal__close', '✕');
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const body = el('div', 'modal__body');
+  modal.appendChild(body);
+
+  overlay.appendChild(modal);
+
+  function close() {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 250);
+  }
+
+  closeBtn.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  document.body.appendChild(overlay);
+  return { overlay, modal, body, close };
+}

@@ -1,7 +1,7 @@
 // auto-assignment & notification system
 
 import storage from './storage.js';
-import { generateId } from './utils.js';
+import { generateId, el } from './utils.js';
 import { loadChartSymbol, ASSETS, CONFLUENCE_OPTIONS } from './trading.js';
 
 // ---- constants ----
@@ -38,15 +38,6 @@ const CONCEPTS = [
 const TIMEFRAMES = ['5M', '15M', '30M', '1H', '4H', 'Daily'];
 
 const ALL_ASSETS_FLAT = Object.values(ASSETS).flat();
-
-// ---
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
 
 function randomFrom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];

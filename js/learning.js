@@ -129,30 +129,7 @@ export function saveLessonEntry(lessonData) {
   lessons.push(entry);
   storage.set(STORAGE_LESSONS, lessons);
   
-  // Auto-tick the 33-Day Course streak habit
-  try {
-    import('./streaks.js').then(({ getHabits, toggleHabit }) => {
-      const habits = getHabits();
-      const courseHabit = habits.find(h => h.id === 'course33');
-      const dt = new Date();
-      const y = dt.getFullYear();
-      const m = String(dt.getMonth() + 1).padStart(2, '0');
-      const day = String(dt.getDate()).padStart(2, '0');
-      const todayKey = `${y}-${m}-${day}`;
 
-      if (courseHabit && !courseHabit.log[todayKey]) {
-        toggleHabit('course33', todayKey);
-        showNotificationToast('Market Mechanics Habit Auto-Ticked! 🪖🔥');
-        
-        // Sync to cloud
-        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-          if (getCurrentUser()) pushToCloud();
-        });
-      }
-    });
-  } catch (e) {
-    console.error('Error auto-ticking course33:', e);
-  }
   
   // Check general achievements dynamically to prevent cycle
   try {
@@ -1316,29 +1293,7 @@ function openUnlockPopup(ep, curriculumContainer) {
     };
     storage.set('bg_unlocked_lessons', overrides);
 
-    // Auto-tick the Market Mechanics habit!
-    try {
-      import('./streaks.js').then(({ getHabits, toggleHabit }) => {
-        const habits = getHabits();
-        const courseHabit = habits.find(h => h.id === 'course33');
-        const dt = new Date();
-        const y = dt.getFullYear();
-        const m = String(dt.getMonth() + 1).padStart(2, '0');
-        const day = String(dt.getDate()).padStart(2, '0');
-        const todayKey = `${y}-${m}-${day}`;
 
-        if (courseHabit && !courseHabit.log[todayKey]) {
-          toggleHabit('course33', todayKey);
-          showNotificationToast('Market Mechanics Habit Auto-Ticked! 🪖🔥');
-          
-          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-            if (getCurrentUser()) pushToCloud();
-          });
-        }
-      });
-    } catch (e) {
-      console.error('Error auto-ticking course33:', e);
-    }
 
     close();
     renderCurriculumLog(curriculumContainer);

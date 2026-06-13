@@ -8,7 +8,7 @@ import storage from './storage.js';
 import { formatCurrency, generateId, showNotificationToast } from './utils.js';
 import { playSynthSound } from './audio.js';
 import { addXP } from './xp.js';
-import { saveTrade, getAssetConfig } from './trading.js';
+import { saveTrade, getAssetConfig, createSpinnerInput } from './trading.js';
 
 // --- Curated Scenario Data ---
 const SIM_SCENARIOS = [
@@ -222,133 +222,18 @@ function el(tag, cls = '', text = '') {
   return node;
 }
 
-function createSpinnerInput(name, placeholder, initialValue = '', required = false, getDecimalsAndStep) {
-  const container = el('div', 'spinner-input-container');
-  container.style.display = 'flex';
-  container.style.alignItems = 'center';
-  container.style.gap = 'var(--space-2)';
-  container.style.position = 'relative';
+// createSpinnerInput is imported from trading.js to avoid duplication
 
-  const minusBtn = el('button', 'btn btn-outline btn-sm spinner-btn-minus', '−');
-  minusBtn.type = 'button';
-  minusBtn.style.padding = '0 var(--space-3)';
-  minusBtn.style.height = 'var(--space-9)';
-  minusBtn.style.minWidth = 'var(--space-9)';
-  minusBtn.style.fontFamily = 'monospace';
-  minusBtn.style.fontWeight = 'bold';
-  minusBtn.style.fontSize = '1.2rem';
-  minusBtn.style.borderRadius = 'var(--radius-md)';
-  minusBtn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-  minusBtn.style.background = 'rgba(255, 255, 255, 0.02)';
-  minusBtn.style.color = 'var(--text-color)';
-  minusBtn.style.cursor = 'pointer';
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.name = name;
-  input.inputMode = 'decimal';
-  input.pattern = '[0-9]*\\.?[0-9]*';
-  input.placeholder = placeholder;
-  input.className = 'form-input';
-  input.style.flex = '1';
-  input.style.textAlign = 'center';
-  input.style.fontFamily = 'monospace';
-  if (initialValue !== '') input.value = initialValue;
-  if (required) input.required = true;
-
-  const plusBtn = el('button', 'btn btn-outline btn-sm spinner-btn-plus', '+');
-  plusBtn.type = 'button';
-  plusBtn.style.padding = '0 var(--space-3)';
-  plusBtn.style.height = 'var(--space-9)';
-  plusBtn.style.minWidth = 'var(--space-9)';
-  plusBtn.style.fontFamily = 'monospace';
-  plusBtn.style.fontWeight = 'bold';
-  plusBtn.style.fontSize = '1.2rem';
-  plusBtn.style.borderRadius = 'var(--radius-md)';
-  plusBtn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-  plusBtn.style.background = 'rgba(255, 255, 255, 0.02)';
-  plusBtn.style.color = 'var(--text-color)';
-  plusBtn.style.cursor = 'pointer';
-
-  // Apply hover and active styles via JS
-  [minusBtn, plusBtn].forEach(btn => {
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = 'rgba(0, 212, 255, 0.1)';
-      btn.style.borderColor = 'var(--cyan)';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'rgba(255, 255, 255, 0.02)';
-      btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-    });
-  });
-
-  const adjustVal = (direction) => {
-    const val = parseFloat(input.value) || 0;
-    const { decimals, step } = getDecimalsAndStep();
-    const multiplier = Math.pow(10, decimals);
-    const scaledVal = Math.round(val * multiplier);
-    const scaledStep = Math.round(step * multiplier);
-    
-    let newVal;
-    if (direction === 'plus') {
-      newVal = (scaledVal + scaledStep) / multiplier;
-    } else {
-      newVal = Math.max(0, (scaledVal - scaledStep) / multiplier);
-    }
-    input.value = newVal.toFixed(decimals);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  };
-
-  minusBtn.addEventListener('click', () => adjustVal('minus'));
-  plusBtn.addEventListener('click', () => adjustVal('plus'));
-
-  // Allow long press for fast adjustments
-  let timerId;
-  const startAdjusting = (direction) => {
-    adjustVal(direction);
-    timerId = setInterval(() => adjustVal(direction), 100);
-  };
-  const stopAdjusting = () => {
-    if (timerId) {
-      clearInterval(timerId);
-      timerId = null;
-    }
-  };
-
-  minusBtn.addEventListener('mousedown', () => startAdjusting('minus'));
-  minusBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAdjusting('minus'); }, { passive: false });
-  
-  plusBtn.addEventListener('mousedown', () => startAdjusting('plus'));
-  plusBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAdjusting('plus'); }, { passive: false });
-
-  window.addEventListener('mouseup', stopAdjusting);
-  window.addEventListener('touchend', stopAdjusting);
-
-  // Filter input value
-  input.addEventListener('input', () => {
-    let cleaned = input.value.replace(/[^0-9.-]/g, '');
-    const dotParts = cleaned.split('.');
-    if (dotParts.length > 2) {
-      cleaned = dotParts[0] + '.' + dotParts.slice(1).join('');
-    }
-    if (cleaned.lastIndexOf('-') > 0) {
-      cleaned = (cleaned.startsWith('-') ? '-' : '') + cleaned.replace(/-/g, '');
-    }
-    if (input.value !== cleaned) {
-      input.value = cleaned;
-    }
-  });
-
-  container.appendChild(minusBtn);
-  container.appendChild(input);
-  container.appendChild(plusBtn);
-
-  return { container, input };
-}
 
 export function renderSimulatorPage(container) {
   container.replaceChildren();
+
+  // Bug #9 fix: Clear any ghost auto-play interval from previous visits
+  if (_autoPlayInterval) {
+    clearInterval(_autoPlayInterval);
+    _autoPlayInterval = null;
+  }
+  _activePosition = null;
 
   // Load persistent simulator ledger
   _simBalance = storage.get('sim_balance', 10000);
@@ -1393,4 +1278,13 @@ export function renderSimulatorPage(container) {
   // Initialize first scenario
   loadScenario(scSelect.value);
   updateLogList();
+
+  // Clean up autoplay if navigating away from simulator
+  const cleanupAutoplay = () => {
+    if (window.location.hash !== '#simulator') {
+      stopAutoplay();
+      window.removeEventListener('hashchange', cleanupAutoplay);
+    }
+  };
+  window.addEventListener('hashchange', cleanupAutoplay);
 }

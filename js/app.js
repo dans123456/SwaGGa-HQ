@@ -8,7 +8,7 @@ import { renderChartPage } from './trading.js';
 import { renderLearningPage, getLessons, getAssignments } from './learning.js';
 import { renderStreaksPage, getHabits, calculateStreak, initStreakNotifications, checkAndApplyAutoFreezes } from './streaks.js';
 import { getTrades, calculateStats } from './trading.js';
-import { getTimeAgo, formatCurrency, triggerConfetti, showNotificationToast } from './utils.js';
+import { getTimeAgo, formatCurrency, triggerConfetti, showNotificationToast, createModal } from './utils.js';
 import storage from './storage.js';
 import { checkAutoAssignment } from './notifications.js';
 import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser } from './firebase-sync.js';
@@ -21,6 +21,7 @@ import { renderMindsetPage } from './mindset.js';
 import { renderBlitzPage } from './blitz.js';
 import { renderReviewPage } from './review.js';
 import { renderNotebookPage } from './notebook.js';
+import { createEquityCurve } from './charts.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -1259,13 +1260,17 @@ function renderDashboard(container) {
     alert.style.gap = 'var(--space-3)';
     alert.style.animation = 'fadeIn 0.3s ease';
 
-    const left = el('div', '');
+    const left = el('div', 'alert-left');
     left.style.display = 'flex';
     left.style.alignItems = 'center';
     left.style.gap = 'var(--space-3)';
+    left.style.flex = '1';
+    left.style.minWidth = '0';
     left.appendChild(el('span', '', '📅'));
     
-    const textWrap = el('div', '');
+    const textWrap = el('div', 'alert-text-wrap');
+    textWrap.style.flex = '1';
+    textWrap.style.minWidth = '0';
     const title = el('h4', '', 'Weekly Review Pending');
     title.style.color = 'var(--cyan)';
     title.style.margin = '0';
@@ -1282,6 +1287,7 @@ function renderDashboard(container) {
     alert.appendChild(left);
 
     const actionBtn = el('button', 'btn btn-sm btn-secondary', 'Review Now');
+    actionBtn.style.flexShrink = '0';
     actionBtn.addEventListener('click', () => {
       storage.set('active_review_tab', 'weekly');
       router.navigate('#review');
@@ -1310,13 +1316,17 @@ function renderDashboard(container) {
     alert.style.gap = 'var(--space-3)';
     alert.style.animation = 'fadeIn 0.3s ease';
 
-    const left = el('div', '');
+    const left = el('div', 'alert-left');
     left.style.display = 'flex';
     left.style.alignItems = 'center';
     left.style.gap = 'var(--space-3)';
+    left.style.flex = '1';
+    left.style.minWidth = '0';
     left.appendChild(el('span', '', '📆'));
     
-    const textWrap = el('div', '');
+    const textWrap = el('div', 'alert-text-wrap');
+    textWrap.style.flex = '1';
+    textWrap.style.minWidth = '0';
     const title = el('h4', '', 'Monthly Review Pending');
     title.style.color = 'var(--purple)';
     title.style.margin = '0';
@@ -1333,6 +1343,7 @@ function renderDashboard(container) {
     alert.appendChild(left);
 
     const actionBtn = el('button', 'btn btn-sm btn-secondary', 'Review Now');
+    actionBtn.style.flexShrink = '0';
     actionBtn.addEventListener('click', () => {
       storage.set('active_review_tab', 'monthly');
       router.navigate('#review');
@@ -1368,13 +1379,17 @@ function renderDashboard(container) {
     alert.style.gap = 'var(--space-3)';
     alert.style.animation = 'fadeIn 0.3s ease';
 
-    const left = el('div', '');
+    const left = el('div', 'alert-left');
     left.style.display = 'flex';
     left.style.alignItems = 'center';
     left.style.gap = 'var(--space-3)';
+    left.style.flex = '1';
+    left.style.minWidth = '0';
     left.appendChild(el('span', '', '📊'));
     
-    const textWrap = el('div', '');
+    const textWrap = el('div', 'alert-text-wrap');
+    textWrap.style.flex = '1';
+    textWrap.style.minWidth = '0';
     const title = el('h4', '', 'Quarterly Review Pending');
     title.style.color = '#ec4899';
     title.style.margin = '0';
@@ -1391,6 +1406,7 @@ function renderDashboard(container) {
     alert.appendChild(left);
 
     const actionBtn = el('button', 'btn btn-sm btn-secondary', 'Review Now');
+    actionBtn.style.flexShrink = '0';
     actionBtn.addEventListener('click', () => {
       storage.set('active_review_tab', 'quarterly');
       router.navigate('#review');
@@ -1456,6 +1472,38 @@ function renderDashboard(container) {
   actions.appendChild(recapBtn);
 
   container.appendChild(actions);
+
+  /* ---- Equity Curve Chart (Upgrade #5) ---- */
+  if (trades.length > 0) {
+    const chartCard = el('div', 'overview-panel dashboard-chart-card glass-card');
+    chartCard.style.padding = 'var(--space-4)';
+    chartCard.style.marginBottom = 'var(--space-4)';
+    chartCard.style.height = '320px';
+    chartCard.style.position = 'relative';
+
+    const chartHeader = el('div', 'dashboard-section__header');
+    chartHeader.style.marginBottom = 'var(--space-2)';
+    
+    const chartTitle = el('h3', 'overview-panel__title', '📈 Equity Curve (Running P&L)');
+    chartTitle.style.margin = '0';
+    chartHeader.appendChild(chartTitle);
+    chartCard.appendChild(chartHeader);
+
+    const canvasContainer = el('div', 'dashboard-chart-container');
+    canvasContainer.style.height = '230px';
+    canvasContainer.style.position = 'relative';
+    
+    const canvas = document.createElement('canvas');
+    canvas.id = 'dashboard-equity-chart';
+    canvasContainer.appendChild(canvas);
+    chartCard.appendChild(canvasContainer);
+    container.appendChild(chartCard);
+
+    // Render chart on next tick when canvas is in DOM
+    setTimeout(() => {
+      createEquityCurve('dashboard-equity-chart', trades);
+    }, 0);
+  }
 
   /* ---- Two-column bottom: balanced Left Column vs. Right Column ---- */
   const bottomGrid = el('div', 'dashboard-bottom-grid');
@@ -2557,6 +2605,150 @@ export function updateFocusBanner() {
   }
 }
 
+// --- Backup & Restore Modal (Upgrade #24) ---
+function openBackupRestoreModal() {
+  const { body, close } = createModal('💾 Data Backup & Restore');
+
+  const desc = el('p', '', 'Secure your hard-earned progress. Download your local data as a JSON file, or restore from a previous backup file.');
+  desc.style.fontSize = 'var(--text-xs)';
+  desc.style.color = 'var(--text-muted)';
+  desc.style.lineHeight = '1.5';
+  desc.style.marginBottom = 'var(--space-4)';
+  body.appendChild(desc);
+
+  // Grid layout for import/export cards
+  const grid = el('div', 'backup-grid');
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = '1fr 1fr';
+  grid.style.gap = 'var(--space-3)';
+  grid.style.marginBottom = 'var(--space-3)';
+
+  // Export card
+  const exportCard = el('div', 'backup-card glass-card');
+  exportCard.style.padding = 'var(--space-3)';
+  exportCard.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+  exportCard.style.background = 'rgba(0, 212, 255, 0.02)';
+  exportCard.style.borderRadius = 'var(--radius-md)';
+  exportCard.style.display = 'flex';
+  exportCard.style.flexDirection = 'column';
+  exportCard.style.alignItems = 'center';
+  exportCard.style.gap = 'var(--space-2)';
+  exportCard.style.cursor = 'pointer';
+
+  exportCard.appendChild(el('span', '', '📤'));
+  const exportTitle = el('h4', '', 'Export Backup');
+  exportTitle.style.fontSize = 'var(--text-sm)';
+  exportTitle.style.fontWeight = '700';
+  exportTitle.style.margin = '0';
+  exportCard.appendChild(exportTitle);
+  
+  const exportDesc = el('p', '', 'Save all your local data as a .json file.');
+  exportDesc.style.fontSize = '10px';
+  exportDesc.style.color = 'var(--text-muted)';
+  exportDesc.style.textAlign = 'center';
+  exportCard.appendChild(exportDesc);
+
+  exportCard.addEventListener('click', () => {
+    import('./audio.js').then(({ playSynthSound }) => playSynthSound('success'));
+    const backup = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('swagga:')) {
+        backup[key] = localStorage.getItem(key);
+      }
+    }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `swagga_hq_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotificationToast('Backup exported successfully! 💾', '📤');
+  });
+  grid.appendChild(exportCard);
+
+  // Import card
+  const importCard = el('div', 'backup-card glass-card');
+  importCard.style.padding = 'var(--space-3)';
+  importCard.style.border = '1px solid rgba(168, 85, 247, 0.15)';
+  importCard.style.background = 'rgba(168, 85, 247, 0.02)';
+  importCard.style.borderRadius = 'var(--radius-md)';
+  importCard.style.display = 'flex';
+  importCard.style.flexDirection = 'column';
+  importCard.style.alignItems = 'center';
+  importCard.style.gap = 'var(--space-2)';
+  importCard.style.cursor = 'pointer';
+
+  importCard.appendChild(el('span', '', '📥'));
+  const importTitle = el('h4', '', 'Import Backup');
+  importTitle.style.fontSize = 'var(--text-sm)';
+  importTitle.style.fontWeight = '700';
+  importTitle.style.margin = '0';
+  importCard.appendChild(importTitle);
+
+  const importDesc = el('p', '', 'Restore data from a saved .json file.');
+  importDesc.style.fontSize = '10px';
+  importDesc.style.color = 'var(--text-muted)';
+  importDesc.style.textAlign = 'center';
+  importCard.appendChild(importDesc);
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json';
+  fileInput.style.display = 'none';
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        const keys = Object.keys(data);
+        const hasSwaggaKeys = keys.some(k => k.startsWith('swagga:'));
+        if (!hasSwaggaKeys) {
+          showNotificationToast('Invalid backup file. SwaGGa data not found! ❌', '⚠️');
+          return;
+        }
+
+        if (confirm('Importing this backup will overwrite your current local data. Are you sure?')) {
+          keys.forEach(k => {
+            if (k.startsWith('swagga:')) {
+              localStorage.setItem(k, data[k]);
+            }
+          });
+          showNotificationToast('Data restored successfully! Syncing... 🚀', '✅');
+          import('./audio.js').then(({ playSynthSound }) => playSynthSound('success'));
+          close();
+
+          // Sync to cloud if user signed in
+          import('./firebase-sync.js').then(async ({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) await pushToCloud();
+            setTimeout(() => {
+              window.location.reload();
+            }, 1200);
+          });
+        }
+      } catch (err) {
+        showNotificationToast('Failed to parse JSON file! ❌', '⚠️');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  importCard.appendChild(fileInput);
+  importCard.addEventListener('click', () => {
+    fileInput.click();
+  });
+  grid.appendChild(importCard);
+
+  body.appendChild(grid);
+}
+
 // --- Build App Shell ---
 
 function buildAppShell() {
@@ -2784,6 +2976,25 @@ function buildAppShell() {
     });
   });
   sidebar.appendChild(audioBtn);
+
+  // 💾 Backup & Restore Button in sidebar
+  const backupBtn = el('button', 'theme-switch-btn backup-restore-btn');
+  backupBtn.style.margin = '0 var(--space-4) var(--space-4)';
+  backupBtn.style.width = 'calc(100% - var(--space-8))';
+  backupBtn.style.background = 'rgba(0, 212, 255, 0.05)';
+  backupBtn.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+  backupBtn.style.color = 'var(--cyan)';
+  
+  const backupIcon = el('span', 'theme-switch-emoji', '💾 Backup & Restore');
+  backupBtn.appendChild(backupIcon);
+
+  backupBtn.addEventListener('click', () => {
+    import('./audio.js').then(({ playSynthSound }) => {
+      playSynthSound('click');
+    });
+    openBackupRestoreModal();
+  });
+  sidebar.appendChild(backupBtn);
 
   const collapseBtn = el('button', 'sidebar-collapse-btn', '◀');
   collapseBtn.setAttribute('aria-label', 'Toggle sidebar');

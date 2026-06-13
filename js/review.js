@@ -8,19 +8,12 @@ import storage from './storage.js';
 import { getTrades, calculateStats, MISTAKE_LABELS, getEffectiveConfluenceOptions } from './trading.js';
 import { getHabits, calculateStreak } from './streaks.js';
 import { getLessons } from './learning.js';
-import { formatCurrency, sanitizeText, showNotificationToast, triggerConfetti } from './utils.js';
+import { formatCurrency, sanitizeText, showNotificationToast, triggerConfetti, el } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import { nativeHaptic } from './native-bridge.js';
 
 const REVIEW_STORAGE_KEY = 'reviews';
-
-function el(tag, cls = '', text = '') {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text) node.textContent = text;
-  return node;
-}
 
 // --- Data Layer ---
 

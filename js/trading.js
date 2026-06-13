@@ -290,12 +290,16 @@ export function createSpinnerInput(name, placeholder, initialValue = '', require
   const startAdjusting = (direction) => {
     adjustVal(direction);
     timerId = setInterval(() => adjustVal(direction), 100);
+    window.addEventListener('mouseup', stopAdjusting);
+    window.addEventListener('touchend', stopAdjusting);
   };
   const stopAdjusting = () => {
     if (timerId) {
       clearInterval(timerId);
       timerId = null;
     }
+    window.removeEventListener('mouseup', stopAdjusting);
+    window.removeEventListener('touchend', stopAdjusting);
   };
 
   minusBtn.addEventListener('mousedown', () => startAdjusting('minus'));
@@ -303,9 +307,6 @@ export function createSpinnerInput(name, placeholder, initialValue = '', require
   
   plusBtn.addEventListener('mousedown', () => startAdjusting('plus'));
   plusBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAdjusting('plus'); }, { passive: false });
-
-  window.addEventListener('mouseup', stopAdjusting);
-  window.addEventListener('touchend', stopAdjusting);
 
   // Filter input value
   input.addEventListener('input', () => {
@@ -3087,16 +3088,23 @@ export function renderTradeHistory(container, onRefresh) {
     storage.set('history_filter_mode', _historyFilterMode);
     if (typeof onRefresh === 'function') onRefresh();
   });
-  exportBar.appendChild(filterSelect);
 
   const exportBtn = el('button', 'btn btn-outline btn-sm', '📥 Export CSV');
   exportBtn.addEventListener('click', () => exportToCSV(filteredTrades));
-  exportBar.appendChild(exportBtn);
 
   const reviewBtn = el('button', 'btn btn-primary btn-sm review-reset-btn', '🧘 Daily Review & Reset');
   reviewBtn.style.marginLeft = 'var(--space-2)';
   reviewBtn.addEventListener('click', () => openDailyReviewModal(onRefresh));
-  exportBar.appendChild(reviewBtn);
+
+  const controls = el('div', 'export-controls');
+  controls.style.display = 'flex';
+  controls.style.alignItems = 'center';
+  controls.style.gap = 'var(--space-2)';
+  controls.appendChild(filterSelect);
+  controls.appendChild(exportBtn);
+  controls.appendChild(reviewBtn);
+
+  exportBar.appendChild(controls);
 
   container.appendChild(exportBar);
 
@@ -3212,7 +3220,12 @@ export function renderTradeHistory(container, onRefresh) {
   });
 
   table.appendChild(tbody);
-  container.appendChild(table);
+
+  const tableWrap = el('div', 'trade-table-wrap');
+  const tableContainer = el('div', 'trade-table-container');
+  tableContainer.appendChild(table);
+  tableWrap.appendChild(tableContainer);
+  container.appendChild(tableWrap);
 }
 
 function openDailyReviewModal(onRefresh) {

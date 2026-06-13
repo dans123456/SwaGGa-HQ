@@ -2,7 +2,7 @@ import storage from './storage.js';
 import { playSynthSound, startBinauralBeat, stopBinauralBeat, startAmbientDrone, stopAmbientDrone, isMuted } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 import { addXP } from './xp.js';
-import { triggerConfetti, showNotificationToast } from './utils.js';
+import { triggerConfetti, showNotificationToast, el } from './utils.js';
 
 let _activeInterval = null;
 let _activeAudioType = 'off'; // 'off', 'alpha', 'theta', 'waves'
@@ -18,13 +18,6 @@ const AUDIO_STREAMS = [
   { key: 'birds', label: '🌲 Forest Birds & Wind', url: 'https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg', desc: 'Natural woodland morning ambiance' },
   { key: 'waves', label: '🌊 Ocean Waves (Zen)', url: 'https://actions.google.com/sounds/v1/ambiences/ocean_waves.ogg', desc: 'Relaxing shoreline water swells' }
 ];
-
-function el(tag, cls = '', text = '') {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text) node.textContent = text;
-  return node;
-}
 
 export function renderMindsetPage(container) {
   container.replaceChildren();

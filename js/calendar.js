@@ -3,15 +3,8 @@
 import { getTrades } from './trading.js';
 import { getLessons } from './learning.js';
 import { getHabits, calculateStreak } from './streaks.js';
-import { formatCurrency, formatDate } from './utils.js';
+import { formatCurrency, formatDate, el } from './utils.js';
 import storage from './storage.js';
-
-function el(tag, cls = '', text = '') {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text) node.textContent = text;
-  return node;
-}
 
 let _currentYear = new Date().getFullYear();
 let _currentMonth = new Date().getMonth(); // 0-indexed

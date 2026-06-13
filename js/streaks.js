@@ -189,7 +189,7 @@ export function getBestStreak(habitId) {
       current = 1;
     }
   }
-  return best;
+  return best + (habit.baseStreak || 0);
 }
 
 // Check whether ALL habits were completed on a given date.
@@ -294,11 +294,6 @@ function playFreezeAnimation(cardElement, callback) {
 export function renderHabitCard(habit, onToggle) {
   const today = localDateKey();
   let done = !!(habit.log && habit.log[today]);
-  if (habit.id === 'course33') {
-    const lessonsList = storage.get('lessons', []);
-    const todayLessonLogged = lessonsList.some(l => l.createdAt && l.createdAt.startsWith(today));
-    done = done || todayLessonLogged;
-  }
   if (habit.id === 'extra_study') {
     const journal = storage.get('extra_study_journal', []);
     const todayStudyLogged = journal.some(e => 
@@ -416,38 +411,22 @@ export function renderHabitCard(habit, onToggle) {
   // --- Generalized Sub-Habits / Sub-Tasks Drawer ---
   if (habit.subTasks && habit.subTasks.length > 0) {
     const subTasks = habit.subTasks;
-    const storageKey = habit.id === 'course33' ? `sub_habits_${today}` : `sub_habits_${habit.id}_${today}`;
+    const storageKey = `sub_habits_${habit.id}_${today}`;
     
     // Create the default state
     const defaultState = {};
     subTasks.forEach(st => {
       defaultState[st.key] = false;
     });
-    if (habit.id === 'course33') {
-      defaultState.link = '';
-    } else {
-      defaultState.links = {};
-    }
+    defaultState.links = {};
 
     const subHabitsState = storage.get(storageKey, defaultState);
 
     // Sync sub-habits with actual logs/achievements:
-    if (habit.id === 'course33') {
-      // Sync course33 as before:
-      const lessons = storage.get('lessons', []);
-      const todayLessonLogged = lessons.some(l => l.createdAt && l.createdAt.startsWith(today));
-      if (todayLessonLogged || done) {
-        subHabitsState.watch = true;
-        subHabitsState.journal = true;
-      }
-      storage.set(storageKey, subHabitsState);
-    } else {
-      // General habit sync if done
-      if (done) {
-        subTasks.forEach(st => {
-          subHabitsState[st.key] = true;
-        });
-      }
+    if (done) {
+      subTasks.forEach(st => {
+        subHabitsState[st.key] = true;
+      });
     }
 
     const drawer = el('div', 'sub-habits-drawer');
@@ -483,31 +462,7 @@ export function renderHabitCard(habit, onToggle) {
       summary.appendChild(statsRow);
 
       // Check if we have links to display
-      if (habit.id === 'course33' && subHabitsState.link) {
-        const linkPill = el('a', 'course33-link-pill');
-        linkPill.href = subHabitsState.link;
-        linkPill.target = '_blank';
-        linkPill.rel = 'noopener noreferrer';
-        linkPill.style.display = 'inline-flex';
-        linkPill.style.alignItems = 'center';
-        linkPill.style.justifyContent = 'center';
-        linkPill.style.gap = 'var(--space-1)';
-        linkPill.style.padding = '0.4rem 0.8rem';
-        linkPill.style.borderRadius = 'var(--radius-md)';
-        linkPill.style.background = themeBg;
-        linkPill.style.border = `1px solid ${themeBorder}`;
-        linkPill.style.color = themeColor;
-        linkPill.style.textDecoration = 'none';
-        linkPill.style.fontWeight = '600';
-        linkPill.style.fontSize = 'var(--text-xs)';
-        linkPill.style.marginTop = 'var(--space-1)';
-
-        const linkIcon = el('span', '', '🔗');
-        const linkText = el('span', '', "View Today's Chart 📈");
-        linkPill.appendChild(linkIcon);
-        linkPill.appendChild(linkText);
-        summary.appendChild(linkPill);
-      } else if (subHabitsState.links) {
+      if (subHabitsState.links) {
         Object.entries(subHabitsState.links).forEach(([taskKey, taskLink]) => {
           if (taskLink) {
             const taskObj = subTasks.find(st => st.key === taskKey);
@@ -653,15 +608,10 @@ export function renderHabitCard(habit, onToggle) {
         item.addEventListener('click', (e) => {
           e.preventDefault();
           nativeHaptic('light');
-          if (t.special === 'tradingview' || (habit.id === 'course33' && t.key === 'charting')) {
+          if (t.special === 'tradingview') {
             if (isChecked) {
-              if (habit.id === 'course33') {
-                subHabitsState.charting = false;
-                subHabitsState.link = '';
-              } else {
-                subHabitsState[t.key] = false;
-                if (subHabitsState.links) delete subHabitsState.links[t.key];
-              }
+              subHabitsState[t.key] = false;
+              if (subHabitsState.links) delete subHabitsState.links[t.key];
               saveChecklist();
             } else {
               openLinkPrompt(t.key);
@@ -702,14 +652,9 @@ export function renderHabitCard(habit, onToggle) {
             showNotificationToast('Please paste a valid link starting with http:// or https://');
             return;
           }
-          if (habit.id === 'course33') {
-            subHabitsState.charting = true;
-            subHabitsState.link = val;
-          } else {
-            subHabitsState[taskKey] = true;
-            if (!subHabitsState.links) subHabitsState.links = {};
-            subHabitsState.links[taskKey] = val;
-          }
+          subHabitsState[taskKey] = true;
+          if (!subHabitsState.links) subHabitsState.links = {};
+          subHabitsState.links[taskKey] = val;
           saveChecklist();
         });
 
@@ -763,17 +708,12 @@ export function renderHabitCard(habit, onToggle) {
           const habits = getHabits();
           const hIndex = habits.findIndex(h => h.id === habit.id);
           if (hIndex !== -1) {
-            const finalLink = habit.id === 'course33' ? subHabitsState.link : (subHabitsState.links ? Object.values(subHabitsState.links)[0] : '');
+            const finalLink = subHabitsState.links ? Object.values(subHabitsState.links)[0] : '';
             habits[hIndex].log[today] = finalLink || true;
             _saveHabits(habits);
 
-            if (habit.id === 'course33') {
-              addXP('course_homework', 15);
-              showNotificationToast('Market Mechanics Completed for Today! +15 XP! 🪖⚡');
-            } else {
-              addXP('habit', 10);
-              showNotificationToast(`${habit.emoji} ${habit.name} Completed! +10 XP! ⚡`);
-            }
+            addXP('habit', 10);
+            showNotificationToast(`${habit.emoji} ${habit.name} Completed! +10 XP! ⚡`);
             
             // Check streak milestones & achievements
             checkStreakMilestones(habits[hIndex]);
@@ -1422,7 +1362,7 @@ export function openEditHabitModal(habit, onSaved) {
   actionsRow.appendChild(saveBtn);
 
   // Deletion for custom habits
-  const isDefaultHabit = ['snap', 'tiktok', 'duolingo', 'course33', 'extra_study'].includes(habit.id);
+  const isDefaultHabit = ['snap', 'tiktok', 'duolingo', 'extra_study'].includes(habit.id);
   if (!isDefaultHabit) {
     const deleteBtn = el('button', 'btn btn-danger', 'Delete Habit 🗑️');
     deleteBtn.type = 'button';
@@ -2011,11 +1951,14 @@ export function checkAndApplyAutoFreezes() {
   habits.forEach((habit) => {
     if (tokens <= 0) return;
     
-    // Walk backwards starting from yesterday
+    // Walk backwards starting from yesterday, capped at 3 days max
+    // to prevent burning all tokens on ancient missed days
     const d = new Date();
     d.setDate(d.getDate() - 1); // Yesterday
+    const MAX_FREEZE_DEPTH = 3;
+    let depth = 0;
     
-    while (tokens > 0) {
+    while (tokens > 0 && depth < MAX_FREEZE_DEPTH) {
       const dateKey = localDateKey(d);
       const isDone = (habit.log && habit.log[dateKey]) || (habit.freezes && habit.freezes[dateKey]);
       
@@ -2025,6 +1968,7 @@ export function checkAndApplyAutoFreezes() {
         habit.freezes[dateKey] = true;
         tokens--;
         modified = true;
+        depth++;
         
         setTimeout(() => {
           showFreezeToast(`❄️ Auto-Freeze: Saved your ${habit.name} streak using 1 Freeze Token!`);

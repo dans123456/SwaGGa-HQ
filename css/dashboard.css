@@ -2290,4 +2290,23 @@
   font-weight: 700;
 }
 
+/* ── Discipline/Review Alerts Responsive styling ── */
+@media (max-width: 576px) {
+  .dashboard-discipline-alert {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: var(--space-3) !important;
+  }
+  
+  .dashboard-discipline-alert .alert-left {
+    align-items: flex-start !important;
+  }
+
+  .dashboard-discipline-alert button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+
 

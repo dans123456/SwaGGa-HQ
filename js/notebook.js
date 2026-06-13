@@ -5,18 +5,11 @@
    ======================================================================== */
 
 import storage from './storage.js';
-import { sanitizeText, showNotificationToast, triggerConfetti } from './utils.js';
+import { sanitizeText, showNotificationToast, triggerConfetti, el } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 
 const NOTEBOOK_KEY = 'notebook_entries';
-
-function el(tag, cls = '', text = '') {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text) node.textContent = text;
-  return node;
-}
 
 // --- Data Layer ---
 

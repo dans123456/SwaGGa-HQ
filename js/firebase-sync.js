@@ -6,7 +6,7 @@ import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, Google
 import { isNative } from './native-bridge.js';
 import { getFirestore, doc, setDoc, getDoc }
   from './firebase-firestore.js';
-import { BRAH_GOH_CURRICULUM } from './learning.js';
+
 import storage from './storage.js';
 
 const firebaseConfig = {
@@ -275,6 +275,10 @@ const SYNC_KEYS = [
   'extra_study_journal',
   'custom_spotify_playlist',
   'mindset_sessions_completed',
+  'notebook_entries',
+  'reviews',
+  'sim_balance',
+  'sim_trade_log',
 ];
 
 const NAMESPACE = 'swagga';
@@ -375,62 +379,12 @@ export async function pullFromCloud() {
               const mergedLog = { ...(cloudH.log || {}), ...(localH.log || {}) };
               const mergedFreezes = { ...(cloudH.freezes || {}), ...(localH.freezes || {}) };
               
-              if (id === 'course33') {
-                // Count directly from curriculum: unlocked episodes with real content
-                let totalCurriculumItems = 0;
-                try {
-                  if (BRAH_GOH_CURRICULUM && Array.isArray(BRAH_GOH_CURRICULUM)) {
-                    const overrides = storage.get('bg_unlocked_lessons', {});
-                    const effectiveCurriculum = BRAH_GOH_CURRICULUM.map(ep => {
-                      if (overrides[ep.id]) {
-                        return { ...ep, ...overrides[ep.id], locked: false };
-                      }
-                      return ep;
-                    });
-                    totalCurriculumItems = effectiveCurriculum.filter(ep => !ep.locked && ep.description && ep.description.trim().length > 0).length;
-                  }
-                } catch (_) {
-                  // Fallback: use default unlocked count
-                  totalCurriculumItems = 14;
-                }
-                
-                // Construct the final log based on whether today was completed or not
-                const finalLog = {};
-                const todayKey = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
-                
-                const todayCompleted = !!mergedLog[todayKey];
-                if (todayCompleted) {
-                  finalLog[todayKey] = true;
-                }
-                
-                const expectedPastKeys = totalCurriculumItems - (todayCompleted ? 1 : 0);
-                
-                // Fill slot keys going backwards from yesterday
-                for (let i = 0; i < expectedPastKeys; i++) {
-                  const d = new Date();
-                  d.setDate(d.getDate() - 1 - i);
-                  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                  finalLog[key] = true;
-                }
-                
-                mergedHabits.push({
-                  ...cloudH,
-                  ...localH,
-                  log: finalLog,
-                  freezes: mergedFreezes,
-                  subTasks: [
-                    { key: 'watch', label: 'Watch Lesson 📺', desc: 'Study today\'s price action' },
-                    { key: 'journal', label: 'Journal Takeaways 📝', desc: 'Log summary in Learning Hub' }
-                  ]
-                });
-              } else {
-                mergedHabits.push({
-                  ...cloudH,
-                  ...localH,
-                  log: mergedLog,
-                  freezes: mergedFreezes
-                });
-              }
+              mergedHabits.push({
+                ...cloudH,
+                ...localH,
+                log: mergedLog,
+                freezes: mergedFreezes
+              });
             }
           });
           merged[key] = mergedHabits;
@@ -555,6 +509,44 @@ export async function pullFromCloud() {
       } else if (['bg_unlocked_lessons', 'unlocked_achievements'].includes(key)) {
         // Object deep-merge: combine local and cloud unlocked lessons / achievements
         merged[key] = { ...(cloud || {}), ...(local || {}) };
+      } else if (key === 'notebook_entries') {
+        // Merge notebook entries by date key; longer content wins for same date
+        const mergedNotebook = { ...(cloud || {}) };
+        Object.keys(local || {}).forEach(dateKey => {
+          if (!mergedNotebook[dateKey]) {
+            mergedNotebook[dateKey] = local[dateKey];
+          } else {
+            const cLen = (mergedNotebook[dateKey].content || '').length;
+            const lLen = (local[dateKey].content || '').length;
+            if (lLen > cLen) {
+              mergedNotebook[dateKey] = local[dateKey];
+            }
+          }
+        });
+        merged[key] = mergedNotebook;
+      } else if (key === 'reviews') {
+        // Merge reviews by periodKey + type; latest updatedAt wins
+        const seen = new Map();
+        [...(cloud || []), ...(local || [])].forEach(r => {
+          if (!r) return;
+          const rKey = `${r.periodKey}_${r.type}`;
+          const existing = seen.get(rKey);
+          if (!existing || (r.updatedAt && (!existing.updatedAt || r.updatedAt > existing.updatedAt))) {
+            seen.set(rKey, r);
+          }
+        });
+        merged[key] = [...seen.values()];
+      } else if (key === 'sim_balance') {
+        // Higher balance wins (player's best performance)
+        merged[key] = Math.max(Number(cloud) || 10000, Number(local) || 10000);
+      } else if (key === 'sim_trade_log') {
+        // Merge sim trades by dedup on entry+exit+direction
+        const seenSim = new Map();
+        [...(local || []), ...(cloud || [])].forEach(t => {
+          const tKey = `${t.entry}_${t.exit}_${t.direction}_${t.scenario}`;
+          if (!seenSim.has(tKey)) seenSim.set(tKey, t);
+        });
+        merged[key] = [...seenSim.values()];
       } else {
         // default: cloud wins
         merged[key] = cloud;
