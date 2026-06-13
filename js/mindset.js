@@ -467,10 +467,7 @@ export function renderMindsetPage(container) {
     configContainer.style.gap = 'var(--space-4)';
 
     // Preset time selector buttons
-    const presetRow = el('div');
-    presetRow.style.display = 'flex';
-    presetRow.style.gap = '6px';
-    presetRow.style.flexWrap = 'wrap';
+    const presetRow = el('div', 'mindset-presets-row');
 
     const presets = [
       { label: '5 Min', sec: 300 },
@@ -609,10 +606,7 @@ export function renderMindsetPage(container) {
     configContainer.appendChild(customTimeInputs);
 
     // Config dropdowns (Interval bells, Ambient Sounds)
-    const optionsGrid = el('div');
-    optionsGrid.style.display = 'grid';
-    optionsGrid.style.gridTemplateColumns = '1fr 1fr';
-    optionsGrid.style.gap = 'var(--space-4)';
+    const optionsGrid = el('div', 'mindset-options-grid');
     
     // Interval Bell select
     const bellBox = el('div');
@@ -1236,12 +1230,6 @@ export function renderMindsetPage(container) {
 
     // Segmented Tab switcher for soundscapes
     const tabsContainer = el('div', 'mindset-tabs');
-    tabsContainer.style.display = 'flex';
-    tabsContainer.style.background = 'rgba(0, 0, 0, 0.2)';
-    tabsContainer.style.borderRadius = 'var(--radius-md)';
-    tabsContainer.style.padding = '4px';
-    tabsContainer.style.gap = '4px';
-    tabsContainer.style.border = '1px solid rgba(255, 255, 255, 0.05)';
     tabsContainer.style.marginBottom = '4px';
 
     const tabConfigs = [
@@ -1717,12 +1705,6 @@ export function renderMindsetPage(container) {
 
   // Sub-tabs for library categories
   const toolkitTabs = el('div', 'mindset-tabs');
-  toolkitTabs.style.display = 'flex';
-  toolkitTabs.style.background = 'rgba(0, 0, 0, 0.2)';
-  toolkitTabs.style.borderRadius = 'var(--radius-md)';
-  toolkitTabs.style.padding = '4px';
-  toolkitTabs.style.gap = '4px';
-  toolkitTabs.style.border = '1px solid rgba(255, 255, 255, 0.05)';
 
   const toolkitCategories = [
     { key: 'reboot', label: '⚡ Reboot' },
@@ -1770,13 +1752,7 @@ export function renderMindsetPage(container) {
     exercisesGrid.appendChild(emptyMsg);
   } else {
     filteredExercises.forEach(e => {
-      const card = el('div', 'glass-card');
-      card.style.display = 'flex';
-      card.style.alignItems = 'center';
-      card.style.padding = 'var(--space-3) var(--space-4)';
-      card.style.borderRadius = 'var(--radius-md)';
-      card.style.border = '1px solid rgba(255, 255, 255, 0.05)';
-      card.style.gap = 'var(--space-4)';
+      const card = el('div', 'glass-card mindset-exercise-card');
 
       // Left Play Circle Button
       const playBtn = el('button', 'btn', '▶');
@@ -1991,10 +1967,7 @@ export function renderMindsetPage(container) {
   const thisWeekSessions = medSessions.filter(s => s.timestamp >= oneWeekAgo);
   const thisWeekMinutes = Math.round(thisWeekSessions.reduce((acc, s) => acc + (s.durationSeconds || 0), 0) / 60);
 
-  const statsGrid = el('div');
-  statsGrid.style.display = 'grid';
-  statsGrid.style.gridTemplateColumns = '1fr 1fr';
-  statsGrid.style.gap = 'var(--space-3)';
+  const statsGrid = el('div', 'mindset-stats-grid');
 
   const stats = [
     { label: 'Current Streak', val: `${streakData.current} days` },
