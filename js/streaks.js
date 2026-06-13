@@ -1895,6 +1895,12 @@ function renderRemindersPanel(container) {
 
 // Build the full Streaks page.
 export function renderStreaksPage(container) {
+  try {
+    checkAndApplyAutoFreezes();
+  } catch (e) {
+    console.error('Error running checkAndApplyAutoFreezes on streaks page load:', e);
+  }
+
   container.replaceChildren();
   container.appendChild(el('h1', 'page-title', '🔥 Daily Streaks'));
 
@@ -1990,4 +1996,52 @@ function checkAndNotify() {
   sendLocalNotification('🪖 SwaGGa HQ — Streak Reminder', body);
 
   storage.set('streak_last_notif', new Date().toISOString());
+}
+
+export function checkAndApplyAutoFreezes() {
+  const habits = getHabits();
+  let tokens = storage.get('streak_freeze_tokens', 0);
+  if (tokens <= 0) return;
+
+  let modified = false;
+  
+  habits.forEach((habit) => {
+    if (tokens <= 0) return;
+    
+    // Walk backwards starting from yesterday
+    const d = new Date();
+    d.setDate(d.getDate() - 1); // Yesterday
+    
+    while (tokens > 0) {
+      const dateKey = localDateKey(d);
+      const isDone = (habit.log && habit.log[dateKey]) || (habit.freezes && habit.freezes[dateKey]);
+      
+      if (!isDone) {
+        // This day was missed. Use a token to freeze it
+        if (!habit.freezes) habit.freezes = {};
+        habit.freezes[dateKey] = true;
+        tokens--;
+        modified = true;
+        
+        setTimeout(() => {
+          showFreezeToast(`❄️ Auto-Freeze: Saved your ${habit.name} streak using 1 Freeze Token!`);
+        }, 1500);
+        
+        d.setDate(d.getDate() - 1); // Keep walking back
+      } else {
+        // This day is completed or already frozen, which means the streak is intact before this
+        break;
+      }
+    }
+  });
+
+  if (modified) {
+    storage.set('streak_freeze_tokens', tokens);
+    _saveHabits(habits);
+
+    // Push updates to cloud
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
+  }
 }

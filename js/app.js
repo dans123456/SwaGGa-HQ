@@ -6,7 +6,7 @@ import router from './router.js';
 import { renderTradingPage } from './trading.js';
 import { renderChartPage } from './trading.js';
 import { renderLearningPage, getLessons, getAssignments } from './learning.js';
-import { renderStreaksPage, getHabits, calculateStreak, initStreakNotifications } from './streaks.js';
+import { renderStreaksPage, getHabits, calculateStreak, initStreakNotifications, checkAndApplyAutoFreezes } from './streaks.js';
 import { getTrades, calculateStats } from './trading.js';
 import { getTimeAgo, formatCurrency, triggerConfetti, showNotificationToast } from './utils.js';
 import storage from './storage.js';
@@ -1149,6 +1149,12 @@ function renderDisciplineWidget(container) {
 // --- Dashboard ---
 
 function renderDashboard(container) {
+  try {
+    checkAndApplyAutoFreezes();
+  } catch (e) {
+    console.error('Error running checkAndApplyAutoFreezes on dashboard load:', e);
+  }
+
   container.replaceChildren();
 
   const trades = getTrades();
@@ -3089,6 +3095,13 @@ let _appLaunched = false;
 async function launchApp() {
   if (_appLaunched) return;
   _appLaunched = true;
+
+  // Auto-apply streak freezes if tokens exist
+  try {
+    checkAndApplyAutoFreezes();
+  } catch (e) {
+    console.error('Error running checkAndApplyAutoFreezes on launch:', e);
+  }
 
   // Auto-recovery for the user's streaks (Snapchat: 10, TikTok: 10, Duolingo: 10 logged + 44 base = 54)
   const habits = getHabits();
