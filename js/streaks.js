@@ -152,8 +152,11 @@ export function calculateStreak(habitId) {
 
   while (true) {
     const key = localDateKey(d);
-    if ((habit.log && habit.log[key]) || (habit.freezes && habit.freezes[key])) {
+    if (habit.log && habit.log[key]) {
       streak++;
+      d.setDate(d.getDate() - 1);
+    } else if (habit.freezes && habit.freezes[key]) {
+      // Keep chain alive, but do not increment streak for frozen days
       d.setDate(d.getDate() - 1);
     } else {
       break;
