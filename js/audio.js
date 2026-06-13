@@ -138,6 +138,29 @@ export function playSynthSound(type) {
         });
         break;
       }
+
+      case 'bell': {
+        const fundamental = 293.66; // D4 (grounding zen frequency)
+        const overtones = [1.0, 1.5, 2.0, 2.5, 3.2, 4.0];
+        overtones.forEach((ratio, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(fundamental * ratio, now);
+          
+          const vol = 0.06 / (idx + 1);
+          gain.gain.setValueAtTime(vol, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
+          
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          
+          osc.start(now);
+          osc.stop(now + 3.1);
+        });
+        break;
+      }
     }
   } catch (err) {
     console.warn('Retro synth audio play failed:', err);
