@@ -44,6 +44,31 @@ let _activeAudioStreamKey = 'off';
 let _streamVolume = storage.get('mindset_volume', 0.8);
 let _activeTab = storage.get('mindset_active_tab', 'streams');
 let _synthInitialized = false;
+let _streamButtons = {};
+
+function stopActiveStream() {
+  _activeAudioStreamKey = 'off';
+  if (_currentAudioStream) {
+    try {
+      _currentAudioStream.pause();
+    } catch (e) {}
+    _currentAudioStream = null;
+  }
+  if (_streamButtons) {
+    Object.entries(_streamButtons).forEach(([k, btn]) => {
+      if (!btn) return;
+      const lbl = btn.querySelector('span');
+      const desc = btn.querySelectorAll('span')[1];
+      btn.classList.remove('active');
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+      btn.style.background = 'rgba(255, 255, 255, 0.02)';
+      btn.style.boxShadow = 'none';
+      btn.style.transform = 'none';
+      if (lbl) lbl.style.color = 'var(--text-primary)';
+      if (desc) desc.style.color = 'var(--text-muted)';
+    });
+  }
+}
 
 // Sanctuary Meditation Variables
 let _meditationState = 'idle'; // 'idle', 'running', 'paused'
@@ -1286,7 +1311,7 @@ export function renderMindsetPage(container) {
     streamsList.style.flexDirection = 'column';
     streamsList.style.gap = 'var(--space-2)';
     
-    const streamButtons = {};
+    _streamButtons = {};
     AUDIO_STREAMS.forEach(stream => {
       const btn = el('button', 'btn sound-preset-btn');
       btn.style.display = 'flex';
@@ -1317,7 +1342,7 @@ export function renderMindsetPage(container) {
         triggerStream(stream.key);
       });
       streamsList.appendChild(btn);
-      streamButtons[stream.key] = btn;
+      _streamButtons[stream.key] = btn;
     });
     tabContentAreas['streams'].appendChild(streamsList);
 
@@ -1588,7 +1613,7 @@ export function renderMindsetPage(container) {
       _activeAudioStreamKey = key;
       playSynthSound('click');
       
-      Object.entries(streamButtons).forEach(([k, btn]) => {
+      Object.entries(_streamButtons).forEach(([k, btn]) => {
         const lbl = btn.querySelector('span');
         const desc = btn.querySelectorAll('span')[1];
         if (k === key) {
@@ -1618,24 +1643,6 @@ export function renderMindsetPage(container) {
       } catch (err) {}
     }
 
-    function stopActiveStream() {
-      _activeAudioStreamKey = 'off';
-      if (_currentAudioStream) {
-        _currentAudioStream.pause();
-        _currentAudioStream = null;
-      }
-      Object.entries(streamButtons).forEach(([k, btn]) => {
-        const lbl = btn.querySelector('span');
-        const desc = btn.querySelectorAll('span')[1];
-        btn.classList.remove('active');
-        btn.style.borderColor = 'rgba(255, 255, 255, 0.06)';
-        btn.style.background = 'rgba(255, 255, 255, 0.02)';
-        btn.style.boxShadow = 'none';
-        btn.style.transform = 'none';
-        if (lbl) lbl.style.color = 'var(--text-primary)';
-        if (desc) desc.style.color = 'var(--text-muted)';
-      });
-    }
 
     function updateSynthButtons(type) {
       Object.entries(synthButtons).forEach(([key, btn]) => {
