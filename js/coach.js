@@ -304,6 +304,9 @@ function runLocalSimulation(text, mode) {
 export function renderCoachPage(container) {
   container.replaceChildren();
 
+  // --- Wrapper Container ---
+  const coachContainer = el('div', 'coach-container');
+
   // --- Title and Description ---
   const header = el('div', 'page-header');
   header.style.marginBottom = 'var(--space-4)';
@@ -314,7 +317,7 @@ export function renderCoachPage(container) {
   subtitle.style.color = 'var(--text-muted)';
   subtitle.style.marginTop = '-4px';
   header.appendChild(subtitle);
-  container.appendChild(header);
+  coachContainer.appendChild(header);
 
   // --- Tab Bar ---
   const tabBar = el('div', 'tab-bar');
@@ -336,7 +339,7 @@ export function renderCoachPage(container) {
     });
     tabBar.appendChild(btn);
   });
-  container.appendChild(tabBar);
+  coachContainer.appendChild(tabBar);
 
   // --- Layout Grid ---
   const coachLayout = el('div', 'coach-layout');
@@ -344,7 +347,9 @@ export function renderCoachPage(container) {
   const sideCol = el('div', 'coach-sidebar');
   coachLayout.appendChild(mainCol);
   coachLayout.appendChild(sideCol);
-  container.appendChild(coachLayout);
+  coachContainer.appendChild(coachLayout);
+
+  container.appendChild(coachContainer);
 
   // =========================================================================
   // VIEW 1: MENTOR CHAT
