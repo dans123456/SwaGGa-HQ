@@ -23,17 +23,17 @@ const AUDIO_STREAMS = [
 
 const EXERCISES_LIBRARY = [
   // Reboot category
-  { id: 'reboot_60s', category: 'reboot', title: '60-Second Reboot', desc: 'Quick box-breath to calm adrenaline spike after a trigger.', duration: '1 Min', embedUrl: 'https://www.youtube.com/embed/g9H4_71p97E' },
+  { id: 'reboot_60s', category: 'reboot', title: '60-Second Reboot', desc: 'Quick box-breath to calm adrenaline spike after a trigger.', duration: '1 Min', embedUrl: 'https://www.youtube.com/embed/aNXK1M9CX1o' },
   { id: 'reboot_box', category: 'reboot', title: 'Box Breathing (4-4-4-4)', desc: 'Active breathing rhythm to restore heart rate equilibrium.', duration: '2 Min', isLocalBreathing: true },
-  { id: 'reboot_deescalate', category: 'reboot', title: 'De-escalation Reset', desc: 'Deep parasympathetic exhale to release trading pressure.', duration: '3 Min', embedUrl: 'https://www.youtube.com/embed/ABK0SYFxyEY' },
+  { id: 'reboot_deescalate', category: 'reboot', title: 'De-escalation Reset', desc: 'Deep parasympathetic exhale to release trading pressure.', duration: '3 Min', embedUrl: 'https://www.youtube.com/embed/F28MGLlpP90' },
   // Rewire category
   { id: 'rewire_identity', category: 'rewire', title: 'Trading Identity Reprogram', desc: 'Reprogram your subconscious mind to think and act like a professional.', duration: '10 Min', embedUrl: 'https://www.youtube.com/embed/z6X5oEIg6Ak' },
-  { id: 'rewire_risk', category: 'rewire', title: 'Risk Acceptance Primer', desc: 'Accept random outcomes and prime yourself to execute without fear.', duration: '8 Min', embedUrl: 'https://www.youtube.com/embed/S0T146y1S60' },
-  { id: 'rewire_detachment', category: 'rewire', title: 'P&L Detachment Meditation', desc: 'Focus on the process, detach from individual trade results.', duration: '10 Min', embedUrl: 'https://www.youtube.com/embed/k8v1V0-L6p0' },
+  { id: 'rewire_risk', category: 'rewire', title: 'Risk Acceptance Primer', desc: 'Accept random outcomes and prime yourself to execute without fear.', duration: '8 Min', embedUrl: 'https://www.youtube.com/embed/vPhz5M1B1gE' },
+  { id: 'rewire_detachment', category: 'rewire', title: 'P&L Detachment Meditation', desc: 'Focus on the process, detach from individual trade results.', duration: '12 Min', embedUrl: 'https://www.youtube.com/embed/x1j7PqR8G40' },
   // Recovery category
-  { id: 'recovery_adrenaline', category: 'recovery', title: 'Post-Session Adrenaline Flush', desc: 'Let go of the market and return to resting state after trading.', duration: '5 Min', embedUrl: 'https://www.youtube.com/embed/vQ05uU34C48' },
-  { id: 'recovery_closure', category: 'recovery', title: 'Trading Day Closure Routine', desc: 'Close the journal, release today\'s results, and lock it in the past.', duration: '10 Min', embedUrl: 'https://www.youtube.com/embed/1p3n_q9Jb6s' },
-  { id: 'recovery_sleep', category: 'recovery', title: 'Zen Sleep Recharge', desc: 'Slow-wave meditation to calm the nervous system before sleep.', duration: '15 Min', embedUrl: 'https://www.youtube.com/embed/vL9Wjxm1ljs' }
+  { id: 'recovery_adrenaline', category: 'recovery', title: 'Post-Session Adrenaline Flush', desc: 'Let go of the market and return to resting state after trading.', duration: '5 Min', embedUrl: 'https://www.youtube.com/embed/4pD3uN2gTuk' },
+  { id: 'recovery_closure', category: 'recovery', title: 'Trading Day Closure Routine', desc: 'Close the journal, release today\'s results, and lock it in the past.', duration: '10 Min', embedUrl: 'https://www.youtube.com/embed/yFCl2J9QOIQ' },
+  { id: 'recovery_sleep', category: 'recovery', title: 'Zen Sleep Recharge', desc: 'Slow-wave meditation to calm the nervous system before sleep.', duration: '15 Min', embedUrl: 'https://www.youtube.com/embed/1ZYbU85DM6w' }
 ];
 
 // --- Module State Variables ---
@@ -1074,7 +1074,7 @@ export function renderMindsetPage(container) {
     breathCard.appendChild(progressBarContainer);
 
     // Settings & Start
-    const breathControls = el('div', 'breathing-controls-row');
+    const breathControls = el('div', '');
     breathControls.style.display = 'flex';
     breathControls.style.gap = 'var(--space-3)';
     breathControls.style.marginTop = 'var(--space-6)';

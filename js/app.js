@@ -2756,6 +2756,14 @@ function buildAppShell() {
   if (!app) return;
   app.replaceChildren();
 
+  // ---- Mobile Top Header ----
+  const mobileHeader = el('div', 'mobile-top-header');
+  const headerLogo = el('span', 'mobile-header-logo', '🪖');
+  const headerTitle = el('span', 'mobile-header-title', 'SwaGGa HQ');
+  mobileHeader.appendChild(headerLogo);
+  mobileHeader.appendChild(headerTitle);
+  app.appendChild(mobileHeader);
+
   // ---- Mobile hamburger ----
   const menuBtn = el('button', 'mobile-menu-btn', '☰');
   menuBtn.setAttribute('aria-label', 'Open menu');
