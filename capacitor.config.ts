@@ -20,6 +20,10 @@ const config: CapacitorConfig = {
       'swagga-hq.firebaseapp.com',
       '*.googleapis.com',
       '*.gstatic.com',
+      '*.youtube.com',
+      '*.youtube-nocookie.com',
+      '*.googlevideo.com',
+      'open.spotify.com',
     ],
     // Keep Android cleartext HTTP blocked for security
     androidScheme: 'https',

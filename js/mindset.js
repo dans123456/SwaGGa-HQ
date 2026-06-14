@@ -299,12 +299,29 @@ function openMeditationCheckIn(durationSeconds) {
 }
 
 function openGuidedVideoModal(title, embedUrl) {
+  // Convert standard youtube.com/embed URLs to privacy-enhanced youtube-nocookie.com
+  // This is more compatible with WebViews and restricted environments
+  const safeEmbedUrl = embedUrl
+    .replace('https://www.youtube.com/embed/', 'https://www.youtube-nocookie.com/embed/')
+    .replace('https://youtube.com/embed/', 'https://www.youtube-nocookie.com/embed/');
+
+  // Extract the video ID for fallback link
+  const videoIdMatch = embedUrl.match(/embed\/([a-zA-Z0-9_-]+)/);
+  const youtubeWatchUrl = videoIdMatch
+    ? `https://www.youtube.com/watch?v=${videoIdMatch[1]}`
+    : embedUrl;
+
   const overlay = el('div', 'welcome-modal-overlay');
   const modal = el('div', 'welcome-modal');
   modal.style.maxWidth = '600px';
   modal.style.width = '90%';
   modal.style.padding = '0';
   modal.style.overflow = 'hidden';
+
+  // Close on overlay click (outside the modal)
+  overlay.addEventListener('click', (evt) => {
+    if (evt.target === overlay) overlay.remove();
+  });
 
   const header = el('div', '');
   header.style.display = 'flex';
@@ -320,7 +337,7 @@ function openGuidedVideoModal(title, embedUrl) {
   headerTitle.style.color = '#fff';
   headerTitle.style.margin = '0';
 
-  const closeBtn = el('button', '', '✕');
+  const closeBtn = el('button', '', '\u2715');
   closeBtn.style.background = 'transparent';
   closeBtn.style.border = 'none';
   closeBtn.style.color = 'var(--text-muted)';
@@ -339,9 +356,21 @@ function openGuidedVideoModal(title, embedUrl) {
   videoWrap.style.paddingBottom = '56.25%';
   videoWrap.style.height = '0';
   videoWrap.style.overflow = 'hidden';
+  videoWrap.style.background = '#000';
+
+  // Loading indicator
+  const loader = el('div', '', '\u25B6\uFE0F Loading video...');
+  loader.style.position = 'absolute';
+  loader.style.top = '50%';
+  loader.style.left = '50%';
+  loader.style.transform = 'translate(-50%, -50%)';
+  loader.style.color = 'var(--text-muted)';
+  loader.style.fontSize = 'var(--text-sm)';
+  loader.style.textAlign = 'center';
+  videoWrap.appendChild(loader);
 
   const iframe = document.createElement('iframe');
-  iframe.src = embedUrl;
+  iframe.src = safeEmbedUrl;
   iframe.style.position = 'absolute';
   iframe.style.top = '0';
   iframe.style.left = '0';
@@ -350,9 +379,39 @@ function openGuidedVideoModal(title, embedUrl) {
   iframe.style.border = '0';
   iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
   iframe.allowFullscreen = true;
+  iframe.referrerPolicy = 'no-referrer-when-downgrade';
+  iframe.loading = 'eager';
+
+  // Hide loader on iframe load
+  iframe.addEventListener('load', () => {
+    loader.style.display = 'none';
+  });
 
   videoWrap.appendChild(iframe);
   modal.appendChild(videoWrap);
+
+  // Fallback link — always visible below the video
+  const fallbackRow = el('div', '');
+  fallbackRow.style.padding = 'var(--space-3) var(--space-5)';
+  fallbackRow.style.textAlign = 'center';
+  fallbackRow.style.background = 'rgba(0, 0, 0, 0.4)';
+  fallbackRow.style.borderTop = '1px solid rgba(255, 255, 255, 0.06)';
+
+  const fallbackLink = document.createElement('a');
+  fallbackLink.href = youtubeWatchUrl;
+  fallbackLink.target = '_blank';
+  fallbackLink.rel = 'noopener noreferrer';
+  fallbackLink.textContent = 'Video not loading? Open in YouTube \u2197';
+  fallbackLink.style.fontSize = 'var(--text-xs)';
+  fallbackLink.style.color = 'var(--cyan)';
+  fallbackLink.style.textDecoration = 'none';
+  fallbackLink.style.opacity = '0.7';
+  fallbackLink.addEventListener('mouseenter', () => { fallbackLink.style.opacity = '1'; });
+  fallbackLink.addEventListener('mouseleave', () => { fallbackLink.style.opacity = '0.7'; });
+
+  fallbackRow.appendChild(fallbackLink);
+  modal.appendChild(fallbackRow);
+
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 }
