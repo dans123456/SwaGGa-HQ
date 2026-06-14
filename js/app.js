@@ -21,6 +21,7 @@ import { renderMindsetPage } from './mindset.js';
 import { renderBlitzPage } from './blitz.js';
 import { renderReviewPage } from './review.js';
 import { renderNotebookPage } from './notebook.js';
+import { renderCoachPage } from './coach.js';
 import { createEquityCurve } from './charts.js';
 
 // Simple DOM element builder helper
@@ -43,6 +44,7 @@ const NAV_ITEMS = [
   { hash: '#blitz', label: 'SMC Blitz', icon: '⚡' },
   { hash: '#review', label: 'Review Hub', icon: '📊' },
   { hash: '#notebook', label: 'Notebook', icon: '📝' },
+  { hash: '#coach', label: 'SwagAI', icon: '🤖' },
 ];
 
 let _killzonesInterval = null;
@@ -2839,18 +2841,27 @@ function buildAppShell() {
   userRow.appendChild(userName);
   syncSection.appendChild(userRow);
 
+  // Group Sync and Sign Out side-by-side
+  const syncActionsRow = el('div', 'sidebar-sync__actions-row');
+  syncActionsRow.style.display = 'none';
+  syncActionsRow.style.gap = 'var(--space-2)';
+  syncActionsRow.style.marginTop = 'var(--space-2)';
+
   // Sync button
-  const syncBtn = el('button', 'sidebar-sync__sync-btn', '🔄 Sync Now');
-  syncBtn.style.display = 'none';
+  const syncBtn = el('button', 'sidebar-sync__sync-btn', '🔄 Sync');
+  syncBtn.style.flex = '1';
+  syncBtn.style.margin = '0';
+  syncBtn.style.padding = 'var(--space-2) var(--space-1)';
+  syncBtn.style.fontSize = '11px';
+  syncBtn.style.display = 'block';
   syncBtn.addEventListener('click', async () => {
-    syncBtn.textContent = '⏳ Syncing...';
+    syncBtn.textContent = '⏳ ...';
     syncBtn.disabled = true;
     const result = await syncNow();
-    syncBtn.textContent = result.success ? '✅ Synced!' : '❌ Sync failed';
+    syncBtn.textContent = result.success ? '✅ Done' : '❌ Fail';
     syncBtn.disabled = false;
-    setTimeout(() => { syncBtn.textContent = '🔄 Sync Now'; }, 2000);
+    setTimeout(() => { syncBtn.textContent = '🔄 Sync'; }, 2000);
     if (result.success) {
-      // Refresh current page to show synced data
       router.init();
       const sidebarXP = document.querySelector('.sidebar-xp');
       if (sidebarXP) {
@@ -2858,32 +2869,41 @@ function buildAppShell() {
       }
     }
   });
-  syncSection.appendChild(syncBtn);
+  syncActionsRow.appendChild(syncBtn);
 
   // Sign out
   const signOutBtn = el('button', 'sidebar-sync__signout', 'Sign Out');
-  signOutBtn.style.display = 'none';
+  signOutBtn.style.flex = '1';
+  signOutBtn.style.margin = '0';
+  signOutBtn.style.padding = 'var(--space-2) var(--space-1)';
+  signOutBtn.style.fontSize = '11px';
+  signOutBtn.style.border = '1px solid rgba(255, 71, 87, 0.2)';
+  signOutBtn.style.background = 'rgba(255, 71, 87, 0.04)';
+  signOutBtn.style.color = 'var(--neon-red)';
+  signOutBtn.style.fontWeight = '600';
+  signOutBtn.style.display = 'block';
   signOutBtn.addEventListener('click', async () => {
     await firebaseSignOut();
   });
-  syncSection.appendChild(signOutBtn);
+  syncActionsRow.appendChild(signOutBtn);
+
+  syncSection.appendChild(syncActionsRow);
 
   // Listen for auth changes
   onAuthChange(async (user) => {
     if (user) {
       signInBtn.style.display = 'none';
       userRow.style.display = 'flex';
-      syncBtn.style.display = 'block';
-      signOutBtn.style.display = 'block';
+      syncActionsRow.style.display = 'flex';
       userAvatar.src = user.photoURL || '';
       userName.textContent = user.displayName || user.email || 'User';
 
       // Auto-sync on sign in
-      syncBtn.textContent = '⏳ Syncing...';
+      syncBtn.textContent = '⏳ ...';
       const result = await syncNow();
-      syncBtn.textContent = result.success ? '✅ Synced!' : '🔄 Sync Now';
+      syncBtn.textContent = result.success ? '✅ Done' : '🔄 Sync';
       if (result.success) {
-        setTimeout(() => { syncBtn.textContent = '🔄 Sync Now'; }, 2000);
+        setTimeout(() => { syncBtn.textContent = '🔄 Sync'; }, 2000);
         router.init();
         const sidebarXP = document.querySelector('.sidebar-xp');
         if (sidebarXP) {
@@ -2893,8 +2913,7 @@ function buildAppShell() {
     } else {
       signInBtn.style.display = 'block';
       userRow.style.display = 'none';
-      syncBtn.style.display = 'none';
-      signOutBtn.style.display = 'none';
+      syncActionsRow.style.display = 'none';
     }
   });
 
@@ -2966,11 +2985,19 @@ function buildAppShell() {
   themeContainer.appendChild(dotsContainer);
   sidebar.appendChild(themeContainer);
 
+  // Group Sound and Backup buttons side-by-side
+  const utilsRow = el('div', 'sidebar-utils-row');
+  utilsRow.style.display = 'flex';
+  utilsRow.style.gap = 'var(--space-2)';
+  utilsRow.style.margin = '0 var(--space-4) var(--space-3)';
+
   // 🔊 Retro Arcade Audio Mute Toggle in sidebar
   const audioMuted = storage.get('audio_muted', false);
   const audioBtn = el('button', 'theme-switch-btn audio-mute-btn');
-  audioBtn.style.margin = '0 var(--space-4) var(--space-4)';
-  audioBtn.style.width = 'calc(100% - var(--space-8))';
+  audioBtn.style.margin = '0';
+  audioBtn.style.width = 'auto';
+  audioBtn.style.flex = '1';
+  audioBtn.style.padding = 'var(--space-2) var(--space-1)';
   const audioIcon = el('span', 'theme-switch-emoji', audioMuted ? '🔇 Sound Off' : '🔊 Sound On');
   audioBtn.appendChild(audioIcon);
 
@@ -2983,17 +3010,19 @@ function buildAppShell() {
       }
     });
   });
-  sidebar.appendChild(audioBtn);
+  utilsRow.appendChild(audioBtn);
 
   // 💾 Backup & Restore Button in sidebar
   const backupBtn = el('button', 'theme-switch-btn backup-restore-btn');
-  backupBtn.style.margin = '0 var(--space-4) var(--space-4)';
-  backupBtn.style.width = 'calc(100% - var(--space-8))';
+  backupBtn.style.margin = '0';
+  backupBtn.style.width = 'auto';
+  backupBtn.style.flex = '1';
+  backupBtn.style.padding = 'var(--space-2) var(--space-1)';
   backupBtn.style.background = 'rgba(0, 212, 255, 0.05)';
   backupBtn.style.border = '1px solid rgba(0, 212, 255, 0.15)';
   backupBtn.style.color = 'var(--cyan)';
   
-  const backupIcon = el('span', 'theme-switch-emoji', '💾 Backup & Restore');
+  const backupIcon = el('span', 'theme-switch-emoji', '💾 Backup');
   backupBtn.appendChild(backupIcon);
 
   backupBtn.addEventListener('click', () => {
@@ -3002,7 +3031,9 @@ function buildAppShell() {
     });
     openBackupRestoreModal();
   });
-  sidebar.appendChild(backupBtn);
+  utilsRow.appendChild(backupBtn);
+
+  sidebar.appendChild(utilsRow);
 
   const collapseBtn = el('button', 'sidebar-collapse-btn', '◀');
   collapseBtn.setAttribute('aria-label', 'Toggle sidebar');
@@ -3078,7 +3109,7 @@ function buildAppShell() {
   focusBanner.style.display = 'none';
   main.appendChild(focusBanner);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'mindset', 'blitz', 'review', 'notebook'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'mindset', 'blitz', 'review', 'notebook', 'coach'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -3361,6 +3392,7 @@ async function launchApp() {
   router.registerRoute('#blitz', renderBlitzPage);
   router.registerRoute('#review', renderReviewPage);
   router.registerRoute('#notebook', renderNotebookPage);
+  router.registerRoute('#coach', renderCoachPage);
   router.registerRoute('#premarket-lockout', renderPremarketLockoutScreen);
   router.registerRoute('#cooldown-lockout', renderCooldownLockoutScreen);
 

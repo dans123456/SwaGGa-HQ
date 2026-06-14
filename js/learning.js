@@ -35,7 +35,7 @@ export const BRAH_GOH_CURRICULUM = [
   { id: 'ep22', episode: 22, title: 'Backtesting & Edge Validation', concepts: ['backtesting', 'historical-data', 'edge-verification', 'win-rate-validation'], description: 'How to validate your trading edge. Brad Goh explains how to collect historical trade samples (100+ trades) to determine your true strategy win rate and R:R ratios.', videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
   { id: 'ep23', episode: 23, title: 'Journalling Your Trades (EdgeScore)', concepts: ['trade-journaling', 'mistake-tracking', 'confluences', 'edgescore', 'statistics'], description: 'How to build and maintain a professional trading journal. Track your entry confluences, emotions, and mistakes to calculate your EdgeScore and find your statistical edge.', videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
   { id: 'ep24', episode: 24, title: 'How to Review Your Day', concepts: ['daily-review', 'reflection', 'inner-work', 'battle-feedback', 'sanctuary'], description: 'Brad Goh explains why reflection is the highest leverage skill in trading. Learn how to review your stats, log qualitative feedback (inner work), and perform a 10-minute meditation sanctuary to reset your nervous system.', videoUrl: 'https://youtu.be/4sN-gnJKRtA?si=makwDSJaJzwhbagr' },
-  { id: 'ep25', episode: 25, title: 'Lesson 25', concepts: [], description: '', locked: true },
+  { id: 'ep25', episode: 25, title: 'Simple Pullback Strategy', concepts: ['pullback-trading', 'market-mechanics', 'trend-continuation', 'sweep-pullbacks', 'aggressive-vs-conservative'], description: 'Brad Goh\'s systematic framework for identifying and trading market pullbacks. Learn fast vs slow vs sweep pullbacks, and aggressive vs conservative entry models.', videoUrl: 'https://youtu.be/Nuorx9oVz8o?si=vkbggcVSvYIcNhJE' },
   { id: 'ep26', episode: 26, title: 'Lesson 26', concepts: [], description: '', locked: true },
   { id: 'ep27', episode: 27, title: 'Lesson 27', concepts: [], description: '', locked: true },
   { id: 'ep28', episode: 28, title: 'Lesson 28', concepts: [], description: '', locked: true },
@@ -89,6 +89,9 @@ const QUIZ_BANK = [
   { concept: 'mitigation-block', q: 'A Mitigation Block is best described as:', choices: ['A broken order block that did not sweep liquidity before a structural break', 'An indicator that overlays daily trading volume', 'A high-impact news event that stops market movement', 'A daily range high that is never revisited'], answer: 0 },
   { concept: 'market-maker-model', q: 'What do MMBM and MMSM represent in Market Maker Models?', choices: ['Market Maker Buy Model and Market Maker Sell Model', 'Momentum Moving Average Buy and Sell Methods', 'Multi-Market Balance Model and Swing Margin', 'Margin Minimum Balance Multiplier'], answer: 0 },
   { concept: 'premarket-routine', q: 'Why is a pre-market routine critical for professional trading?', choices: ['It establishes HTF bias, news filters, and rules to eliminate emotional errors', 'It guarantees that every trade taken will be profitable', 'It allows you to trade without any risk or stop losses', 'It automatically calculates commissions and spreads'], answer: 0 },
+  { concept: 'pullback-trading', q: 'In Brad Goh\'s pullback strategy, what are pullbacks considered?', choices: ['Temporary pauses against the main trend that act as market fuel', 'Signs that the trend is completely reversing', 'Retail traps that should never be traded', 'Periods of zero market liquidity'], answer: 0 },
+  { concept: 'sweep-pullbacks', q: 'A "sweep pullback" is characterized by price:', choices: ['Retracing to sweep liquidity past a recent swing point before resuming trend', 'Moving in a straight line with no retracement whatsoever', 'Consolidating slowly for days without breaking key levels', 'Executing a clean lower-timeframe double top reversal'], answer: 0 },
+  { concept: 'aggressive-vs-conservative', q: 'What is a "conservative entry" in a pullback strategy?', choices: ['Waiting for a lower timeframe market shift (reversal confirmation) inside the zone', 'Setting a limit order directly on the outer edge of a zone', 'Entering immediately as soon as price touches the FVG', 'Trading without a stop loss to give price room to breathe'], answer: 0 }
 ];
 
 const OPEN_ENDED_TEMPLATES = [
@@ -922,6 +925,27 @@ function renderCurriculumLog(container) {
         ep.concepts.forEach((c) => tagBar.appendChild(el('span', 'tag', c)));
         content.appendChild(tagBar);
       }
+
+      if (ep.videoUrl) {
+        const watchBtn = el('button', 'btn btn-secondary btn-sm', '📺 Watch Video');
+        watchBtn.style.marginTop = 'var(--space-2)';
+        watchBtn.style.marginRight = 'var(--space-2)';
+        watchBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openGuidedVideoModal(ep.title, ep.videoUrl);
+        });
+        content.appendChild(watchBtn);
+      }
+
+      if (!isLogged) {
+        const logBtn = el('button', 'btn btn-primary btn-sm', '📖 Log Notes');
+        logBtn.style.marginTop = 'var(--space-2)';
+        logBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLogLessonPopup(renderCurriculumLog.bind(null, container), ep.id);
+        });
+        content.appendChild(logBtn);
+      }
     } else if (isLocked) {
       const lockRow = el('div', 'timeline-lock-row');
       lockRow.appendChild(el('p', 'timeline-desc timeline-locked-text', 'Not released yet'));
@@ -1304,7 +1328,7 @@ function openUnlockPopup(ep, curriculumContainer) {
 
 /* ---------- Log Lesson POPUP -------------------------------------- */
 
-function openLogLessonPopup(onSaved) {
+function openLogLessonPopup(onSaved, preselectedEpisodeId = null) {
   const { body, close } = createModal('📖 Log a Lesson');
 
   const form = el('form', 'modal-form');
@@ -1327,8 +1351,16 @@ function openLogLessonPopup(onSaved) {
   effectiveCurriculum.filter(ep => !ep.locked).forEach((ep) => {
     const opt = el('option', '', `Ep ${ep.episode}: ${ep.title}`);
     opt.value = ep.id;
+    if (preselectedEpisodeId === ep.id) {
+      opt.selected = true;
+    }
     epSelect.appendChild(opt);
   });
+  if (preselectedEpisodeId) {
+    epSelect.style.pointerEvents = 'none';
+    epSelect.tabIndex = -1;
+    epSelect.style.opacity = '0.7';
+  }
   const epGroup = el('div', 'form-group');
   epGroup.appendChild(el('label', 'form-label', 'Episode'));
   epGroup.appendChild(epSelect);
@@ -2091,7 +2123,12 @@ const FLASHCARD_DATA = [
   { emoji: '🛡️', concept: 'Emotional Independence (Ep 16)', answer: 'The professional state of mind where your emotions are completely detached from individual trade outcomes, allowing mechanical execution of your edge.' },
   { emoji: '⛓️', concept: 'Mitigation Block (Ep 18)', answer: 'A support/resistance level formed when price fails to sweep liquidity before breaking structure, turning the old order block into a mitigation point.' },
   { emoji: '🤖', concept: 'Market Maker Models (Ep 20)', answer: 'The Market Maker Buy Model (MMBM) and Sell Model (MMSM) describe the complete cycle of retail accumulation, smart money manipulation, and final distribution.' },
-  { emoji: '📋', concept: 'Pre-market Routine (Ep 21)', answer: 'A structured preparation routine (checking news, identifying HTF zones, marking key ranges) executed before session open to eliminate emotional trading errors.' }
+  { emoji: '📋', concept: 'Pre-market Routine (Ep 21)', answer: 'A structured preparation routine (checking news, identifying HTF zones, marking key ranges) executed before session open to eliminate emotional trading errors.' },
+  { emoji: '📈', concept: 'Market Pullbacks (Ep 25)', answer: 'A pullback is a temporary pause or retracement against the main trend. It serves as fuel, allowing smart money to buy at discount or sell at premium before the trend resumes.' },
+  { emoji: '⚡', concept: 'Fast vs Slow Pullbacks (Ep 25)', answer: 'Fast pullbacks are rapid retracements (often 1-3 aggressive candles) that mitigate key zones quickly. Slow pullbacks are complex, overlapping consolidations that build liquidity over a longer period.' },
+  { emoji: '🧹', concept: 'Sweep Pullbacks (Ep 25)', answer: 'A sweep pullback is a retracement that purposely pushes past a recent short-term swing point to capture resting retail stop-losses (liquidity) before reversing back in the trend direction.' },
+  { emoji: '🎯', concept: 'Aggressive Pullback Entry (Ep 25)', answer: 'An aggressive entry model where you set a limit order directly on a key supply or demand zone (e.g. FVG or Order Block) expecting price to tap and reverse immediately.' },
+  { emoji: '🛡️', concept: 'Conservative Pullback Entry (Ep 25)', answer: 'A conservative entry model where you wait for price to enter your zone and then shift structure on a lower timeframe (a market shift or CHOCH) before executing the trade.' }
 ];
 
 function renderFlashcardMode() {
@@ -2503,17 +2540,19 @@ export function renderLearningPage(container) {
   const flashcardsContainer = el('div');
   const milestonesContainer = el('div');
   const actionContainer = el('div');
+  const playbookContainer = el('div');
   const studyJournalContainer = el('div');
   const mentorContainer = el('div');
   const assignmentContainer = el('div');
   const curriculumContainer = el('div');
   const baCurriculumContainer = el('div');
 
-  // Order: Daily Tip → Flashcards → Milestones → Actions → Study Journal → Mentors → Assignments → Curriculum
+  // Order: Daily Tip → Flashcards → Milestones → Actions → Playbook → Study Journal → Mentors → Assignments → Curriculum
   container.appendChild(dailyTipContainer);
   container.appendChild(flashcardsContainer);
   container.appendChild(milestonesContainer);
   container.appendChild(actionContainer);
+  container.appendChild(playbookContainer);
   container.appendChild(studyJournalContainer);
   container.appendChild(mentorContainer);
   container.appendChild(assignmentContainer);
@@ -2525,6 +2564,7 @@ export function renderLearningPage(container) {
     renderFlashcards(flashcardsContainer);
     renderMilestones(milestonesContainer);
     renderActionBar(actionContainer, refresh);
+    renderPullbackPlaybook(playbookContainer);
     renderStudyJournal(studyJournalContainer, refresh);
     renderMentorCards(mentorContainer, refresh, curriculumContainer, baCurriculumContainer);
     renderCurriculumLog(curriculumContainer);
@@ -3253,6 +3293,30 @@ const FLASHCARD_TERMS = [
     title: 'Daily Session Prep',
     definition: 'A structured checklist (checking news, marking key levels, setting risk limits) executed before trading to eliminate emotional execution errors.',
     emoji: '📋'
+  },
+  {
+    id: 'pullbacktrading',
+    category: 'smc',
+    concept: 'Pullback Trading',
+    title: 'Trading Market Retracements',
+    definition: 'A pullback is a temporary pause or retracement against the main trend. It acts as fuel, allowing smart money to buy at discount or sell at premium before the trend resumes.',
+    emoji: '📈'
+  },
+  {
+    id: 'sweeppullbacks',
+    category: 'smc',
+    concept: 'Sweep Pullbacks',
+    title: 'Liquidity Grab Retracement',
+    definition: 'A retracement that purposely pushes past a recent short-term swing point to capture resting retail stop-losses (liquidity) before reversing back in the trend direction.',
+    emoji: '🧹'
+  },
+  {
+    id: 'aggressivevsconservative',
+    category: 'smc',
+    concept: 'Aggressive vs Conservative',
+    title: 'Entry Execution Models',
+    definition: 'Aggressive entry sets a limit order directly on a key zone (e.g. FVG/OB). Conservative entry waits for price to tap the zone, then shifts structure on a lower timeframe before executing.',
+    emoji: '🛡️'
   }
 ];
 
@@ -3466,6 +3530,308 @@ export function renderFlashcards(container) {
 
   rebuildGrid();
   container.appendChild(section);
+}
+
+// --- Pullback Strategy Playbook & Video Helpers ---
+
+export function getSafeEmbedUrl(url) {
+  if (!url) return '';
+  let videoId = '';
+  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (match && match[1]) {
+    videoId = match[1];
+  }
+  if (videoId) {
+    return `https://www.youtube-nocookie.com/embed/${videoId}`;
+  }
+  return url;
+}
+
+export function openGuidedVideoModal(title, videoUrl) {
+  const safeEmbedUrl = getSafeEmbedUrl(videoUrl);
+  
+  // Extract the video ID for fallback link
+  const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  const videoId = match ? match[1] : '';
+  const youtubeWatchUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : videoUrl;
+
+  const overlay = el('div', 'welcome-modal-overlay');
+  const modal = el('div', 'welcome-modal');
+  modal.style.maxWidth = '600px';
+  modal.style.width = '90%';
+  modal.style.padding = '0';
+  modal.style.overflow = 'hidden';
+
+  // Close on overlay click
+  overlay.addEventListener('click', (evt) => {
+    if (evt.target === overlay) overlay.remove();
+  });
+
+  const header = el('div', '');
+  header.style.display = 'flex';
+  header.style.justifyContent = 'space-between';
+  header.style.alignItems = 'center';
+  header.style.padding = 'var(--space-4) var(--space-5)';
+  header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.06)';
+  header.style.background = 'rgba(0, 0, 0, 0.3)';
+
+  const headerTitle = el('h3', '', title);
+  headerTitle.style.fontSize = 'var(--text-sm)';
+  headerTitle.style.fontWeight = 'bold';
+  headerTitle.style.color = '#fff';
+  headerTitle.style.margin = '0';
+
+  const closeBtn = el('button', '', '✕');
+  closeBtn.style.background = 'transparent';
+  closeBtn.style.border = 'none';
+  closeBtn.style.color = 'var(--text-muted)';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.fontSize = '1.2rem';
+  closeBtn.addEventListener('click', () => {
+    overlay.remove();
+  });
+
+  header.appendChild(headerTitle);
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const videoWrap = el('div', '');
+  videoWrap.style.position = 'relative';
+  videoWrap.style.paddingBottom = '56.25%';
+  videoWrap.style.height = '0';
+  videoWrap.style.overflow = 'hidden';
+  videoWrap.style.background = '#000';
+
+  // Loading indicator
+  const loader = el('div', '', '▶️ Loading video...');
+  loader.style.position = 'absolute';
+  loader.style.top = '50%';
+  loader.style.left = '50%';
+  loader.style.transform = 'translate(-50%, -50%)';
+  loader.style.color = 'var(--text-muted)';
+  loader.style.fontSize = 'var(--text-sm)';
+  loader.style.textAlign = 'center';
+  videoWrap.appendChild(loader);
+
+  const iframe = document.createElement('iframe');
+  iframe.src = safeEmbedUrl;
+  iframe.style.position = 'absolute';
+  iframe.style.top = '0';
+  iframe.style.left = '0';
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = '0';
+  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+  iframe.allowFullscreen = true;
+  iframe.referrerPolicy = 'no-referrer-when-downgrade';
+  iframe.loading = 'eager';
+
+  iframe.addEventListener('load', () => {
+    loader.style.display = 'none';
+  });
+
+  videoWrap.appendChild(iframe);
+  modal.appendChild(videoWrap);
+
+  // Fallback link
+  const fallbackRow = el('div', '');
+  fallbackRow.style.padding = 'var(--space-3) var(--space-5)';
+  fallbackRow.style.textAlign = 'center';
+  fallbackRow.style.background = 'rgba(0, 0, 0, 0.4)';
+  fallbackRow.style.borderTop = '1px solid rgba(255, 255, 255, 0.06)';
+
+  const fallbackLink = document.createElement('a');
+  fallbackLink.href = youtubeWatchUrl;
+  fallbackLink.target = '_blank';
+  fallbackLink.rel = 'noopener noreferrer';
+  fallbackLink.textContent = 'Video not loading? Open in YouTube ↗';
+  fallbackLink.style.fontSize = 'var(--text-xs)';
+  fallbackLink.style.color = 'var(--cyan)';
+  fallbackLink.style.textDecoration = 'none';
+  fallbackLink.style.opacity = '0.7';
+  fallbackLink.addEventListener('mouseenter', () => { fallbackLink.style.opacity = '1'; });
+  fallbackLink.addEventListener('mouseleave', () => { fallbackLink.style.opacity = '0.7'; });
+
+  fallbackRow.appendChild(fallbackLink);
+  modal.appendChild(fallbackRow);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+export function renderPullbackPlaybook(container) {
+  container.replaceChildren();
+  
+  const card = el('div', 'playbook-card');
+  card.style.background = 'rgba(20, 20, 25, 0.6)';
+  card.style.backdropFilter = 'blur(12px)';
+  card.style.border = '1px solid rgba(0, 242, 254, 0.15)';
+  card.style.borderRadius = 'var(--radius-lg)';
+  card.style.padding = 'var(--space-5)';
+  card.style.marginBottom = 'var(--space-6)';
+  card.style.boxShadow = '0 8px 32px 0 rgba(0, 242, 254, 0.05)';
+  card.style.position = 'relative';
+  card.style.overflow = 'hidden';
+
+  const glowLine = el('div');
+  glowLine.style.position = 'absolute';
+  glowLine.style.top = '0';
+  glowLine.style.left = '0';
+  glowLine.style.width = '100%';
+  glowLine.style.height = '3px';
+  glowLine.style.background = 'linear-gradient(90deg, var(--cyan), var(--purple))';
+  card.appendChild(glowLine);
+
+  const header = el('div');
+  header.style.display = 'flex';
+  header.style.justifyContent = 'space-between';
+  header.style.alignItems = 'center';
+  header.style.marginBottom = 'var(--space-4)';
+  header.style.flexWrap = 'wrap';
+  header.style.gap = 'var(--space-2)';
+
+  const titleWrap = el('div');
+  const title = el('h3', 'section-title', '📐 Brad Goh\'s Pullback Playbook');
+  title.style.margin = '0';
+  title.style.fontSize = '1.25rem';
+  title.style.color = '#fff';
+  titleWrap.appendChild(title);
+  
+  const subtitle = el('p', '', 'Systematic pullback execution framework');
+  subtitle.style.fontSize = 'var(--text-xs)';
+  subtitle.style.color = 'var(--text-muted)';
+  subtitle.style.margin = '2px 0 0 0';
+  titleWrap.appendChild(subtitle);
+  
+  header.appendChild(titleWrap);
+
+  const videoBtn = el('button', 'btn btn-sm btn-outline', '📺 Watch Lesson Video');
+  videoBtn.addEventListener('click', () => {
+    openGuidedVideoModal('Simple Pullback Strategy', 'https://youtu.be/Nuorx9oVz8o?si=vkbggcVSvYIcNhJE');
+  });
+  header.appendChild(videoBtn);
+  card.appendChild(header);
+
+  const steps = [
+    {
+      id: 'step1',
+      title: 'Step 1: Check for Trend Bias (HTF Alignment)',
+      desc: 'Verify market direction on the Higher Time Frame (e.g. D1 or H4). Only take pullbacks in the direction of the dominant HTF flow (bullish bias = buy pullbacks; bearish bias = sell pullbacks).',
+      badge: 'HTF Trend'
+    },
+    {
+      id: 'step2',
+      title: 'Step 2: Characterize the Pullback Type',
+      desc: 'Analyze the retracement speed and depth. Fast pullbacks (1-3 quick candles) suggest high momentum. Slow pullbacks (complex range consolidation) build liquidity. Sweep pullbacks run past a recent swing point to grab stops before reversing.',
+      badge: 'Retracement Character'
+    },
+    {
+      id: 'step3',
+      title: 'Step 3: Select Entry Execution Model',
+      desc: 'Choose how to enter: Aggressive entry uses a limit order directly at the FVG / Order Block zone. Conservative entry waits for price to tap the zone and shift market structure (CHOCH) on a lower timeframe (e.g., M5/M1) before executing.',
+      badge: 'Execution Model'
+    }
+  ];
+
+  const checkedSteps = storage.get('pullback_playbook_steps', {});
+
+  const stepsList = el('div');
+  stepsList.style.display = 'flex';
+  stepsList.style.flexDirection = 'column';
+  stepsList.style.gap = 'var(--space-3)';
+
+  steps.forEach((step, idx) => {
+    const isChecked = !!checkedSteps[step.id];
+
+    const stepItem = el('div', 'playbook-step');
+    stepItem.style.display = 'flex';
+    stepItem.style.gap = 'var(--space-4)';
+    stepItem.style.background = 'rgba(255, 255, 255, 0.02)';
+    stepItem.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+    stepItem.style.borderRadius = 'var(--radius-md)';
+    stepItem.style.padding = 'var(--space-4)';
+    stepItem.style.transition = 'all 0.2s ease';
+    if (isChecked) {
+      stepItem.style.border = '1px solid rgba(57, 255, 20, 0.15)';
+      stepItem.style.background = 'rgba(57, 255, 20, 0.01)';
+    }
+
+    const checkWrap = el('div');
+    checkWrap.style.display = 'flex';
+    checkWrap.style.alignItems = 'flex-start';
+    checkWrap.style.paddingTop = '2px';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = isChecked;
+    checkbox.style.cursor = 'pointer';
+    checkbox.style.width = '18px';
+    checkbox.style.height = '18px';
+    checkbox.style.accentColor = 'var(--neon-green)';
+    checkbox.addEventListener('change', () => {
+      checkedSteps[step.id] = checkbox.checked;
+      storage.set('pullback_playbook_steps', checkedSteps);
+      
+      if (checkbox.checked) {
+        stepItem.style.border = '1px solid rgba(57, 255, 20, 0.15)';
+        stepItem.style.background = 'rgba(57, 255, 20, 0.01)';
+        playSynthSound('click');
+        nativeHaptic();
+        
+        if (Object.values(checkedSteps).filter(Boolean).length === steps.length) {
+          triggerConfetti();
+          showNotificationToast('🏆 Pullback Strategy Checklist Completed! You are ready to trade pullbacks! ⚡');
+        }
+      } else {
+        stepItem.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+        stepItem.style.background = 'rgba(255, 255, 255, 0.02)';
+      }
+    });
+    checkWrap.appendChild(checkbox);
+    stepItem.appendChild(checkWrap);
+
+    const textWrap = el('div');
+    textWrap.style.display = 'flex';
+    textWrap.style.flexDirection = 'column';
+    textWrap.style.gap = 'var(--space-1)';
+
+    const titleRow = el('div');
+    titleRow.style.display = 'flex';
+    titleRow.style.alignItems = 'center';
+    titleRow.style.gap = 'var(--space-2)';
+    titleRow.style.flexWrap = 'wrap';
+
+    const titleEl = el('h4', '', step.title);
+    titleEl.style.fontSize = 'var(--text-sm)';
+    titleEl.style.fontWeight = '600';
+    titleEl.style.color = '#fff';
+    titleEl.style.margin = '0';
+    titleRow.appendChild(titleEl);
+
+    const badgeEl = el('span', '', step.badge);
+    badgeEl.style.fontSize = '9px';
+    badgeEl.style.padding = '2px 6px';
+    badgeEl.style.borderRadius = '4px';
+    badgeEl.style.background = 'rgba(0, 242, 254, 0.1)';
+    badgeEl.style.border = '1px solid rgba(0, 242, 254, 0.2)';
+    badgeEl.style.color = 'var(--cyan)';
+    titleRow.appendChild(badgeEl);
+
+    textWrap.appendChild(titleRow);
+
+    const descEl = el('p', '', step.desc);
+    descEl.style.fontSize = 'var(--text-xs)';
+    descEl.style.color = 'var(--text-muted)';
+    descEl.style.margin = '0';
+    descEl.style.lineHeight = '1.4';
+    textWrap.appendChild(descEl);
+
+    stepItem.appendChild(textWrap);
+    stepsList.appendChild(stepItem);
+  });
+
+  card.appendChild(stepsList);
+  container.appendChild(card);
 }
 
 

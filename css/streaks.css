@@ -960,7 +960,13 @@
   .end-mood-picker {
     flex-wrap: wrap !important;
   }
+  /* Options grid stack on mobile */
+  .mindset-options-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-4) !important;
+  }
 }
+
 
 /* Mindset Room — Small Phone Refinements */
 @media (max-width: 480px) {
@@ -1059,6 +1065,21 @@
     flex: 1 1 calc(33.33% - 6px) !important;
     min-width: 70px !important;
   }
+
+  /* Ambient sound preset buttons — wrap into grid instead of horizontal scroll */
+  .streams-list {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+
+  .streams-list > .sound-preset-btn {
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    text-align: center !important;
+    font-size: 10px !important;
+    padding: 8px 6px !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1077,6 +1098,13 @@
 
   .mindset-stats-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  /* Ambient sound presets — 3 per row on very small phones */
+  .streams-list > .sound-preset-btn {
+    flex: 1 1 calc(33.33% - 4px) !important;
+    font-size: 9px !important;
+    padding: 6px 4px !important;
   }
 }
 
