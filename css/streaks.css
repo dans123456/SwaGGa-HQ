@@ -1061,6 +1061,15 @@
   }
 }
 
+.breathing-controls-row {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 @media (max-width: 480px) {
   .btn {
     white-space: normal !important;
@@ -1077,6 +1086,17 @@
 
   .mindset-stats-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .breathing-controls-row {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  .breathing-controls-row > select,
+  .breathing-controls-row > button {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
   }
 }
 
