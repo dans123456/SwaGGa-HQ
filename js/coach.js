@@ -5,6 +5,132 @@ import { triggerConfetti, showNotificationToast, el } from './utils.js';
 import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
+// --- EdgeFlo Blog Strategy & Psychology Database (Autofill content) ---
+const EDGEFLO_KB_CONTENT = `=== EDGEFLO STRATEGY & PSYCHOLOGY RULES ===
+
+[Your Trading Reflects Your Weaknesses: Use That]
+Key Topics: The Market Does Not Care About Your Strategy, The Four Mirrors, Fix One Thing at a Time, How EdgeFlo Turns the Mirror Into a Tool, Mirror 1: FOMO (Fear of Missing Out)
+The market is a mirror. FOMO, greed, impatience, and control issues all show up in your trades. Learn how to use your journal to diagnose and fix them.
+Your Trading Reflects Your Weaknesses: Use That
+Most struggling traders think their problem is strategy. They switch indicators, change timeframes, buy courses, and hunt for the perfect setup. But after multiple blown accounts, a pattern emerges that has nothing to do with charts. The real problem is the person sitting at the screen. The market acts like a mirror. It reflects your FOMO, your greed, your impatience, and your need for control right back at you in the form of losing trades. Once you understand this, your trading journal becomes the most powerful diagnostic tool you own.
+
+[Would an Investor Fund You? Score Your Equity Curve]
+Key Topics: What Investors Actually Look For, The Five-Point Investor Scorecard, Walkthrough: Scoring a Real Equity Curve, Walkthrough: A Curve That Fails the Test, Why This Test Matters Even If You Never Seek Funding
+If a prop firm or investor saw your equity curve, would they trust you with capital? Use this framework to grade yourself honestly.
+Would an Investor Fund You? Score Your Equity Curve
+Pull up your equity curve right now. Look at the shape of it. Not the dollar amount at the end, not the best month, not the worst day. Just the shape.
+
+[Your P&L Does Not Define Your Worth as a Trader]
+Key Topics: Why Smart Traders Still Lose Money, The Identity Trap: Tying Self-Worth to Daily Results, What Your Equity Curve Actually Measures, Separating the Person From the Performance, How EdgeFlo Sanctuary Helps You Reset After a Drawdown
+Your equity curve measures execution consistency, not intelligence. Separating self-worth from daily P&L is the psychological shift that sustains trading careers.
+Your P&L Does Not Define Your Worth as a Trader
+Smart traders lose money. Consistently. The best traders in the world have losing days, losing weeks, and sometimes losing months. A red P&L does not mean you are a bad trader. It means you are a trader.
+
+[Win Rate vs R Multiple: Which Actually Matters]
+Key Topics: What Win Rate Actually Tells You, What R Multiple Actually Tells You, Head-to-Head: The Math That Settles It, Why Chasing Win Rate Destroys R Multiple, Expectancy: The Metric That Combines Both
+A 60% win rate with 3R average beats an 80% win rate with 1R. Learn the math that proves R multiple matters more than win rate and how to track both.
+Win Rate vs R Multiple: Which Actually Matters
+You win 8 out of 10 trades. Your friend wins 4 out of 10. You must be the better trader, right?
+
+[Daily Loss Limits: Your Safety Net for Bad Days]
+Key Topics: Loss Limits Are Not Just a Kill Switch, What Hitting Your Limit Every Week Actually Means, How Limits Expose a Style Mismatch, Setting Limits That Match Your Timeframe
+Daily loss limits do more than protect capital. They reveal whether your trading style fits your emotional capacity. Use limits as diagnostic data.
+Daily Loss Limits: Your Safety Net for Bad Days
+A daily loss limit is not just a kill switch that protects your capital. It is a diagnostic tool that reveals whether your trading style actually fits your emotional capacity. If you hit your limit once a month, bad luck happens. If you hit it every week, the style is wrong, not just the execution. The limit exposes the mismatch before it drains your account.
+
+[How Your Journal Reveals Your Real Trading Style]
+Key Topics: Your Feelings Lie, Your Data Does Not, What 30 Trades Tell You About Your Style, Spotting Your Best Setup, Session, and Timeframe, When the Data Contradicts Your Preference, How EdgeFlo AI Report Surfaces Your Hidden Patterns
+Your strengths hide in your trade data, not your feelings. Journal reviews expose which setups, sessions, and timeframes produce real results.
+How Your Journal Reveals Your Real Trading Style
+Your feelings about your trading style are unreliable. Your data is not. After 30 or more trades, your journal reveals which setups, sessions, and timeframes actually produce results. Most traders pick a style based on what sounds exciting or what a YouTube video recommended. The ones who last pick a style based on what their own numbers prove works for them.
+
+[How to Journal Manipulation Setups]
+Key Topics: Why Standard Journal Templates Miss Manipulation Data, The Five Fields Every Manipulation Entry Needs, How to Tag Sweep Type, Direction, and Outcome, Reviewing Your Manipulation Journal for Edge Refinement, How EdgeFlo Auto-Tags Manipulation Patterns in Your Journal
+Standard journal templates miss manipulation data. Learn the five fields every manipulation entry needs and how to review sweep patterns to sharpen your edge.
+You can study liquidity sweeps, inducements, and institutional manipulation for months. You can watch every YouTube video. You can read every article. But none of that knowledge compounds unless you track what you actually see and trade.
+Standard journal templates capture the basics: entry price, exit price, P&L, maybe a note about your emotions. They miss the data that matters most for manipulation-based trading. They do not record whether a sweep happened, what type of liquidity was targeted, or whether your entry was on the first touch or the second.
+
+[The Comfort Trap: When Zero Pain Means Maximum Risk]
+Key Topics: Why Comfort Feels Like Mastery but Is Not, The Emotional Sequence from Comfort to Catastrophe, What Healthy Discomfort Looks Like in Trading, Scheduled Check-Ins That Break the Comfort Spell, How EdgeFlo Flags When You Stop Challenging Yourself
+When trading feels effortless and pain-free, you are at peak danger. Learn why comfort signals dropped standards and how to break the complacency cycle.
+The Comfort Trap: When Zero Pain Means Maximum Risk
+There is a moment in every trader's journey that feels like arrival. The wins are stacking up. The system is working. You are not stressed, not worried, not second-guessing. Everything just clicks.
+
+[De-Risk After Drawdown: The 0.5% Recovery Protocol]
+Key Topics: When to Cut Risk in Half, The Recovery Math at 0.5%, Why 3R Wins Cover 0.5% Losses Fast, When to Move Back to 1%, How EdgeFlo Automates the Risk Drop
+Cut risk from 1% to 0.5% after consecutive losses. See the exact math behind recovery at half risk and when to move back to full size.
+De-Risk After Drawdown: The 0.5% Recovery Protocol
+Two losses in a row and suddenly the next trade feels heavier than it should. Your stop is the same size. Your setup looks clean. But something shifted. The account is lighter, and every new loss digs a deeper hole.
+
+[Better Entry Location = Better Risk to Reward]
+Key Topics: The Middle-of-Nowhere Problem, How Location Transforms Your R:R, Walkthrough: 1:1 vs 3:1 on the Same Setup, Capital Allocation Is About Location Quality, How EdgeFlo Shows Your R Before You Enter
+Entering in the middle gives 1:1 R:R. Entering at a demand zone in discount gives 3:1 or better. Same trade idea, wildly different outcomes. Math inside.
+Better Entry Location = Better Risk to Reward
+Two traders see the same bullish structure on EUR/USD. Same demand zone. Same target. Same week. One makes $1,500. The other makes $300. They took the same trade. The difference is where they clicked buy.
+
+[Funded Challenge Risk Framework: The 3-Tier System]
+Key Topics: The 3-Tier Risk System, Tier 1: Start at 1% Risk Per Trade, Tier 2: Drop to 0.5% When You Hit -2%, Tier 3: Optional 2% at +5% (Challenge Only), How Your Equity Curve Shapes the Decision
+Pass your funded challenge with the 3-tier risk framework: 1% default, 0.5% de-risk at -2%, optional 2% acceleration at +5%. Step-by-step mechanics.
+Funded Challenge Risk Framework: The 3-Tier System
+Most traders who fail funded challenges do not fail because of bad entries. They fail because they never adjust their risk as their account balance shifts. They start at 1%, stay at 1% even when they are down 4%, and blow through the drawdown limit on a single bad morning.
+
+[Why 99% of Traders Fail Funded Challenges]
+Key Topics: The Real Reasons Challenges Fail (Not Strategy), Reason 1: You Want Excitement, Not Freedom, Reason 2: You Copied an Edge You Cannot Trust, Reason 3: You Cannot Handle Success, Reason 4: You Want the Payout, Not the Process
+Most traders fail funded challenges for five reasons that have nothing to do with strategy. Fix these and passing becomes a matter of time.
+Why 99% of Traders Fail Funded Challenges
+Most traders fail funded challenges for reasons that have nothing to do with their chart analysis. The five real killers are chasing dopamine instead of freedom, copying someone else's edge without proof it works, self-sabotaging after making money, obsessing over the payout instead of the process, and lacking the patience to let the challenge play out. Fix these five problems and passing becomes a matter of time, not luck. Your strategy is probably fine. Your behavior is the bottleneck.
+
+[I Failed 4 Funded Challenges: What Finally Worked]
+Key Topics: Failure 1: Rushing In Without Enough Reps, Failure 2: Overtrading to Hit the Profit Target, Failure 3: Not Respecting Funded Drawdown Rules, Failure 4: Forcing Trades When the Market Gives Nothing, The Attempt That Passes: What Is Different
+Most traders fail their first funded challenge. Many fail four or five. Learn the common failure patterns and what changes on the attempt that finally passes.
+I Failed 4 Funded Challenges: What Finally Worked
+Failing a funded challenge feels personal. You paid the fee, you studied the rules, you thought you were ready. And then in week one, your daily loss limit gets breached and the account is gone.
+
+[Consistency Starts Before the Charts: Daily Habits of Profitable Traders]
+Key Topics: Why Chart Skills Are Not Enough, The Off-Chart Habits That Drive On-Chart Results, Building a Non-Negotiable Daily Routine, How Physical Discipline Transfers to Trading Discipline, How EdgeFlo Enforces Pre-Market Routines
+Trading consistency comes from daily habits, not chart skills. Build the off-chart routine that drives on-chart discipline and stops reactive trading.
+Consistency Starts Before the Charts: Daily Habits of Profitable Traders
+You know the setups. You have studied the charts. You can identify supply and demand zones, mark structure, and build a daily bias. And yet, you still take emotional trades, break your rules, and give back profits on days when you feel off.
+
+[Trading Drawdown Recovery: The De-Risking Framework]
+Key Topics: Why Drawdown Gets Worse Before It Gets Better, The Math: Why Recovery Takes Longer Than You Think, The De-Risking Framework (1% to 0.5% Switch), When to Increase Risk Again, A Drawdown Recovery Walkthrough ($100k Account)
+Recover from trading drawdown without revenge trading or overleveraging. Use the 1% to 0.5% de-risking framework to preserve capital and rebuild steadily.
+Trading Drawdown Recovery: The De-Risking Framework
+Trading drawdown recovery requires cutting your risk, not increasing it. When your account drops from $100,000 to $95,000, the instinct is to trade bigger and "make it back fast." That instinct is wrong. The correct move is to reduce risk from 1% to 0.5% per trade, take fewer positions, and let the math work in your favor. One winning trade at 0.5% risk with a 1:3 risk-to-reward ratio recovers the equivalent of three losing trades at the same level.
+
+[Trading Exit Rules: Stop Loss and Take Profit Methods]
+Key Topics: Two Types of Exits Every Plan Needs, Stop Loss Placement: Where and Why, Take Profit Methods: Fixed R vs Technical Targets, Why Consistent Exits Beat Emotional Exits, How EdgeFlo Helps You Stick to Your Exit Rules
+Define exit rules for winning and losing trades. Compare fixed R targets vs technical exits with Forex examples so you stop cutting winners short.
+Trading Exit Rules: Stop Loss and Take Profit Methods
+Trading exit rules define exactly where you get out of a trade, both when it goes wrong and when it goes right. Without them, you end up cutting winning trades early out of fear and letting losing trades run out of hope. Both habits destroy accounts. Exit rules remove the decision from real time and put it back where it belongs: in your plan, written before the trade starts.
+
+[Daily Loss Limit: The 5% Rule That Keeps You in the Game]
+Key Topics: What a Daily Loss Limit Actually Protects, How Prop Firms Calculate Daily Loss (Open + Closed Trades), The Hidden Trap: Floating Losses Count, How 0.5% Risk Per Trade Gives You Breathing Room, What to Do When You Hit 2% Down
+The 5% daily loss limit protects your funded or live account from blowouts. Learn how it is calculated, why floating losses count, and how to stay well under it.
+Daily Loss Limit: The 5% Rule That Keeps You in the Game
+A daily loss limit caps how much you can lose in a single trading day, usually at 5% of your account balance. On a $100,000 funded account, that means $5,000. Hit that number and trading stops. On prop firm accounts, breaching it kills the account entirely. On personal accounts, it should trigger a hard stop where you walk away from the screen.
+
+[Liquidity Pools in Forex: Where Resting Orders Sit]
+Key Topics: What Liquidity Pools Actually Are, Where Resting Orders Accumulate, Equal Highs and Equal Lows as Magnets, Reading Liquidity on Your Chart, How EdgeFlo Helps Track Zone Reactions
+Liquidity pools are clusters of resting orders above highs and below lows. Learn how equal highs and lows create predictable magnets that attract price.
+Liquidity Pools in Forex: Where Resting Orders Sit
+Liquidity pools are clusters of resting orders stacked at specific price levels. They form above swing highs and below swing lows because that is where retail traders predictably place their stop losses and pending orders. These pools act like magnets, pulling price toward them because the market constantly needs opposing orders to fuel the next move. Knowing where liquidity hides is the difference between entering with the flow and entering against it.
+
+[Lower Timeframe Entry Model: When to Zoom In]
+Key Topics: When to Drop to the 15-Minute Chart, The Premature Entry Trap on Lower Timeframes, Breaking the Last Lower High as Confirmation, Walkthrough: 4H Zone to 15m Entry, How EdgeFlo Journals Your Timeframe Discipline
+Only drop to the 15-minute chart after price enters your zone on the higher timeframe. Zooming in too early causes premature entries. Here is the exact model.
+Lower Timeframe Entry Model: When to Zoom In
+The 15-minute chart is the most dangerous timeframe in trading. Not because it is unreliable, but because traders look at it at the wrong time.
+
+[Never Trade the First Mitigation of a Zone]
+Key Topics: What Mitigation Means in Smart Money Terms, Why the First Touch Often Fails, The Second Mitigation Entry: When and How, Adding This Rule to Your Execution Checklist, How EdgeFlo Tracks Zone Mitigation Count
+The first time price returns to a supply or demand zone, it often fails. Learn the first-mitigation rule and how to wait for the second visit for better entries.
+Never Trade the First Mitigation of a Zone
+You marked a clean demand zone. Price pulled back to it. You entered on the touch. And then price sliced right through your zone like it was not there.
+
+`;
+
+
 // --- Configuration Constants ---
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -498,6 +624,26 @@ export function renderCoachPage(container) {
 
     kbCard.appendChild(kbArea);
     kbCard.appendChild(charBadge);
+
+    // Load EdgeFlo Blog Rules Button
+    const loadBtn = el('button', 'btn btn-cyan btn-xs', '⚡ Load EdgeFlo Blog Rules');
+    loadBtn.style.marginTop = 'var(--space-2)';
+    loadBtn.style.width = '100%';
+    loadBtn.style.fontSize = '10px';
+    loadBtn.style.padding = '6px var(--space-2)';
+    loadBtn.style.borderRadius = 'var(--radius-sm)';
+    loadBtn.addEventListener('click', () => {
+      if (confirm('Load EdgeFlo Strategy & Psychology rules into your Knowledge Base? This will overwrite the current content.')) {
+        kbArea.value = EDGEFLO_KB_CONTENT;
+        localStorage.setItem('swagga_ai_kb', EDGEFLO_KB_CONTENT);
+        charBadge.textContent = `Chars: ${EDGEFLO_KB_CONTENT.length}`;
+        playSynthSound('click');
+        nativeHaptic();
+        showNotificationToast('EdgeFlo Rules loaded into AI Coach successfully!');
+      }
+    });
+    kbCard.appendChild(loadBtn);
+
     sideCol.appendChild(kbCard);
   }
 
