@@ -22,10 +22,12 @@
 /* --- Layout Structure --- */
 .coach-layout {
   display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: var(--space-5);
+  grid-template-columns: 1fr minmax(0, 300px);
+  gap: var(--space-4);
   flex: 1;
-  min-height: 0; /* Important for flex child scrolling */
+  min-height: 0;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 @media (max-width: 1024px) {
@@ -46,7 +48,11 @@
   flex-direction: column;
   gap: var(--space-4);
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* --- Chat Console --- */

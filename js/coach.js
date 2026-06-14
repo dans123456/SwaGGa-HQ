@@ -6,7 +6,7 @@ import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
 // --- Configuration Constants ---
-const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 
 // Initial chat greeting
@@ -182,7 +182,11 @@ async function queryAI(userText, mode = 'chat') {
           systemInstruction: { parts: [{ text: fullSystemPrompt }] }
         })
       });
-      if (!response.ok) throw new Error(`Gemini API Error: ${response.statusText}`);
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error('Gemini Error Body:', errBody);
+        throw new Error(`Gemini API Error ${response.status}: ${errBody.slice(0, 200)}`);
+      }
       const data = await response.json();
       return data.candidates[0].content.parts[0].text;
     } else {
@@ -202,7 +206,11 @@ async function queryAI(userText, mode = 'chat') {
           messages: [{ role: 'user', content: userText }]
         })
       });
-      if (!response.ok) throw new Error(`Claude API Error: ${response.statusText}`);
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error('Claude Error Body:', errBody);
+        throw new Error(`Claude API Error ${response.status}: ${errBody.slice(0, 200)}`);
+      }
       const data = await response.json();
       return data.content[0].text;
     }
