@@ -3,6 +3,7 @@ import { getTrades, calculateStats } from './trading.js';
 import { addXP } from './xp.js';
 import { triggerConfetti, showNotificationToast, el } from './utils.js';
 import { playSynthSound } from './audio.js';
+import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
 // --- Configuration Constants ---
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
