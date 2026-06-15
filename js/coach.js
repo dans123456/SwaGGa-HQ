@@ -899,7 +899,7 @@ Additional Note: ${textNote.value}
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayTrades = getTrades().filter(t => t.date === todayStr);
 
-    const cDesc = el('p', '', `You have logged **${todayTrades.length} trades** today (${todayStr}). Let's audit your processes and define tomorrow's rules.`);
+    const cDesc = el('p', '', `You have logged ${todayTrades.length} trades today (${todayStr}). Let's audit your processes and define tomorrow's rules.`);
     cDesc.style.fontSize = 'var(--text-xs)';
     cDesc.style.color = 'var(--text-muted)';
     card.appendChild(cDesc);
@@ -1057,7 +1057,7 @@ Please review today's session and extract exactly:
     selModel.className = 'form-input';
     const optGemini = document.createElement('option');
     optGemini.value = 'gemini';
-    optGemini.textContent = 'Google Gemini 1.5 Flash (Default - Free Tier)';
+    optGemini.textContent = 'Google Gemini 2.0 Flash (Default - Free Tier)';
     const optClaude = document.createElement('option');
     optClaude.value = 'claude';
     optClaude.textContent = 'Anthropic Claude 3.5 Sonnet (Premium Upgrade)';

@@ -389,11 +389,13 @@ export async function pullFromCloud() {
         if (key === 'habits') {
           // merge habit logs + freezes by id
           const mergedHabits = [];
-          const allIds = new Set([...cloud.map(h => h.id), ...local.map(h => h.id)]);
+          const safeCloud = cloud.filter(h => h && h.id);
+          const safeLocal = local.filter(h => h && h.id);
+          const allIds = new Set([...safeCloud.map(h => h.id), ...safeLocal.map(h => h.id)]);
           
           allIds.forEach(id => {
-            const cloudH = cloud.find(h => h.id === id);
-            const localH = local.find(h => h.id === id);
+            const cloudH = safeCloud.find(h => h.id === id);
+            const localH = safeLocal.find(h => h.id === id);
             
             if (!cloudH) {
               mergedHabits.push(localH);
@@ -421,7 +423,7 @@ export async function pullFromCloud() {
         } else {
           // other arrays: merge by id, local wins for dupes
           const seen = new Map();
-          [...local, ...cloud].forEach(item => {
+          [...local, ...cloud].filter(item => item != null).forEach(item => {
             const itemId = item?.id || JSON.stringify(item);
             if (!seen.has(itemId)) {
               seen.set(itemId, item);
@@ -566,7 +568,7 @@ export async function pullFromCloud() {
       } else if (key === 'sim_trade_log') {
         // Merge sim trades by dedup on entry+exit+direction
         const seenSim = new Map();
-        [...(local || []), ...(cloud || [])].forEach(t => {
+        [...(local || []), ...(cloud || [])].filter(t => t != null).forEach(t => {
           const tKey = `${t.entry}_${t.exit}_${t.direction}_${t.scenario}`;
           if (!seenSim.has(tKey)) seenSim.set(tKey, t);
         });

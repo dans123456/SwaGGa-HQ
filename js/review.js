@@ -23,6 +23,8 @@ function getReviews() {
 
 function saveReview(review) {
   const reviews = getReviews();
+  // Stamp with updatedAt so cloud merge can determine winner
+  review.updatedAt = new Date().toISOString();
   // Check for existing review with same period + type, replace if found
   const idx = reviews.findIndex(r => r.periodKey === review.periodKey && r.type === review.type);
   if (idx !== -1) {
