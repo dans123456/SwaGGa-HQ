@@ -37,7 +37,7 @@ export const DEFAULT_HABITS = [
 // Initialise default habits if none exist, then return all habits.
 export function getHabits() {
   let habits = storage.get(STORAGE_KEY, null);
-  if (!habits) {
+  if (!habits || !Array.isArray(habits)) {
     habits = DEFAULT_HABITS.map((h) => ({ ...h, log: {}, freezes: {} }));
     storage.set(STORAGE_KEY, habits);
   } else {

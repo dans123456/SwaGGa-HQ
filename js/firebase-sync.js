@@ -285,6 +285,7 @@ const SYNC_KEYS = [
 ];
 
 const NAMESPACE = 'swagga';
+const RAW_STRING_KEYS = ['gemini_api_key', 'claude_api_key', 'ai_kb'];
 
 function readLocalData() {
   const data = {};
@@ -292,10 +293,26 @@ function readLocalData() {
     const fullKey = `${NAMESPACE}:${key}`;
     const raw = localStorage.getItem(fullKey);
     if (raw !== null) {
-      try {
-        data[key] = JSON.parse(raw);
-      } catch {
-        data[key] = raw;
+      if (RAW_STRING_KEYS.includes(key)) {
+        // Self-healing migration for double-stringified keys
+        let cleaned = raw;
+        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+          try {
+            const parsed = JSON.parse(cleaned);
+            if (typeof parsed === 'string') {
+              cleaned = parsed;
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        data[key] = cleaned;
+      } else {
+        try {
+          data[key] = JSON.parse(raw);
+        } catch {
+          data[key] = raw;
+        }
       }
     }
   });
@@ -319,7 +336,11 @@ function readLocalData() {
 function writeLocalData(cloudData) {
   Object.entries(cloudData).forEach(([key, value]) => {
     const fullKey = `${NAMESPACE}:${key}`;
-    localStorage.setItem(fullKey, JSON.stringify(value));
+    if (RAW_STRING_KEYS.includes(key)) {
+      localStorage.setItem(fullKey, typeof value === 'string' ? value : JSON.stringify(value));
+    } else {
+      localStorage.setItem(fullKey, JSON.stringify(value));
+    }
   });
 }
 

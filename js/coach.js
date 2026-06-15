@@ -191,7 +191,7 @@ function getLocalContextString() {
     .join(', ');
 
   // 3. Get Custom Knowledge Base text
-  const customKB = localStorage.getItem('swagga:ai_kb') || 'None provided yet.';
+  const customKB = getCustomKB() || 'None provided yet.';
 
   // 4. Create structured context block
   return `
@@ -233,7 +233,22 @@ function getApiKey(provider) {
     val = localStorage.getItem('swagga:claude_api_key') || '';
   }
   
-  const cleaned = val.trim();
+  let cleaned = val.trim();
+  // Self-healing migration for double-stringified config keys
+  if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (typeof parsed === 'string') {
+        cleaned = parsed.trim();
+        // Save the cleaned key back immediately
+        if (provider === 'gemini') localStorage.setItem('swagga:gemini_api_key', cleaned);
+        if (provider === 'claude') localStorage.setItem('swagga:claude_api_key', cleaned);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // Self-healing migration: if the user pasted a blog link or URL as their API key, clear it
   if (cleaned.startsWith('http') || cleaned.includes('.com') || cleaned.includes('/') || cleaned.includes('edgeflo')) {
     if (provider === 'gemini') localStorage.removeItem('swagga_gemini_api_key');
@@ -243,6 +258,23 @@ function getApiKey(provider) {
     return '';
   }
   return cleaned;
+}
+
+function getCustomKB() {
+  let val = localStorage.getItem('swagga:ai_kb') || '';
+  // Self-healing migration for double-stringified config keys
+  if (val.startsWith('"') && val.endsWith('"')) {
+    try {
+      const parsed = JSON.parse(val);
+      if (typeof parsed === 'string') {
+        val = parsed;
+        localStorage.setItem('swagga:ai_kb', val);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  return val;
 }
 
 // --- Safe Markdown Text Formatter (No innerHTML) ---
@@ -640,7 +672,7 @@ export function renderCoachPage(container) {
     const kbArea = document.createElement('textarea');
     kbArea.className = 'kb-textarea';
     kbArea.placeholder = 'Paste your strategy rules here (e.g. Pullback displacement rules, reversal studies)...';
-    kbArea.value = localStorage.getItem('swagga:ai_kb') || '';
+    kbArea.value = getCustomKB();
     
     // Character limit badge
     const charBadge = el('div', '', `Chars: ${kbArea.value.length}`);

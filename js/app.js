@@ -3248,7 +3248,18 @@ function transitionToLoginButtons(interactiveArea) {
   // Offline fallback
   const skipBtn = el('button', 'login-skip animate-fade-in', 'Use offline — data syncs when you sign in later');
   skipBtn.addEventListener('click', () => {
-    launchApp();
+    try {
+      launchApp();
+    } catch (launchErr) {
+      console.error('Failed to launch application from skip:', launchErr);
+      if (window.showGlobalError) {
+        window.showGlobalError(
+          'Application Launch Failed!',
+          'An unexpected error occurred while launching SwaGGa HQ: ' + launchErr.message,
+          'Please clear your browser cache or reset local storage.'
+        );
+      }
+    }
   });
   interactiveArea.appendChild(skipBtn);
 }
@@ -3663,7 +3674,18 @@ function init() {
         } catch (err) {
           console.warn('Initial cloud sync timed out or failed, proceeding with local data:', err);
         }
-        launchApp();
+        try {
+          await launchApp();
+        } catch (launchErr) {
+          console.error('Failed to launch application:', launchErr);
+          if (window.showGlobalError) {
+            window.showGlobalError(
+              'Application Launch Failed!',
+              'An unexpected error occurred while launching SwaGGa HQ: ' + launchErr.message,
+              'Please clear your browser cache or reset local data. If this is on mobile, try closing and reopening the app.'
+            );
+          }
+        }
       } else if (!_appLaunched) {
         // No session found — transition loader to show login buttons smoothly!
         if (_loginInteractiveArea) {
