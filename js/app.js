@@ -3351,6 +3351,40 @@ function showLoginScreen(isCheckingSession = false) {
 
 // --- App Launch (after Login Or Skip) ---
 
+function deduplicateWeeklyReviews() {
+  const reviews = storage.get('reviews', []) || [];
+  if (!Array.isArray(reviews) || reviews.length === 0) return;
+
+  const weeklyReviews = reviews.filter(r => r && r.type === 'weekly');
+  const nonWeeklyReviews = reviews.filter(r => r && r.type !== 'weekly');
+
+  if (weeklyReviews.length > 1) {
+    // Sort weekly reviews by updatedAt descending (latest first)
+    weeklyReviews.sort((a, b) => {
+      const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      if (timeA !== timeB) return timeB - timeA;
+      return (b.startDate || '').localeCompare(a.startDate || '');
+    });
+
+    // Keep only the latest one
+    const theOne = weeklyReviews[0];
+    const cleanedReviews = [...nonWeeklyReviews, theOne];
+
+    storage.set('reviews', cleanedReviews);
+    console.log(`[Deduplicate] Removed ${weeklyReviews.length - 1} duplicate weekly reviews, leaving only the latest one.`);
+    
+    // Sync to cloud
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) {
+        pushToCloud().then(ok => {
+          console.log('[Deduplicate] Pushed cleaned reviews to cloud:', ok);
+        });
+      }
+    }).catch(err => console.error('[Deduplicate] Sync failed:', err));
+  }
+}
+
 let _appLaunched = false;
 
 async function launchApp() {
@@ -3391,6 +3425,13 @@ async function launchApp() {
 
   buildAppShell();
   updateFocusBanner();
+
+  // Deduplicate weekly reviews if multiple exist
+  try {
+    deduplicateWeeklyReviews();
+  } catch (e) {
+    console.error('Error running deduplicateWeeklyReviews:', e);
+  }
 
   router.registerRoute('#dashboard', renderDashboard);
   router.registerRoute('#trading', renderTradingPage);
