@@ -516,4 +516,24 @@
     width: 100%;
     flex: none !important;
   }
+
+  .scorecard-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    display: block;
+  }
+
+  .scorecard-table {
+    min-width: 500px !important; /* Force minimum table width for clear layout on mobile */
+  }
+
+  .strategy-lab-row--top {
+    flex-direction: column !important;
+  }
+  
+  .strategy-lab-widget {
+    min-width: 100% !important;
+    box-sizing: border-box;
+  }
 }
