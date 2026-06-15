@@ -279,6 +279,9 @@ const SYNC_KEYS = [
   'reviews',
   'sim_balance',
   'sim_trade_log',
+  'gemini_api_key',
+  'claude_api_key',
+  'ai_kb',
 ];
 
 const NAMESPACE = 'swagga';

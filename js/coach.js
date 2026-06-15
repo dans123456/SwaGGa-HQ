@@ -5,6 +5,27 @@ import { triggerConfetti, showNotificationToast, el } from './utils.js';
 import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 
+// --- Legacy Key Migration ---
+function migrateLegacyCoachKeys() {
+  const migrations = {
+    'swagga_gemini_api_key': 'swagga:gemini_api_key',
+    'swagga_claude_api_key': 'swagga:claude_api_key',
+    'swagga_ai_kb': 'swagga:ai_kb'
+  };
+  for (const [oldKey, newKey] of Object.entries(migrations)) {
+    const val = localStorage.getItem(oldKey);
+    if (val !== null) {
+      localStorage.setItem(newKey, val);
+      localStorage.removeItem(oldKey);
+    }
+  }
+}
+try {
+  migrateLegacyCoachKeys();
+} catch (e) {
+  console.warn('Legacy key migration failed:', e);
+}
+
 // --- EdgeFlo Blog Strategy & Psychology Database (Autofill content) ---
 const EDGEFLO_KB_CONTENT = `=== EDGEFLO STRATEGY & PSYCHOLOGY RULES ===
 
@@ -170,7 +191,7 @@ function getLocalContextString() {
     .join(', ');
 
   // 3. Get Custom Knowledge Base text
-  const customKB = localStorage.getItem('swagga_ai_kb') || 'None provided yet.';
+  const customKB = localStorage.getItem('swagga:ai_kb') || 'None provided yet.';
 
   // 4. Create structured context block
   return `
@@ -207,9 +228,9 @@ Your goals:
 function getApiKey(provider) {
   let val = '';
   if (provider === 'gemini') {
-    val = localStorage.getItem('swagga_gemini_api_key') || '';
+    val = localStorage.getItem('swagga:gemini_api_key') || '';
   } else if (provider === 'claude') {
-    val = localStorage.getItem('swagga_claude_api_key') || '';
+    val = localStorage.getItem('swagga:claude_api_key') || '';
   }
   
   const cleaned = val.trim();
@@ -217,6 +238,8 @@ function getApiKey(provider) {
   if (cleaned.startsWith('http') || cleaned.includes('.com') || cleaned.includes('/') || cleaned.includes('edgeflo')) {
     if (provider === 'gemini') localStorage.removeItem('swagga_gemini_api_key');
     if (provider === 'claude') localStorage.removeItem('swagga_claude_api_key');
+    if (provider === 'gemini') localStorage.removeItem('swagga:gemini_api_key');
+    if (provider === 'claude') localStorage.removeItem('swagga:claude_api_key');
     return '';
   }
   return cleaned;
@@ -617,7 +640,7 @@ export function renderCoachPage(container) {
     const kbArea = document.createElement('textarea');
     kbArea.className = 'kb-textarea';
     kbArea.placeholder = 'Paste your strategy rules here (e.g. Pullback displacement rules, reversal studies)...';
-    kbArea.value = localStorage.getItem('swagga_ai_kb') || '';
+    kbArea.value = localStorage.getItem('swagga:ai_kb') || '';
     
     // Character limit badge
     const charBadge = el('div', '', `Chars: ${kbArea.value.length}`);
@@ -627,7 +650,7 @@ export function renderCoachPage(container) {
 
     kbArea.addEventListener('input', () => {
       const val = kbArea.value;
-      localStorage.setItem('swagga_ai_kb', val);
+      localStorage.setItem('swagga:ai_kb', val);
       charBadge.textContent = `Chars: ${val.length}`;
     });
 
@@ -644,7 +667,7 @@ export function renderCoachPage(container) {
     loadBtn.addEventListener('click', () => {
       if (confirm('Load EdgeFlo Strategy & Psychology rules into your Knowledge Base? This will overwrite the current content.')) {
         kbArea.value = EDGEFLO_KB_CONTENT;
-        localStorage.setItem('swagga_ai_kb', EDGEFLO_KB_CONTENT);
+        localStorage.setItem('swagga:ai_kb', EDGEFLO_KB_CONTENT);
         charBadge.textContent = `Chars: ${EDGEFLO_KB_CONTENT.length}`;
         playSynthSound('click');
         nativeHaptic();
@@ -1107,8 +1130,8 @@ Please review today's session and extract exactly:
       _selectedModel = selModel.value;
       storage.set('coach_selected_model', _selectedModel);
 
-      localStorage.setItem('swagga_gemini_api_key', inGemKey.value.trim());
-      localStorage.setItem('swagga_claude_api_key', inCldKey.value.trim());
+      localStorage.setItem('swagga:gemini_api_key', inGemKey.value.trim());
+      localStorage.setItem('swagga:claude_api_key', inCldKey.value.trim());
 
       showNotificationToast('AI Configurations Saved successfully!');
       renderCoachPage(container);
