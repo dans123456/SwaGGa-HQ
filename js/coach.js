@@ -205,12 +205,21 @@ Your goals:
 
 // TODO(security): Personal API key is stored locally on-device for direct client-to-API calls.
 function getApiKey(provider) {
+  let val = '';
   if (provider === 'gemini') {
-    return localStorage.getItem('swagga_gemini_api_key') || '';
+    val = localStorage.getItem('swagga_gemini_api_key') || '';
   } else if (provider === 'claude') {
-    return localStorage.getItem('swagga_claude_api_key') || '';
+    val = localStorage.getItem('swagga_claude_api_key') || '';
   }
-  return '';
+  
+  const cleaned = val.trim();
+  // Self-healing migration: if the user pasted a blog link or URL as their API key, clear it
+  if (cleaned.startsWith('http') || cleaned.includes('.com') || cleaned.includes('/') || cleaned.includes('edgeflo')) {
+    if (provider === 'gemini') localStorage.removeItem('swagga_gemini_api_key');
+    if (provider === 'claude') localStorage.removeItem('swagga_claude_api_key');
+    return '';
+  }
+  return cleaned;
 }
 
 // --- Safe Markdown Text Formatter (No innerHTML) ---
