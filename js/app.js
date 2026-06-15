@@ -3351,28 +3351,33 @@ function showLoginScreen(isCheckingSession = false) {
 
 // --- App Launch (after Login Or Skip) ---
 
-function deduplicateWeeklyReviews() {
+function deduplicateReviews() {
   const reviews = storage.get('reviews', []) || [];
   if (!Array.isArray(reviews) || reviews.length === 0) return;
 
-  const weeklyReviews = reviews.filter(r => r && r.type === 'weekly');
-  const nonWeeklyReviews = reviews.filter(r => r && r.type !== 'weekly');
+  const seen = new Map();
+  let duplicateCount = 0;
 
-  if (weeklyReviews.length > 1) {
-    // Sort weekly reviews by updatedAt descending (latest first)
-    weeklyReviews.sort((a, b) => {
-      const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-      const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-      if (timeA !== timeB) return timeB - timeA;
-      return (b.startDate || '').localeCompare(a.startDate || '');
-    });
+  reviews.forEach(r => {
+    if (!r || !r.type || !r.periodKey) return;
+    const rKey = `${r.type}_${r.periodKey}`;
+    const existing = seen.get(rKey);
+    if (!existing) {
+      seen.set(rKey, r);
+    } else {
+      duplicateCount++;
+      const timeA = r.updatedAt ? new Date(r.updatedAt).getTime() : 0;
+      const timeB = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      if (timeA > timeB) {
+        seen.set(rKey, r);
+      }
+    }
+  });
 
-    // Keep only the latest one
-    const theOne = weeklyReviews[0];
-    const cleanedReviews = [...nonWeeklyReviews, theOne];
-
+  if (duplicateCount > 0) {
+    const cleanedReviews = [...seen.values()];
     storage.set('reviews', cleanedReviews);
-    console.log(`[Deduplicate] Removed ${weeklyReviews.length - 1} duplicate weekly reviews, leaving only the latest one.`);
+    console.log(`[Deduplicate] Removed ${duplicateCount} duplicate reviews.`);
     
     // Sync to cloud
     import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
@@ -3426,11 +3431,11 @@ async function launchApp() {
   buildAppShell();
   updateFocusBanner();
 
-  // Deduplicate weekly reviews if multiple exist
+  // Deduplicate reviews by periodKey and type
   try {
-    deduplicateWeeklyReviews();
+    deduplicateReviews();
   } catch (e) {
-    console.error('Error running deduplicateWeeklyReviews:', e);
+    console.error('Error running deduplicateReviews:', e);
   }
 
   router.registerRoute('#dashboard', renderDashboard);
