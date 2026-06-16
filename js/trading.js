@@ -14,6 +14,7 @@ import {
   showNotificationToast,
   triggerConfetti,
   getContractMultiplier,
+  createModal,
 } from './utils.js';
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
@@ -56,23 +57,51 @@ export const CONFLUENCE_OPTIONS = [
   'Flip Zones / Mitigations [Ep 14]',
 ];
 
-export function getEffectiveConfluenceOptions() {
-  const options = [...CONFLUENCE_OPTIONS];
-  const overrides = storage.get('bg_unlocked_lessons', {});
+export const DEFAULT_CATEGORIZED_FACTORS = {
+  bias: [
+    'Market Structure (BOS/CHOCH) [Ep 5]',
+    'Top Down Analysis (HTF Bias) [Ep 11]'
+  ],
+  confluences: [
+    'Supply/Demand Zone [Ep 7]',
+    'Premium / Discount (Fib OTE) [Ep 8]',
+    'Fair Value Gaps (FVG) [Ep 9]',
+    'Liquidity Sweeps / Inducements [Ep 13]',
+    'Flip Zones / Mitigations [Ep 14]'
+  ],
+  triggers: [
+    'Candlestick Confirmation [Ep 6]',
+    'ICT Killzones Timing [Ep 12]'
+  ]
+};
+
+export function getEffectiveCategorizedFactors() {
+  const custom = storage.get('custom_edge_factors', { bias: [], confluences: [], triggers: [] });
   
+  const bias = [...DEFAULT_CATEGORIZED_FACTORS.bias, ...(custom.bias || [])];
+  const confluences = [...DEFAULT_CATEGORIZED_FACTORS.confluences, ...(custom.confluences || [])];
+  const triggers = [...DEFAULT_CATEGORIZED_FACTORS.triggers, ...(custom.triggers || [])];
+  
+  const overrides = storage.get('bg_unlocked_lessons', {});
   Object.entries(overrides).forEach(([id, lesson]) => {
     const epNum = lesson.episode !== undefined ? lesson.episode : parseInt(id.replace('ep', ''), 10);
     if (epNum > 14 && Array.isArray(lesson.concepts)) {
       lesson.concepts.forEach(concept => {
         const cleanConcept = concept.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         const label = `${cleanConcept} [Ep ${epNum}]`;
-        if (!options.includes(label)) {
-          options.push(label);
+        if (!confluences.includes(label)) {
+          confluences.push(label);
         }
       });
     }
   });
-  return options;
+  
+  return { bias, confluences, triggers };
+}
+
+export function getEffectiveConfluenceOptions() {
+  const cat = getEffectiveCategorizedFactors();
+  return [...cat.bias, ...cat.confluences, ...cat.triggers];
 }
 
 const STORAGE_KEY = 'trades';
@@ -620,6 +649,236 @@ export function updateEdgePreviewBadge(fieldset, badgeEl) {
     badgeEl.style.color = 'var(--neon-red)';
     badgeEl.style.border = '1px solid rgba(255, 59, 59, 0.2)';
   }
+}
+
+export function renderCategorizedConfluencesChecklist(container, selectedValues = [], onCheckboxChange = null) {
+  container.replaceChildren();
+
+  const categories = getEffectiveCategorizedFactors();
+  const sections = [
+    { key: 'bias', title: '🌐 Market Context & Bias', items: categories.bias },
+    { key: 'confluences', title: '📐 Areas of Value (Confluence)', items: categories.confluences },
+    { key: 'triggers', title: '⚡ Execution & Timing Filters', items: categories.triggers }
+  ];
+
+  sections.forEach(sec => {
+    if (sec.items.length === 0) return;
+
+    const secHeader = el('div', 'confluence-category-header', sec.title);
+    secHeader.style.fontSize = '12px';
+    secHeader.style.fontWeight = '700';
+    secHeader.style.color = 'var(--cyan)';
+    secHeader.style.marginTop = 'var(--space-3)';
+    secHeader.style.marginBottom = 'var(--space-2)';
+    container.appendChild(secHeader);
+
+    sec.items.forEach(c => {
+      const isChecked = selectedValues.includes(c);
+      const wrapper = el('label', 'form-check');
+      wrapper.style.display = 'flex';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.gap = '8px';
+      wrapper.style.fontSize = '12px';
+      wrapper.style.cursor = 'pointer';
+      wrapper.style.marginBottom = 'var(--space-1)';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.name = 'confluences';
+      cb.value = c;
+      cb.checked = isChecked;
+
+      cb.addEventListener('change', () => {
+        if (onCheckboxChange) onCheckboxChange();
+      });
+
+      wrapper.appendChild(cb);
+
+      const span = el('span', 'form-check-label', c);
+      wrapper.appendChild(span);
+      container.appendChild(wrapper);
+    });
+  });
+
+  const manageBtn = el('button', 'btn btn-outline btn-sm', '⚙️ Manage Custom Factors');
+  manageBtn.type = 'button';
+  manageBtn.style.marginTop = 'var(--space-4)';
+  manageBtn.style.fontSize = '11px';
+  manageBtn.style.padding = 'var(--space-1) var(--space-2)';
+  manageBtn.style.borderColor = 'rgba(0, 212, 255, 0.3)';
+  manageBtn.style.color = 'var(--cyan)';
+  manageBtn.style.background = 'transparent';
+  manageBtn.style.width = 'fit-content';
+  manageBtn.style.cursor = 'pointer';
+
+  manageBtn.addEventListener('click', () => {
+    openManageConfluencesModal(() => {
+      // Re-render checklist keeping currently checked confluences
+      const currentSelected = Array.from(container.querySelectorAll('input[name="confluences"]:checked')).map(cb => cb.value);
+      renderCategorizedConfluencesChecklist(container, currentSelected, onCheckboxChange);
+    });
+  });
+
+  container.appendChild(manageBtn);
+}
+
+export function openManageConfluencesModal(onUpdate) {
+  const { overlay, modal, body, close } = createModal('Manage Edge Factors');
+  modal.style.maxWidth = '500px';
+  body.style.maxHeight = '70vh';
+  body.style.overflowY = 'auto';
+  body.style.padding = 'var(--space-6)';
+
+  const renderContent = () => {
+    body.replaceChildren();
+
+    const desc = el('p', '', 'Add custom setup factors or remove existing custom ones. Grouping them ensures they display in the correct categories on your trade logging forms.');
+    desc.style.fontSize = '12px';
+    desc.style.color = 'var(--text-muted)';
+    desc.style.marginBottom = 'var(--space-4)';
+    body.appendChild(desc);
+
+    // Form Section
+    const addSection = el('div', '');
+    addSection.style.display = 'flex';
+    addSection.style.flexDirection = 'column';
+    addSection.style.gap = 'var(--space-2)';
+    addSection.style.padding = 'var(--space-4)';
+    addSection.style.background = 'rgba(255, 255, 255, 0.02)';
+    addSection.style.border = '1px solid rgba(255, 255, 255, 0.06)';
+    addSection.style.borderRadius = 'var(--radius-md)';
+    addSection.style.marginBottom = 'var(--space-5)';
+
+    addSection.appendChild(el('label', 'form-label', 'New Factor Name'));
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-input';
+    input.placeholder = 'e.g. 4H Liquidity Sweep, Daily Bias';
+    addSection.appendChild(input);
+
+    addSection.appendChild(el('label', 'form-label', 'Category'));
+    const select = document.createElement('select');
+    select.className = 'form-select';
+
+    const optBias = el('option', '', 'Market Context & Bias');
+    optBias.value = 'bias';
+    const optConf = el('option', '', 'Area of Value (Confluence)');
+    optConf.value = 'confluences';
+    const optTrig = el('option', '', 'Execution & Timing Trigger');
+    optTrig.value = 'triggers';
+
+    select.appendChild(optBias);
+    select.appendChild(optConf);
+    select.appendChild(optTrig);
+    addSection.appendChild(select);
+
+    const addBtn = el('button', 'btn btn-primary', 'Add Factor ➕');
+    addBtn.type = 'button';
+    addBtn.style.marginTop = 'var(--space-2)';
+    addBtn.addEventListener('click', () => {
+      const name = input.value.trim();
+      if (!name) {
+        showNotificationToast('Please enter a factor name.', '⚠️');
+        return;
+      }
+
+      // Check for duplicates
+      const allExist = getEffectiveConfluenceOptions();
+      if (allExist.includes(name)) {
+        showNotificationToast('This factor name already exists.', '⚠️');
+        return;
+      }
+
+      const custom = storage.get('custom_edge_factors', { bias: [], confluences: [], triggers: [] });
+      const cat = select.value;
+      if (!custom[cat]) custom[cat] = [];
+      custom[cat].push(name);
+      storage.set('custom_edge_factors', custom);
+
+      showNotificationToast('Custom factor added! 🎯');
+      playSynthSound('success');
+      input.value = '';
+      renderContent();
+      if (onUpdate) onUpdate();
+    });
+    addSection.appendChild(addBtn);
+    body.appendChild(addSection);
+
+    // List Section
+    body.appendChild(el('h4', '', 'Your Custom Factors'));
+    const listContainer = el('div', '');
+    listContainer.style.display = 'flex';
+    listContainer.style.flexDirection = 'column';
+    listContainer.style.gap = 'var(--space-2)';
+    listContainer.style.marginTop = 'var(--space-2)';
+
+    const custom = storage.get('custom_edge_factors', { bias: [], confluences: [], triggers: [] });
+    let hasCustom = false;
+
+    const categories = {
+      bias: '🌐 Bias',
+      confluences: '📐 Confluence',
+      triggers: '⚡ Trigger'
+    };
+
+    Object.entries(categories).forEach(([catKey, catLabel]) => {
+      const items = custom[catKey] || [];
+      items.forEach((item, index) => {
+        hasCustom = true;
+        const row = el('div', '');
+        row.style.display = 'flex';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'center';
+        row.style.padding = 'var(--space-2) var(--space-3)';
+        row.style.background = 'rgba(255, 255, 255, 0.01)';
+        row.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+        row.style.borderRadius = 'var(--radius-sm)';
+
+        const textWrap = el('div', '');
+        textWrap.style.display = 'flex';
+        textWrap.style.flexDirection = 'column';
+        textWrap.appendChild(el('span', '', item));
+
+        const badge = el('span', '', catLabel);
+        badge.style.fontSize = '10px';
+        badge.style.color = 'var(--cyan)';
+        badge.style.marginTop = '2px';
+        textWrap.appendChild(badge);
+
+        row.appendChild(textWrap);
+
+        const delBtn = el('button', 'btn btn-outline btn-xs', '✕');
+        delBtn.style.color = 'var(--neon-red)';
+        delBtn.style.borderColor = 'rgba(255, 59, 59, 0.2)';
+        delBtn.style.padding = '2px 6px';
+        delBtn.style.cursor = 'pointer';
+        delBtn.addEventListener('click', () => {
+          const current = storage.get('custom_edge_factors', { bias: [], confluences: [], triggers: [] });
+          current[catKey].splice(index, 1);
+          storage.set('custom_edge_factors', current);
+
+          showNotificationToast('Custom factor removed.');
+          renderContent();
+          if (onUpdate) onUpdate();
+        });
+        row.appendChild(delBtn);
+
+        listContainer.appendChild(row);
+      });
+    });
+
+    if (!hasCustom) {
+      const empty = el('p', '', 'No custom factors created yet.');
+      empty.style.color = 'var(--text-muted)';
+      empty.style.fontSize = '12px';
+      empty.style.fontStyle = 'italic';
+      listContainer.appendChild(empty);
+    }
+
+    body.appendChild(listContainer);
+  };
+
+  renderContent();
 }
 
 // --- DOM Builders (exclusively createElement + textContent for safety) ---
@@ -1513,21 +1772,17 @@ export function renderTradeForm(container, onSaved) {
   edgePreviewBadge.style.width = 'fit-content';
   confFieldset.appendChild(edgePreviewBadge);
 
-  getEffectiveConfluenceOptions().forEach((c) => {
-    const wrapper = el('label', 'form-check');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.name = 'confluences';
-    cb.value = c;
-    cb.addEventListener('change', () => {
-      nativeHaptic('light');
-      updateEdgePreviewBadge(confFieldset, edgePreviewBadge);
-    });
-    wrapper.appendChild(cb);
-    const span = el('span', 'form-check-label', c);
-    wrapper.appendChild(span);
-    confFieldset.appendChild(wrapper);
+  const checklistContainer = el('div', 'confluences-checklist-container');
+  checklistContainer.style.display = 'flex';
+  checklistContainer.style.flexDirection = 'column';
+  checklistContainer.style.gap = 'var(--space-1)';
+  confFieldset.appendChild(checklistContainer);
+
+  renderCategorizedConfluencesChecklist(checklistContainer, [], () => {
+    nativeHaptic('light');
+    updateEdgePreviewBadge(confFieldset, edgePreviewBadge);
   });
+
   form.appendChild(confFieldset);
 
   // ---- EdgeFlo Discipline Checklist ----
@@ -2798,7 +3053,7 @@ export function openEditTradeModal(trade, onRefresh) {
   edgePreviewBadge.style.width = 'fit-content';
 
   const confContainer = el('div', 'confluences-checklist-container');
-  confContainer.style.maxHeight = '140px';
+  confContainer.style.maxHeight = '240px';
   confContainer.style.overflowY = 'auto';
   confContainer.style.border = '1px solid rgba(255,255,255,0.08)';
   confContainer.style.borderRadius = 'var(--radius-md)';
@@ -2808,34 +3063,15 @@ export function openEditTradeModal(trade, onRefresh) {
   confContainer.style.gap = 'var(--space-1)';
   confContainer.style.marginBottom = 'var(--space-4)';
 
-  const effectiveOptions = getEffectiveConfluenceOptions();
-  effectiveOptions.forEach(optText => {
-    const isChecked = (trade.confluences || []).includes(optText);
-    const labelEl = el('label', 'checkbox-label');
-    labelEl.style.display = 'flex';
-    labelEl.style.alignItems = 'center';
-    labelEl.style.gap = '6px';
-    labelEl.style.fontSize = '12px';
-    labelEl.style.cursor = 'pointer';
-
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.name = 'confluences';
-    chk.value = optText;
-    chk.checked = isChecked;
-    chk.addEventListener('change', () => {
-      updateEdgePreviewBadge(confWrapper, edgePreviewBadge);
-    });
-
-    labelEl.appendChild(chk);
-    labelEl.appendChild(document.createTextNode(optText));
-    confContainer.appendChild(labelEl);
-  });
-  
   const confWrapper = el('div', '');
   confWrapper.appendChild(confTitle);
   confWrapper.appendChild(edgePreviewBadge);
   confWrapper.appendChild(confContainer);
+
+  renderCategorizedConfluencesChecklist(confContainer, trade.confluences || [], () => {
+    updateEdgePreviewBadge(confWrapper, edgePreviewBadge);
+  });
+  
   form.appendChild(confWrapper);
 
   // Trigger initial calculation if confluences are checked
