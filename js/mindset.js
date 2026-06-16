@@ -7,18 +7,18 @@ import { triggerConfetti, showNotificationToast, el } from './utils.js';
 // --- Configuration Constants ---
 const AMBIENT_PRESETS = [
   { key: 'none', label: '🔇 Silence', url: '' },
-  { key: 'rain', label: '🌧️ Gentle Rain', url: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg' },
-  { key: 'waves', label: '🌊 Ocean Waves', url: 'https://actions.google.com/sounds/v1/ambiences/ocean_waves.ogg' },
-  { key: 'forest', label: '🌲 Forest Birds', url: 'https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg' },
-  { key: 'fireplace', label: '🔥 Fireplace Crackle', url: 'https://actions.google.com/sounds/v1/household/fireplace_crackling.ogg' },
-  { key: 'whitenoise', label: '💨 White Noise', url: 'https://actions.google.com/sounds/v1/tools/air_conditioner.ogg' }
+  { key: 'rain', label: '🌧️ Gentle Rain', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/rain.mp3' },
+  { key: 'waves', label: '🌊 Ocean Waves', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/ocean.mp3' },
+  { key: 'forest', label: '🌲 Forest Birds', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/birds.mp3' },
+  { key: 'fireplace', label: '🔥 Fireplace Crackle', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/fireplace.mp3' },
+  { key: 'whitenoise', label: '💨 White Noise', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/wind.mp3' }
 ];
 
 const AUDIO_STREAMS = [
   { key: 'lofi', label: '🎧 Lofi Beats (Deep Focus)', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', desc: 'Chill lofi tracks for background concentration' },
-  { key: 'rain', label: '🌧️ Ambient Rain (Heavy)', url: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg', desc: 'Heavy white-noise rain loop' },
-  { key: 'birds', label: '🌲 Forest Birds & Wind', url: 'https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg', desc: 'Natural woodland morning ambiance' },
-  { key: 'waves', label: '🌊 Ocean Waves (Zen)', url: 'https://actions.google.com/sounds/v1/ambiences/ocean_waves.ogg', desc: 'Relaxing shoreline water swells' }
+  { key: 'rain', label: '🌧️ Ambient Rain (Heavy)', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/rain.mp3', desc: 'Heavy white-noise rain loop' },
+  { key: 'birds', label: '🌲 Forest Birds & Wind', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/birds.mp3', desc: 'Natural woodland morning ambiance' },
+  { key: 'waves', label: '🌊 Ocean Waves (Zen)', url: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/master/audio/ocean.mp3', desc: 'Relaxing shoreline water swells' }
 ];
 
 const EXERCISES_LIBRARY = [
@@ -763,6 +763,30 @@ export function renderMindsetPage(container) {
         btn.style.background = 'rgba(168, 85, 247, 0.15)';
         btn.style.borderColor = 'var(--purple)';
         btn.style.color = '#fff';
+
+        // Real-time audio preset switching if session is active
+        if (_meditationState !== 'idle') {
+          if (_meditationAudio) {
+            try {
+              _meditationAudio.pause();
+            } catch(e) {}
+            _meditationAudio = null;
+          }
+          if (_meditationAmbientSound !== 'none') {
+            const preset = AMBIENT_PRESETS.find(pr => pr.key === _meditationAmbientSound);
+            if (preset && preset.url) {
+              try {
+                _meditationAudio = new Audio(preset.url);
+                _meditationAudio.loop = true;
+                _meditationAudio.volume = _streamVolume;
+                if (_meditationState === 'running') {
+                  _meditationAudio.play().catch(() => {});
+                }
+              } catch(e) {}
+            }
+          }
+        }
+
         playSynthSound('click');
       });
 
@@ -1482,7 +1506,7 @@ export function renderMindsetPage(container) {
     const storedPlaylist = storage.get('custom_spotify_playlist', 'https://open.spotify.com/playlist/37i9dQZF1DX8Uebhn2wRm1');
     spotifyInput.value = storedPlaylist;
 
-    const spotifyLoadBtn = el('button', 'btn btn-sm', 'Load');
+    const spotifyLoadBtn = el('button', 'btn btn-sm btn-outline', 'Load');
     spotifyInputRow.appendChild(spotifyInput);
     spotifyInputRow.appendChild(spotifyLoadBtn);
     tabContentAreas['spotify'].appendChild(spotifyInputRow);
@@ -1519,7 +1543,7 @@ export function renderMindsetPage(container) {
     synthDesc.style.lineHeight = '1.4';
     tabContentAreas['synth'].appendChild(synthDesc);
 
-    const initBtn = el('button', 'btn btn-sm', '⚡ Initialize Synth Audio');
+    const initBtn = el('button', 'btn btn-sm btn-outline', '⚡ Initialize Synth Audio');
     initBtn.style.width = '100%';
     initBtn.style.padding = 'var(--space-3)';
     initBtn.style.fontSize = 'var(--text-xs)';
@@ -1962,7 +1986,7 @@ export function renderMindsetPage(container) {
     quoteText.style.lineHeight = '1.4';
     quoteText.style.fontStyle = 'italic';
 
-    const editBtn = el('button', 'btn btn-sm', '✏️ Edit Intention');
+    const editBtn = el('button', 'btn btn-sm btn-outline', '✏️ Edit Intention');
     editBtn.style.marginTop = '4px';
     editBtn.style.fontSize = '9px';
     editBtn.style.padding = '3px 8px';
