@@ -364,18 +364,44 @@ async function queryAI(userText, mode = 'chat') {
 
   try {
     if (model === 'gemini') {
-      const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: userText }] }],
-          systemInstruction: { parts: [{ text: fullSystemPrompt }] }
-        })
-      });
+      let response;
+      try {
+        response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userText }] }],
+            systemInstruction: { parts: [{ text: fullSystemPrompt }] }
+          })
+        });
+      } catch (fetchErr) {
+        console.warn('Gemini 2.0 Flash fetch failed, trying 1.5 Flash fallback...', fetchErr);
+      }
+
+      // Fallback to Gemini 1.5 Flash if response is not ok or fetch failed
+      if (!response || !response.ok) {
+        const fallbackEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+        response = await fetch(`${fallbackEndpoint}?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userText }] }],
+            systemInstruction: { parts: [{ text: fullSystemPrompt }] }
+          })
+        });
+      }
+
       if (!response.ok) {
         const errBody = await response.text();
         console.error('Gemini Error Body:', errBody);
-        throw new Error(`Gemini API Error ${response.status}: ${errBody.slice(0, 200)}`);
+        let parsedErr = `Gemini API Error ${response.status}`;
+        try {
+          const jsonErr = JSON.parse(errBody);
+          if (jsonErr.error && jsonErr.error.message) {
+            parsedErr = jsonErr.error.message;
+          }
+        } catch (_) {}
+        throw new Error(parsedErr);
       }
       const data = await response.json();
       return data.candidates[0].content.parts[0].text;
@@ -399,14 +425,21 @@ async function queryAI(userText, mode = 'chat') {
       if (!response.ok) {
         const errBody = await response.text();
         console.error('Claude Error Body:', errBody);
-        throw new Error(`Claude API Error ${response.status}: ${errBody.slice(0, 200)}`);
+        let parsedErr = `Claude API Error ${response.status}`;
+        try {
+          const jsonErr = JSON.parse(errBody);
+          if (jsonErr.error && jsonErr.error.message) {
+            parsedErr = jsonErr.error.message;
+          }
+        } catch (_) {}
+        throw new Error(parsedErr);
       }
       const data = await response.json();
       return data.content[0].text;
     }
   } catch (err) {
     console.error('AI Query Failed:', err);
-    return `⚠️ **Error connecting to ${model === 'gemini' ? 'Gemini' : 'Claude'} API.**\n\nFallback to Simulation:\n\n${runLocalSimulation(userText, mode)}`;
+    return `⚠️ **Error connecting to ${model === 'gemini' ? 'Gemini' : 'Claude'} API: ${err.message || err}**\n\nFallback to Simulation:\n\n${runLocalSimulation(userText, mode)}`;
   }
 }
 
@@ -594,7 +627,7 @@ export function renderCoachPage(container) {
     const textInput = document.createElement('textarea');
     textInput.className = 'chat-input';
     textInput.placeholder = 'Type to your AI Mentor (e.g. Ask strategy questions)...';
-    textInput.rows = 1;
+    textInput.rows = 3;
     
     // Enter key triggers submit
     textInput.addEventListener('keydown', (e) => {
@@ -673,7 +706,7 @@ export function renderCoachPage(container) {
     const newRuleInput = document.createElement('textarea');
     newRuleInput.className = 'kb-textarea';
     newRuleInput.placeholder = 'Paste a new strategy rule or playbook note here...';
-    newRuleInput.style.height = '80px';
+    newRuleInput.style.height = '200px';
     kbCard.appendChild(newRuleInput);
 
     // Save and Clear button
@@ -708,7 +741,7 @@ export function renderCoachPage(container) {
     const fullKbArea = document.createElement('textarea');
     fullKbArea.className = 'kb-textarea';
     fullKbArea.placeholder = 'Your accumulated knowledge base content will appear here...';
-    fullKbArea.style.height = '120px';
+    fullKbArea.style.height = '250px';
     fullKbArea.value = getCustomKB();
     kbDetailsContent.appendChild(fullKbArea);
 
