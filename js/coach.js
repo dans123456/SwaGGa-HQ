@@ -401,6 +401,24 @@ async function queryAI(userText, mode = 'chat') {
             parsedErr = jsonErr.error.message;
           }
         } catch (_) {}
+
+        // Query ModelService.ListModels to list available models for debug
+        try {
+          const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+          if (listRes.ok) {
+            const listData = await listRes.json();
+            if (listData && listData.models) {
+              const names = listData.models
+                .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+                .map(m => m.name.replace('models/', ''))
+                .join(', ');
+              parsedErr += `\n\nAvailable models for your API key: ${names}`;
+            }
+          }
+        } catch (listErr) {
+          console.error('Failed to list models:', listErr);
+        }
+
         throw new Error(parsedErr);
       }
       const data = await response.json();
