@@ -47,6 +47,14 @@
   padding-right: 4px; /* offset for scrollbar and card shadow */
 }
 
+.coach-main > .overview-panel {
+  flex: none;
+}
+
+.coach-sidebar > * {
+  flex: none;
+}
+
 .coach-sidebar {
   display: flex;
   flex-direction: column;
