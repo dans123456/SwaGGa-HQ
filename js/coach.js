@@ -364,45 +364,41 @@ async function queryAI(userText, mode = 'chat') {
 
   try {
     if (model === 'gemini') {
-      let response;
-      try {
-        response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: userText }] }],
-            systemInstruction: { parts: [{ text: fullSystemPrompt }] }
-          })
-        });
-      } catch (fetchErr) {
-        console.warn('Gemini 2.0 Flash fetch failed, trying 1.5 Flash fallback...', fetchErr);
-      }
+      const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+      let lastError = null;
+      let finalResponse = null;
 
-      // Fallback to Gemini 1.5 Flash if response is not ok or fetch failed
-      if (!response || !response.ok) {
-        const fallbackEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-        response = await fetch(`${fallbackEndpoint}?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: userText }] }],
-            systemInstruction: { parts: [{ text: fullSystemPrompt }] }
-          })
-        });
-      }
-
-      if (!response.ok) {
-        const errBody = await response.text();
-        console.error('Gemini Error Body:', errBody);
-        let parsedErr = `Gemini API Error ${response.status}`;
+      for (const modelName of modelsToTry) {
         try {
-          const jsonErr = JSON.parse(errBody);
-          if (jsonErr.error && jsonErr.error.message) {
-            parsedErr = jsonErr.error.message;
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: userText }] }],
+              systemInstruction: { parts: [{ text: fullSystemPrompt }] }
+            })
+          });
+          if (res.ok) {
+            finalResponse = res;
+            break; // Success!
+          } else {
+            const body = await res.text();
+            let msg = `Gemini API Error ${res.status}`;
+            try {
+              const json = JSON.parse(body);
+              if (json.error && json.error.message) msg = json.error.message;
+            } catch (_) {}
+            lastError = new Error(`${modelName}: ${msg}`);
           }
-        } catch (_) {}
+        } catch (fetchErr) {
+          lastError = new Error(`${modelName}: Network Error - ${fetchErr.message || fetchErr}`);
+        }
+      }
 
+      if (!finalResponse) {
         // Query ModelService.ListModels to list available models for debug
+        let modelsInfo = '';
         try {
           const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
           if (listRes.ok) {
@@ -412,16 +408,14 @@ async function queryAI(userText, mode = 'chat') {
                 .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
                 .map(m => m.name.replace('models/', ''))
                 .join(', ');
-              parsedErr += `\n\nAvailable models for your API key: ${names}`;
+              modelsInfo = `\n\nAvailable models for your API key: ${names}`;
             }
           }
-        } catch (listErr) {
-          console.error('Failed to list models:', listErr);
-        }
-
-        throw new Error(parsedErr);
+        } catch (_) {}
+        throw new Error((lastError ? lastError.message : 'Failed to query Gemini API') + modelsInfo);
       }
-      const data = await response.json();
+
+      const data = await finalResponse.json();
       return data.candidates[0].content.parts[0].text;
     } else {
       // Claude
