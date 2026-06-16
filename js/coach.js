@@ -669,44 +669,131 @@ export function renderCoachPage(container) {
     kbDesc.style.color = 'var(--text-muted)';
     kbCard.appendChild(kbDesc);
 
-    const kbArea = document.createElement('textarea');
-    kbArea.className = 'kb-textarea';
-    kbArea.placeholder = 'Paste your strategy rules here (e.g. Pullback displacement rules, reversal studies)...';
-    kbArea.value = getCustomKB();
-    
-    // Character limit badge
-    const charBadge = el('div', '', `Chars: ${kbArea.value.length}`);
+    // Input area for adding new notes one-by-one (it clears on save)
+    const newRuleInput = document.createElement('textarea');
+    newRuleInput.className = 'kb-textarea';
+    newRuleInput.placeholder = 'Paste a new strategy rule or playbook note here...';
+    newRuleInput.style.height = '80px';
+    kbCard.appendChild(newRuleInput);
+
+    // Save and Clear button
+    const addBtn = el('button', 'btn btn-cyan btn-xs', '➕ Add to Knowledge Base');
+    addBtn.style.width = '100%';
+    addBtn.style.fontSize = '10px';
+    addBtn.style.padding = '6px var(--space-2)';
+    addBtn.style.borderRadius = 'var(--radius-sm)';
+    kbCard.appendChild(addBtn);
+
+    // Collapsible Current KB view/edit details
+    const kbDetails = document.createElement('details');
+    kbDetails.style.marginTop = 'var(--space-2)';
+    kbDetails.style.border = '1px solid rgba(255,255,255,0.06)';
+    kbDetails.style.borderRadius = 'var(--radius-md)';
+    kbDetails.style.padding = 'var(--space-2)';
+    kbDetails.style.background = 'rgba(0,0,0,0.1)';
+
+    const kbSummary = el('summary', '', '📖 View & Edit Full KB');
+    kbSummary.style.fontSize = '11px';
+    kbSummary.style.fontWeight = '700';
+    kbSummary.style.color = 'var(--cyan)';
+    kbSummary.style.cursor = 'pointer';
+    kbDetails.appendChild(kbSummary);
+
+    const kbDetailsContent = el('div');
+    kbDetailsContent.style.marginTop = 'var(--space-2)';
+    kbDetailsContent.style.display = 'flex';
+    kbDetailsContent.style.flexDirection = 'column';
+    kbDetailsContent.style.gap = 'var(--space-2)';
+
+    const fullKbArea = document.createElement('textarea');
+    fullKbArea.className = 'kb-textarea';
+    fullKbArea.placeholder = 'Your accumulated knowledge base content will appear here...';
+    fullKbArea.style.height = '120px';
+    fullKbArea.value = getCustomKB();
+    kbDetailsContent.appendChild(fullKbArea);
+
+    const charBadge = el('div', '', `Total Chars: ${fullKbArea.value.length}`);
     charBadge.style.fontSize = '10px';
     charBadge.style.color = 'var(--text-muted)';
     charBadge.style.textAlign = 'right';
+    kbDetailsContent.appendChild(charBadge);
 
-    kbArea.addEventListener('input', () => {
-      const val = kbArea.value;
+    // Save full edits
+    fullKbArea.addEventListener('input', () => {
+      const val = fullKbArea.value;
       localStorage.setItem('swagga:ai_kb', val);
-      charBadge.textContent = `Chars: ${val.length}`;
+      charBadge.textContent = `Total Chars: ${val.length}`;
     });
 
-    kbCard.appendChild(kbArea);
-    kbCard.appendChild(charBadge);
-
-    // Load EdgeFlo Blog Rules Button
-    const loadBtn = el('button', 'btn btn-cyan btn-xs', '⚡ Load EdgeFlo Blog Rules');
-    loadBtn.style.marginTop = 'var(--space-2)';
-    loadBtn.style.width = '100%';
-    loadBtn.style.fontSize = '10px';
-    loadBtn.style.padding = '6px var(--space-2)';
-    loadBtn.style.borderRadius = 'var(--radius-sm)';
-    loadBtn.addEventListener('click', () => {
-      if (confirm('Load EdgeFlo Strategy & Psychology rules into your Knowledge Base? This will overwrite the current content.')) {
-        kbArea.value = EDGEFLO_KB_CONTENT;
-        localStorage.setItem('swagga:ai_kb', EDGEFLO_KB_CONTENT);
-        charBadge.textContent = `Chars: ${EDGEFLO_KB_CONTENT.length}`;
+    // Clear KB button
+    const clearBtn = el('button', 'btn btn-outline-danger btn-xs', '🗑️ Clear Knowledge Base');
+    clearBtn.style.width = '100%';
+    clearBtn.style.fontSize = '10px';
+    clearBtn.style.padding = '4px var(--space-2)';
+    clearBtn.style.borderRadius = 'var(--radius-sm)';
+    clearBtn.style.borderColor = 'rgba(255, 71, 87, 0.4)';
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Clear your entire custom AI Knowledge Base? This cannot be undone.')) {
+        localStorage.removeItem('swagga:ai_kb');
+        fullKbArea.value = '';
+        charBadge.textContent = 'Total Chars: 0';
         playSynthSound('click');
         nativeHaptic();
-        showNotificationToast('EdgeFlo Rules loaded into AI Coach successfully!');
+        showNotificationToast('Knowledge Base cleared!');
       }
     });
-    kbCard.appendChild(loadBtn);
+    kbDetailsContent.appendChild(clearBtn);
+
+    // Load EdgeFlo Blog Rules Button inside details
+    const loadBtn = el('button', 'btn btn-cyan btn-xs', '⚡ Load EdgeFlo Blog Rules');
+    loadBtn.style.width = '100%';
+    loadBtn.style.fontSize = '10px';
+    loadBtn.style.padding = '4px var(--space-2)';
+    loadBtn.style.borderRadius = 'var(--radius-sm)';
+    loadBtn.addEventListener('click', () => {
+      if (confirm('Load EdgeFlo Strategy & Psychology rules? This will overwrite the current content.')) {
+        fullKbArea.value = EDGEFLO_KB_CONTENT;
+        localStorage.setItem('swagga:ai_kb', EDGEFLO_KB_CONTENT);
+        charBadge.textContent = `Total Chars: ${EDGEFLO_KB_CONTENT.length}`;
+        playSynthSound('click');
+        nativeHaptic();
+        showNotificationToast('EdgeFlo Rules loaded successfully!');
+      }
+    });
+    kbDetailsContent.appendChild(loadBtn);
+
+    kbDetails.appendChild(kbDetailsContent);
+    kbCard.appendChild(kbDetails);
+
+    // Event listener for main "Add" button
+    addBtn.addEventListener('click', () => {
+      const text = newRuleInput.value.trim();
+      if (!text) {
+        showNotificationToast('Please paste or write a rule first!');
+        return;
+      }
+      
+      let currentKB = getCustomKB();
+      if (currentKB) {
+        currentKB += `\n\n=== Rule Added: ${new Date().toLocaleDateString()} ===\n` + text;
+      } else {
+        currentKB = text;
+      }
+      
+      localStorage.setItem('swagga:ai_kb', currentKB);
+      newRuleInput.value = ''; // Let it disappear!
+      
+      charBadge.textContent = `Total Chars: ${currentKB.length}`;
+      fullKbArea.value = currentKB;
+      
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      }).catch(() => {});
+      
+      playSynthSound('click');
+      nativeHaptic();
+      showNotificationToast('Rule added to Knowledge Base! 💾');
+    });
 
     sideCol.appendChild(kbCard);
   }
