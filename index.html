@@ -225,6 +225,16 @@
     <!-- Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
+        // Auto-reload the page when a new service worker takes control (claims the client)
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            console.log('New updates detected and activated. Auto-reloading page...');
+            window.location.reload();
+          }
+        });
+
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js').then((reg) => {
             console.log('SW registered, scope:', reg.scope);
