@@ -3716,13 +3716,13 @@ export function renderPullbackPlaybook(container) {
   header.style.gap = 'var(--space-2)';
 
   const titleWrap = el('div');
-  const title = el('h3', 'section-title', '📐 Brad Goh\'s Pullback Playbook');
+  const title = el('h3', 'section-title', '📐 EdgeFlo Trading Playbook');
   title.style.margin = '0';
   title.style.fontSize = '1.25rem';
   title.style.color = '#fff';
   titleWrap.appendChild(title);
   
-  const subtitle = el('p', '', 'Systematic pullback execution framework');
+  const subtitle = el('p', '', 'Systematic execution framework & entry models reference');
   subtitle.style.fontSize = 'var(--text-xs)';
   subtitle.style.color = 'var(--text-muted)';
   subtitle.style.margin = '2px 0 0 0';
@@ -3736,6 +3736,31 @@ export function renderPullbackPlaybook(container) {
   });
   header.appendChild(videoBtn);
   card.appendChild(header);
+
+  // Playbook Tabs Row
+  const tabsRow = el('div', 'playbook-modal-tabs');
+  tabsRow.style.marginBottom = 'var(--space-4)';
+  tabsRow.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+  tabsRow.style.background = 'rgba(0, 0, 0, 0.2)';
+  tabsRow.style.borderRadius = 'var(--radius-md)';
+  tabsRow.style.padding = '2px';
+  
+  const tabBtnChecklist = el('button', 'playbook-tab-btn active', '📋 Pullback Checklist');
+  const tabBtnCriteria = el('button', 'playbook-tab-btn', '📐 Entry Models & Criteria');
+  const tabBtnUpgrades = el('button', 'playbook-tab-btn', '⭐ A+ Upgrades');
+  tabsRow.appendChild(tabBtnChecklist);
+  tabsRow.appendChild(tabBtnCriteria);
+  tabsRow.appendChild(tabBtnUpgrades);
+  card.appendChild(tabsRow);
+
+  // Tab Contents Container
+  const tabBody = el('div', 'playbook-tab-body');
+
+  // --- Tab 1 Content: Pullback Checklist (Original Steps) ---
+  const contentChecklist = el('div', 'playbook-tab-content active');
+  contentChecklist.style.display = 'flex';
+  contentChecklist.style.flexDirection = 'column';
+  contentChecklist.style.gap = 'var(--space-3)';
 
   const steps = [
     {
@@ -3759,11 +3784,6 @@ export function renderPullbackPlaybook(container) {
   ];
 
   const checkedSteps = storage.get('pullback_playbook_steps', {});
-
-  const stepsList = el('div');
-  stepsList.style.display = 'flex';
-  stepsList.style.flexDirection = 'column';
-  stepsList.style.gap = 'var(--space-3)';
 
   steps.forEach((step, idx) => {
     const isChecked = !!checkedSteps[step.id];
@@ -3852,11 +3872,160 @@ export function renderPullbackPlaybook(container) {
     textWrap.appendChild(descEl);
 
     stepItem.appendChild(textWrap);
-    stepsList.appendChild(stepItem);
+    contentChecklist.appendChild(stepItem);
   });
+  tabBody.appendChild(contentChecklist);
 
-  card.appendChild(stepsList);
+  // --- Tab 2 Content: Entry Models & Minimum Criteria ---
+  const contentCriteria = el('div', 'playbook-tab-content');
+  contentCriteria.style.display = 'none';
+  contentCriteria.style.flexDirection = 'column';
+  contentCriteria.style.gap = 'var(--space-4)';
+
+  const criteriaTitle = el('h4', '', '📋 Minimum Must-Have Entry Criteria');
+  criteriaTitle.style.fontSize = 'var(--text-sm)';
+  criteriaTitle.style.color = '#fff';
+  criteriaTitle.style.margin = '0';
+  contentCriteria.appendChild(criteriaTitle);
+
+  const criteriaList = el('div', 'playbook-criteria-list');
+  const rules = [
+    'Trend direction confirmed on Higher Timeframe (Daily/H4) 📈',
+    'Price is at a valid point of interest (Demand/Supply, Breaker, FVG) 🎯',
+    'At least two additional confluences present in setup 🤝',
+    'Current session is active (London or New York Killzone) ⏱️',
+    'Stop Loss is placed at structural level (not arbitrary pips) 🛑',
+    'Risk-to-reward ratio is 3:1 or better before entry 🏆'
+  ];
+  rules.forEach((rule, idx) => {
+    const row = el('div', 'playbook-criteria-row');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'playbook-criteria-checkbox';
+    chk.id = `playbook-learning-chk-${idx}`;
+    chk.addEventListener('change', () => playSynthSound('click'));
+    
+    const lbl = el('label', '', rule);
+    lbl.setAttribute('for', chk.id);
+    lbl.style.cursor = 'pointer';
+    
+    row.appendChild(chk);
+    row.appendChild(lbl);
+    criteriaList.appendChild(row);
+  });
+  contentCriteria.appendChild(criteriaList);
+
+  const modelsTitle = el('h4', '', '📐 Playbook Entry Models');
+  modelsTitle.style.fontSize = 'var(--text-sm)';
+  modelsTitle.style.color = '#fff';
+  modelsTitle.style.margin = 'var(--space-2) 0 0 0';
+  contentCriteria.appendChild(modelsTitle);
+
+  const modelsGrid = el('div', 'playbook-models-grid');
+  const models = [
+    {
+      name: '1. Breaker Block Retest',
+      tag: 'STRUCTURE SHIFT',
+      desc: 'Price sweeps a key liquidity pool, then aggressively breaks structure (BOS/CHOCH) creating a displacement zone. Enter when price retraces back to mitigate the Breaker Block.',
+      steps: [
+        'Identify HTF direction & draw key liquidity pools.',
+        'Wait for liquidity sweep followed by a strong body close breaking structure.',
+        'Place limit entry at the breaker zone boundary.',
+        'Stop Loss set cleanly behind the sweep candle high/low.'
+      ]
+    },
+    {
+      name: '2. FVG Mitigation Sweep',
+      tag: 'LIQUIDITY + GAP',
+      desc: 'Price sweeps the Asian High or Low, then rapidly mitigates a Higher Timeframe Fair Value Gap (FVG). Enter on M5/M1 CHOCH candle confirmation tapping the FVG.',
+      steps: [
+        'Mark Asian High/Low as key buy/sell stop targets.',
+        'Wait for price to sweep Asian High/Low and tap H4/H1 FVG.',
+        'Zoom into M5/M1: wait for structure shift and FVG form.',
+        'Enter retest of lower timeframe FVG; SL below structural shift swing.'
+      ]
+    },
+    {
+      name: '3. Judas Swing False Breakout',
+      tag: 'SESSION MANIPULATION',
+      desc: 'Occurs in first 30-60 mins of London session. Price makes a false breakout against HTF bias to grab liquidity before reversing strongly in the HTF direction.',
+      steps: [
+        'Establish clear daily trend bias before session open.',
+        'Wait for early session move running counter to bias.',
+        'Confirm false breakout sweep of key structural level.',
+        'Enter on engulfing candle rejection; SL past sweep wick.'
+      ]
+    }
+  ];
+
+  models.forEach(m => {
+    const card = el('div', 'playbook-model-card');
+    
+    const titleRow = el('div', 'playbook-model-title-row');
+    titleRow.appendChild(el('h4', 'playbook-model-name', m.name));
+    titleRow.appendChild(el('span', 'playbook-model-tag', m.tag));
+    card.appendChild(titleRow);
+
+    card.appendChild(el('p', 'playbook-model-desc', m.desc));
+
+    const stepsContainer = el('ul', 'playbook-model-steps');
+    m.steps.forEach(step => {
+      const li = el('li', 'playbook-model-step-item', step);
+      stepsContainer.appendChild(li);
+    });
+    card.appendChild(stepsContainer);
+    modelsGrid.appendChild(card);
+  });
+  contentCriteria.appendChild(modelsGrid);
+  tabBody.appendChild(contentCriteria);
+
+  // --- Tab 3 Content: A+ Setup Upgrades ---
+  const contentUpgrades = el('div', 'playbook-tab-content');
+  contentUpgrades.style.display = 'none';
+  contentUpgrades.style.flexDirection = 'column';
+  contentUpgrades.style.gap = 'var(--space-3)';
+
+  const upgradesList = el('div', 'playbook-upgrades-list');
+  const upgrades = [
+    { icon: '💎', title: 'Perfect Triple Alignment', desc: 'Higher timeframe trend direction (D1), point of interest location (H4 FVG), and execution timing (London Open) are fully aligned.' },
+    { icon: '⚡', title: 'High displacement volume', desc: 'The candle breaking structure must have a wide range body and high volume, leaving behind a large, clean Fair Value Gap.' },
+    { icon: '🧹', title: 'Clear Liquidity Sweep', desc: 'Price must cleanly sweep a major pool (Asian High/Low, Previous Daily High/Low) immediately before hitting the entry zone.' },
+    { icon: '📰', title: 'Safe news window', desc: 'No high-impact economic news releases (red folder news) are scheduled within 2 hours of entry.' }
+  ];
+
+  upgrades.forEach(up => {
+    const card = el('div', 'playbook-upgrade-item');
+    card.appendChild(el('span', 'playbook-upgrade-icon', up.icon));
+    const textWrap = el('div', 'playbook-upgrade-text-wrap');
+    textWrap.appendChild(el('span', 'playbook-upgrade-title', up.title));
+    textWrap.appendChild(el('span', 'playbook-upgrade-desc', up.desc));
+    card.appendChild(textWrap);
+    upgradesList.appendChild(card);
+  });
+  contentUpgrades.appendChild(upgradesList);
+  tabBody.appendChild(contentUpgrades);
+
+  card.appendChild(tabBody);
   container.appendChild(card);
+
+  // Tabs switching logic
+  const tabButtons = [
+    { btn: tabBtnChecklist, content: contentChecklist },
+    { btn: tabBtnCriteria, content: contentCriteria },
+    { btn: tabBtnUpgrades, content: contentUpgrades }
+  ];
+
+  tabButtons.forEach(t => {
+    t.btn.addEventListener('click', () => {
+      playSynthSound('click');
+      tabButtons.forEach(x => {
+        x.btn.classList.remove('active');
+        x.content.style.display = 'none';
+      });
+      t.btn.classList.add('active');
+      t.content.style.display = 'flex';
+    });
+  });
 }
 
 

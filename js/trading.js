@@ -1919,6 +1919,7 @@ export function renderTradeForm(container, onSaved) {
     const span = el('span', 'form-check-label', g.label);
     wrapper.appendChild(span);
     guardrailsFieldset.appendChild(wrapper);
+  });
   form.appendChild(guardrailsFieldset);
 
   // ---- EdgeFlo Pre-Entry 7-Question Filter ----
@@ -1948,6 +1949,15 @@ export function renderTradeForm(container, onSaved) {
     wrapper.appendChild(cb);
     const span = el('span', 'form-check-label', q.label);
     wrapper.appendChild(span);
+    if (q.key === 'setupMatch') {
+      const viewLink = el('span', 'playbook-ref-link', 'View Playbook 🔍');
+      viewLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPlaybookReferenceModal();
+      });
+      wrapper.appendChild(viewLink);
+    }
     filterFieldset.appendChild(wrapper);
   });
   form.appendChild(filterFieldset);
@@ -1998,6 +2008,7 @@ export function renderTradeForm(container, onSaved) {
   const mistakeGroup = formGroup('Mistake / Psychology Leak', mistakeSelect);
   mistakeGroup.style.display = 'none'; // Hidden by default
   form.appendChild(mistakeGroup);
+  renderMistakeTipsAndStudyGuide(mistakeSelect, mistakeGroup);
 
   outcomeSelect.addEventListener('change', () => {
     if (outcomeSelect.value === 'loss') {
@@ -2427,6 +2438,275 @@ export const MISTAKE_LABELS = {
   chasing_price: 'Chasing Price',
   no_plan: 'No Trade Plan / Ad-hoc'
 };
+
+function renderMistakeTipsAndStudyGuide(mistakeSelect, groupContainer) {
+  // Banner
+  const banner = el('div', 'mistake-guide-banner');
+  banner.style.display = 'none';
+  
+  const bannerTitle = el('strong', '', '');
+  const bannerText = document.createTextNode('');
+  banner.appendChild(bannerTitle);
+  banner.appendChild(bannerText);
+  groupContainer.appendChild(banner);
+
+  const MISTAKE_TIPS = {
+    fomo: {
+      title: '💡 EdgeFlo FOMO Fix:',
+      text: 'Build directional bias on the Daily or 4H chart first. The 5-minute chart shows noise and is for execution timing only, not direction. If price is >10 pips past your planned entry, skip it!'
+    },
+    revenge: {
+      title: '💡 EdgeFlo Revenge Fix:',
+      text: 'Accept losses as normal statistical distribution. Cap yourself at maximum 2 trades per session. If you feel the urge to win back losses, close the platform immediately.'
+    },
+    outside_killzone: {
+      title: '💡 EdgeFlo Timing Fix:',
+      text: 'High-probability setups happen strictly inside session killzones. Traded volume and volatility dry up outside these windows. If the timer is inactive, do not execute.'
+    },
+    over_leveraging: {
+      title: '💡 EdgeFlo Over-Leverage Fix:',
+      text: 'Position size must be calculated mathematically using account balance, risk percentage, and structural stop-loss distance. Never trade based on "feel" or greed.'
+    },
+    moved_sl: {
+      title: '💡 EdgeFlo Moved SL Fix:',
+      text: 'Your invalidation level is set in advance. Moving your stop loss wider mid-trade to "give it room" converts a controlled planned loss into a catastrophic account drainer.'
+    },
+    early_exit: {
+      title: '💡 EdgeFlo Early Exit Fix:',
+      text: 'Exiting early due to anxiety cuts winners short and dilutes your mathematical edge. Honor your plan and let the trade hit either the take profit or the stop loss.'
+    },
+    chasing_price: {
+      title: '💡 EdgeFlo Chasing Fix:',
+      text: 'Stop buying or selling in the middle of a range. The highest-probability entries always occur at premium and discount extremes (supply/demand zones).'
+    },
+    no_plan: {
+      title: '💡 EdgeFlo No Plan Fix:',
+      text: 'Never improvise. Write your plan before the open, explicitly detailing directional bias, entry zone, target, and invalidation price level. No plan = no execution.'
+    }
+  };
+
+  function updateBannerVisibility() {
+    const val = mistakeSelect.value;
+    if (val && MISTAKE_TIPS[val]) {
+      bannerTitle.textContent = MISTAKE_TIPS[val].title;
+      bannerText.textContent = ' ' + MISTAKE_TIPS[val].text;
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  mistakeSelect.addEventListener('change', updateBannerVisibility);
+  updateBannerVisibility();
+
+  // Accordion study guide
+  const accordion = el('div', 'mistake-guide-accordion');
+  const summary = el('div', 'mistake-guide-summary', '💡 EdgeFlo Study Guide: 5 Account-Draining Mistakes ➕');
+  const content = el('div', 'mistake-guide-content');
+  content.style.display = 'none';
+
+  const mistakes = [
+    { title: '1. Using the 5-Minute Chart for Your Bias', desc: 'Low timeframes show noise. Build directional bias on the Daily/4H first. Use 5M for entry execution only.' },
+    { title: '2. Trading Your Feelings Instead of Your Plan', desc: 'Write your plan before the open (bias, target, invalidation). An unwritten plan is just a hope.' },
+    { title: '3. Trading in the Middle of a Range', desc: 'Entering mid-range drops your R:R and win rate. Execute only at premium/discount extremes.' },
+    { title: '4. Changing Your Bias Every Candle', desc: 'Your bias only changes when your pre-set invalidation level is hit. Ignore short-term wicks.' },
+    { title: '5. Not Trusting Your Bias After Setting It', desc: 'Track your bias accuracy separately from trade P&L. Build trust through statistical evidence, not emotion.' }
+  ];
+
+  mistakes.forEach(m => {
+    const item = el('div', 'mistake-guide-item');
+    const itemTitle = el('div', 'mistake-guide-item-title', m.title);
+    const itemDesc = el('span', '', m.desc);
+    item.appendChild(itemTitle);
+    item.appendChild(itemDesc);
+    content.appendChild(item);
+  });
+
+  summary.addEventListener('click', () => {
+    const isExpanded = content.style.display === 'block';
+    content.style.display = isExpanded ? 'none' : 'block';
+    summary.textContent = isExpanded 
+      ? '💡 EdgeFlo Study Guide: 5 Account-Draining Mistakes ➕' 
+      : '💡 EdgeFlo Study Guide: 5 Account-Draining Mistakes ➖';
+  });
+
+  accordion.appendChild(summary);
+  accordion.appendChild(content);
+  groupContainer.appendChild(accordion);
+}
+
+function openPlaybookReferenceModal() {
+  const overlay = el('div', 'playbook-modal-overlay');
+  const modal = el('div', 'playbook-modal');
+
+  // Header
+  const header = el('div', 'playbook-modal-header');
+  const titleWrap = el('div', 'playbook-modal-title-wrap');
+  titleWrap.appendChild(el('h3', 'playbook-modal-title', '📖 Simplified Trading Playbook'));
+  titleWrap.appendChild(el('p', 'playbook-modal-subtitle', 'Your one-page operational reference guide. Follow rules, check criteria, protect capital.'));
+  header.appendChild(titleWrap);
+
+  const closeBtn = el('button', 'playbook-modal-close', '✕');
+  closeBtn.addEventListener('click', () => {
+    overlay.classList.remove('playbook-modal-overlay--visible');
+    setTimeout(() => overlay.remove(), 250);
+  });
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  // Tabs
+  const tabsRow = el('div', 'playbook-modal-tabs');
+  const btnCriteria = el('button', 'playbook-tab-btn active', '📋 Minimum Criteria');
+  const btnModels = el('button', 'playbook-tab-btn', '📐 Entry Models');
+  const btnUpgrades = el('button', 'playbook-tab-btn', '⭐ A+ Upgrades');
+  tabsRow.appendChild(btnCriteria);
+  tabsRow.appendChild(btnModels);
+  tabsRow.appendChild(btnUpgrades);
+  modal.appendChild(tabsRow);
+
+  // Body
+  const body = el('div', 'playbook-modal-body');
+
+  // Tab Content 1: Minimum Criteria
+  const contentCriteria = el('div', 'playbook-tab-content active');
+  const criteriaList = el('div', 'playbook-criteria-list');
+  const rules = [
+    'Trend direction confirmed on Higher Timeframe (Daily/H4) 📈',
+    'Price is at a valid point of interest (Demand/Supply, Breaker, FVG) 🎯',
+    'At least two additional confluences present in setup 🤝',
+    'Current session is active (London or New York Killzone) ⏱️',
+    'Stop Loss is placed at structural level (not arbitrary pips) 🛑',
+    'Risk-to-reward ratio is 3:1 or better before entry 🏆'
+  ];
+  rules.forEach((rule, idx) => {
+    const row = el('div', 'playbook-criteria-row');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'playbook-criteria-checkbox';
+    chk.id = `playbook-modal-chk-${idx}`;
+    chk.addEventListener('change', () => playSynthSound('click'));
+    
+    const lbl = el('label', '', rule);
+    lbl.setAttribute('for', chk.id);
+    lbl.style.cursor = 'pointer';
+    
+    row.appendChild(chk);
+    row.appendChild(lbl);
+    criteriaList.appendChild(row);
+  });
+  contentCriteria.appendChild(criteriaList);
+  body.appendChild(contentCriteria);
+
+  // Tab Content 2: Entry Models
+  const contentModels = el('div', 'playbook-tab-content');
+  const modelsGrid = el('div', 'playbook-models-grid');
+  
+  const models = [
+    {
+      name: '1. Breaker Block Retest',
+      tag: 'STRUCTURE SHIFT',
+      desc: 'Price sweeps a key liquidity pool, then aggressively breaks structure (BOS/CHOCH) creating a displacement zone. Enter when price retraces back to mitigate the Breaker Block.',
+      steps: [
+        'Identify HTF direction & draw key liquidity pools.',
+        'Wait for liquidity sweep followed by a strong body close breaking structure.',
+        'Place limit entry at the breaker zone boundary.',
+        'Stop Loss set cleanly behind the sweep candle high/low.'
+      ]
+    },
+    {
+      name: '2. FVG Mitigation Sweep',
+      tag: 'LIQUIDITY + GAP',
+      desc: 'Price sweeps the Asian High or Low, then rapidly mitigates a Higher Timeframe Fair Value Gap (FVG). Enter on M5/M1 CHOCH candle confirmation tapping the FVG.',
+      steps: [
+        'Mark Asian High/Low as key buy/sell stop targets.',
+        'Wait for price to sweep Asian High/Low and tap H4/H1 FVG.',
+        'Zoom into M5/M1: wait for structure shift and FVG form.',
+        'Enter retest of lower timeframe FVG; SL below structural shift swing.'
+      ]
+    },
+    {
+      name: '3. Judas Swing False Breakout',
+      tag: 'SESSION MANIPULATION',
+      desc: 'Occurs in first 30-60 mins of London session. Price makes a false breakout against HTF bias to grab liquidity before reversing strongly in the HTF direction.',
+      steps: [
+        'Establish clear daily trend bias before session open.',
+        'Wait for early session move running counter to bias.',
+        'Confirm false breakout sweep of key structural level.',
+        'Enter on engulfing candle rejection; SL past sweep wick.'
+      ]
+    }
+  ];
+
+  models.forEach(m => {
+    const card = el('div', 'playbook-model-card');
+    
+    const titleRow = el('div', 'playbook-model-title-row');
+    titleRow.appendChild(el('h4', 'playbook-model-name', m.name));
+    titleRow.appendChild(el('span', 'playbook-model-tag', m.tag));
+    card.appendChild(titleRow);
+
+    card.appendChild(el('p', 'playbook-model-desc', m.desc));
+
+    const stepsContainer = el('ul', 'playbook-model-steps');
+    m.steps.forEach(step => {
+      const li = el('li', 'playbook-model-step-item', step);
+      stepsContainer.appendChild(li);
+    });
+    card.appendChild(stepsContainer);
+
+    modelsGrid.appendChild(card);
+  });
+  contentModels.appendChild(modelsGrid);
+  body.appendChild(contentModels);
+
+  // Tab Content 3: A+ Upgrades
+  const contentUpgrades = el('div', 'playbook-tab-content');
+  const upgradesList = el('div', 'playbook-upgrades-list');
+  
+  const upgrades = [
+    { icon: '💎', title: 'Perfect Triple Alignment', desc: 'Higher timeframe trend direction (D1), point of interest location (H4 FVG), and execution timing (London Open) are fully aligned.' },
+    { icon: '⚡', title: 'High displacement volume', desc: 'The candle breaking structure must have a wide range body and high volume, leaving behind a large, clean Fair Value Gap.' },
+    { icon: '🧹', title: 'Clear Liquidity Sweep', desc: 'Price must cleanly sweep a major pool (Asian High/Low, Previous Daily High/Low) immediately before hitting the entry zone.' },
+    { icon: '📰', title: 'Safe news window', desc: 'No high-impact economic news releases (red folder news) are scheduled within 2 hours of entry.' }
+  ];
+
+  upgrades.forEach(up => {
+    const card = el('div', 'playbook-upgrade-item');
+    card.appendChild(el('span', 'playbook-upgrade-icon', up.icon));
+    const textWrap = el('div', 'playbook-upgrade-text-wrap');
+    textWrap.appendChild(el('span', 'playbook-upgrade-title', up.title));
+    textWrap.appendChild(el('span', 'playbook-upgrade-desc', up.desc));
+    card.appendChild(textWrap);
+    upgradesList.appendChild(card);
+  });
+  contentUpgrades.appendChild(upgradesList);
+  body.appendChild(contentUpgrades);
+
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Tab Switching Logic
+  const tabs = [
+    { btn: btnCriteria, content: contentCriteria },
+    { btn: btnModels, content: contentModels },
+    { btn: btnUpgrades, content: contentUpgrades }
+  ];
+  tabs.forEach(t => {
+    t.btn.addEventListener('click', () => {
+      playSynthSound('click');
+      tabs.forEach(x => {
+        x.btn.classList.remove('active');
+        x.content.classList.remove('active');
+      });
+      t.btn.classList.add('active');
+      t.content.classList.add('active');
+    });
+  });
+
+  // Animate in
+  requestAnimationFrame(() => overlay.classList.add('playbook-modal-overlay--visible'));
+}
 
 function openTradeDetail(trade, onRefresh = null) {
   const overlay = el('div', 'trade-modal-overlay');
@@ -3118,6 +3398,7 @@ export function openEditTradeModal(trade, onRefresh) {
     mistakeGroup.style.display = outcomeSelect.value === 'loss' ? 'block' : 'none';
   });
   form.appendChild(mistakeGroup);
+  renderMistakeTipsAndStudyGuide(mistakeSelect, mistakeGroup);
 
   // ---- Emotion Tag Picker ----
   const emotionInput = document.createElement('input');
@@ -3244,6 +3525,15 @@ export function openEditTradeModal(trade, onRefresh) {
     chk.addEventListener('change', () => nativeHaptic('light'));
     wrap.appendChild(chk);
     wrap.appendChild(document.createTextNode(q.label));
+    if (q.key === 'setupMatch') {
+      const viewLink = el('span', 'playbook-ref-link', 'View Playbook 🔍');
+      viewLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPlaybookReferenceModal();
+      });
+      wrap.appendChild(viewLink);
+    }
     filterFieldset.appendChild(wrap);
     preTradeCheckboxes[q.key] = chk;
   });
