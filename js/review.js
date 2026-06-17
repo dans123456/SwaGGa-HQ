@@ -52,21 +52,37 @@ function getTradesInRange(startDate, endDate) {
 
 function getDateRange(type) {
   const now = new Date();
-  const endDate = now.toISOString().slice(0, 10);
-  let startDate;
+  let startDate, endDate;
 
   if (type === 'weekly') {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 7);
-    startDate = start.toISOString().slice(0, 10);
+    const day = now.getDay();
+    const daysToLastMonday = (day === 0 ? 6 : day - 1) + 7;
+    const lastMonday = new Date(now);
+    lastMonday.setDate(now.getDate() - daysToLastMonday);
+    const lastSunday = new Date(lastMonday);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    
+    startDate = lastMonday.toISOString().slice(0, 10);
+    endDate = lastSunday.toISOString().slice(0, 10);
   } else if (type === 'monthly') {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 30);
-    startDate = start.toISOString().slice(0, 10);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    
+    startDate = lastMonthStart.toISOString().slice(0, 10);
+    endDate = lastMonthEnd.toISOString().slice(0, 10);
   } else {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 90);
-    startDate = start.toISOString().slice(0, 10);
+    const currentQuarter = Math.floor(now.getMonth() / 3);
+    let prevQuarter = currentQuarter - 1;
+    let prevQuarterYear = now.getFullYear();
+    if (prevQuarter < 0) {
+      prevQuarter = 3;
+      prevQuarterYear--;
+    }
+    const lastQuarterStart = new Date(prevQuarterYear, prevQuarter * 3, 1);
+    const lastQuarterEnd = new Date(prevQuarterYear, (prevQuarter + 1) * 3, 0);
+    
+    startDate = lastQuarterStart.toISOString().slice(0, 10);
+    endDate = lastQuarterEnd.toISOString().slice(0, 10);
   }
 
   return { startDate, endDate };
