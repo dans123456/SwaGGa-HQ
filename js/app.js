@@ -415,7 +415,10 @@ function renderPremarketLockoutScreen(container) {
       riskChecked: true,
       riskLimit: 'Developer Bypass',
       rulesChecked: true,
-      focusRule: 'Developer Bypass'
+      focusRule: 'Developer Bypass',
+      sessionCommitment: 'london',
+      physicalPrimed: true,
+      mentalPrimed: true
     };
     storage.set('premarket_routine', routine);
 
@@ -467,7 +470,10 @@ function renderPremarketWidget(container, isLockout = false) {
       riskChecked: false,
       riskLimit: '',
       rulesChecked: false,
-      focusRule: ''
+      focusRule: '',
+      sessionCommitment: '',
+      physicalPrimed: false,
+      mentalPrimed: false
     };
     storage.set('premarket_routine', routine);
   }
@@ -500,6 +506,16 @@ function renderPremarketWidget(container, isLockout = false) {
     if (routine.focusRule) {
       infoRow.appendChild(el('span', 'premarket-info-item', `🎯 Focus: ${routine.focusRule}`));
     }
+    
+    let sessionName = '—';
+    if (routine.sessionCommitment === 'london') sessionName = 'London 🐂';
+    else if (routine.sessionCommitment === 'newyork') sessionName = 'New York 🇺🇸';
+    else if (routine.sessionCommitment === 'asian') sessionName = 'Asian 🌏';
+    infoRow.appendChild(el('span', 'premarket-info-item', `⏱️ Session: ${sessionName}`));
+
+    const primedStatus = (routine.physicalPrimed && routine.mentalPrimed) ? 'Yes 🏋️🧘' : 'No ❌';
+    infoRow.appendChild(el('span', 'premarket-info-item', `🧠 Primed: ${primedStatus}`));
+    
     body.appendChild(infoRow);
 
     const btn = el('button', 'btn btn-secondary btn-sm', '🔄 Re-enter Routine Details');
@@ -613,6 +629,34 @@ function renderPremarketWidget(container, isLockout = false) {
   step1Desc.appendChild(calendarLink);
   step1.appendChild(step1Desc);
   form.appendChild(step1);
+
+  // Step 1.5: Session Commitment
+  const stepSession = el('div', 'premarket-step');
+  const { header: stepSessionHeader, status: stepSessionStatus } = createStepHeader('Step 1.5: Commit to Trading Session ⏱️');
+  stepSession.appendChild(stepSessionHeader);
+
+  const sessionSegment = el('div', 'premarket-segment-control');
+  const sessions = [
+    { key: 'london', label: '🐂 London' },
+    { key: 'newyork', label: '🇺🇸 New York' },
+    { key: 'asian', label: '🌏 Asian' }
+  ];
+
+  sessions.forEach(s => {
+    const btn = el('button', `segment-btn${routine.sessionCommitment === s.key ? ' active' : ''}`, s.label);
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      playSynthSound('click');
+      routine.sessionCommitment = s.key;
+      storage.set('premarket_routine', routine);
+      sessionSegment.querySelectorAll('.segment-btn').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      validateForm();
+    });
+    sessionSegment.appendChild(btn);
+  });
+  stepSession.appendChild(sessionSegment);
+  form.appendChild(stepSession);
 
   // Step 2: HTF Bias
   const step2 = el('div', 'premarket-step');
@@ -807,6 +851,52 @@ function renderPremarketWidget(container, isLockout = false) {
   step5.appendChild(focusInput);
   form.appendChild(step5);
 
+  // Step 5.5: Priming
+  const stepPriming = el('div', 'premarket-step');
+  const { header: stepPrimingHeader, status: stepPrimingStatus } = createStepHeader('Step 5.5: Physical & Mental Priming 🏋️');
+  stepPriming.appendChild(stepPrimingHeader);
+
+  const primingContainer = el('div', 'premarket-rules-checklist');
+
+  // Physical checkbox
+  const physRow = el('div', 'premarket-rule-row');
+  const physCheckbox = document.createElement('input');
+  physCheckbox.type = 'checkbox';
+  physCheckbox.id = `${isLockout ? 'lockout' : 'widget'}-premarket-phys-primed`;
+  physCheckbox.checked = !!routine.physicalPrimed;
+  physCheckbox.addEventListener('change', () => {
+    routine.physicalPrimed = physCheckbox.checked;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+  physRow.appendChild(physCheckbox);
+
+  const physLabel = el('label', 'premarket-rule-label', '🏋️ Physical priming completed (workout, stretching, or breakfast)');
+  physLabel.setAttribute('for', physCheckbox.id);
+  physRow.appendChild(physLabel);
+  primingContainer.appendChild(physRow);
+
+  // Mental checkbox
+  const mentRow = el('div', 'premarket-rule-row');
+  const mentCheckbox = document.createElement('input');
+  mentCheckbox.type = 'checkbox';
+  mentCheckbox.id = `${isLockout ? 'lockout' : 'widget'}-premarket-ment-primed`;
+  mentCheckbox.checked = !!routine.mentalPrimed;
+  mentCheckbox.addEventListener('change', () => {
+    routine.mentalPrimed = mentCheckbox.checked;
+    storage.set('premarket_routine', routine);
+    validateForm();
+  });
+  mentRow.appendChild(mentCheckbox);
+
+  const mentLabel = el('label', 'premarket-rule-label', '🧘 Mental priming completed (focused breathing or visualization rehearsal)');
+  mentLabel.setAttribute('for', mentCheckbox.id);
+  mentRow.appendChild(mentLabel);
+  primingContainer.appendChild(mentRow);
+
+  stepPriming.appendChild(primingContainer);
+  form.appendChild(stepPriming);
+
   // Step 6: Start Mood Selector
   const step6 = el('div', 'premarket-step');
   const { header: step6Header, status: step6Status } = createStepHeader('Step 6: Starting Session Mood 🧘');
@@ -904,23 +994,27 @@ function renderPremarketWidget(container, isLockout = false) {
   // Form validator function
   function validateForm() {
     const isStep1 = !!routine.newsChecked;
+    const isStepSession = routine.sessionCommitment !== undefined && routine.sessionCommitment !== '';
     const isStep2 = routine.htfBias !== undefined && routine.htfBias !== '' && !!(routine.htfLogic && routine.htfLogic.trim());
     const isStepLevels = !!(routine.keyLevels && routine.keyLevels.trim());
     const isStep3 = !!(routine.riskLimit && routine.riskLimit.trim());
     const isStep4 = checkedRulesCount === rulesToUse.length;
     const isStep5 = !!(routine.focusRule && routine.focusRule.trim());
+    const isStepPriming = !!(routine.physicalPrimed && routine.mentalPrimed);
     const isStep6 = !!routine.startMood;
 
     // Update status labels in real-time
     updateIndicator(step1Status, isStep1);
+    updateIndicator(stepSessionStatus, isStepSession);
     updateIndicator(step2Status, isStep2);
     updateIndicator(stepLevelsStatus, isStepLevels);
     updateIndicator(step3Status, isStep3);
     updateIndicator(step4Status, isStep4, `${checkedRulesCount}/${rulesToUse.length}`);
     updateIndicator(step5Status, isStep5);
+    updateIndicator(stepPrimingStatus, isStepPriming);
     updateIndicator(step6Status, isStep6);
 
-    const allValid = isStep1 && isStep2 && isStepLevels && isStep3 && isStep4 && isStep5 && isStep6;
+    const allValid = isStep1 && isStepSession && isStep2 && isStepLevels && isStep3 && isStep4 && isStep5 && isStepPriming && isStep6;
     submitBtn.disabled = !allValid;
   }
 

@@ -502,7 +502,10 @@ export async function pullFromCloud() {
             riskLimit: (localRoutine.riskLimit || '').length >= (cloudRoutine.riskLimit || '').length ? (localRoutine.riskLimit || '') : (cloudRoutine.riskLimit || ''),
             focusRule: localRoutine.focusRule || cloudRoutine.focusRule || '',
             riskChecked: !!(cloudRoutine.riskChecked || localRoutine.riskChecked),
-            rulesChecked: !!(cloudRoutine.rulesChecked || localRoutine.rulesChecked)
+            rulesChecked: !!(cloudRoutine.rulesChecked || localRoutine.rulesChecked),
+            sessionCommitment: localRoutine.sessionCommitment || cloudRoutine.sessionCommitment || '',
+            physicalPrimed: !!(localRoutine.physicalPrimed || cloudRoutine.physicalPrimed),
+            mentalPrimed: !!(localRoutine.mentalPrimed || cloudRoutine.mentalPrimed)
           };
         }
       } else if (key === 'premarket_history') {
@@ -527,7 +530,10 @@ export async function pullFromCloud() {
               htfLogic: (lR.htfLogic || '').length >= (cR.htfLogic || '').length ? (lR.htfLogic || '') : (cR.htfLogic || ''),
               keyLevels: (lR.keyLevels || '').length >= (cR.keyLevels || '').length ? (lR.keyLevels || '') : (cR.keyLevels || ''),
               riskLimit: (lR.riskLimit || '').length >= (cR.riskLimit || '').length ? (lR.riskLimit || '') : (cR.riskLimit || ''),
-              focusRule: lR.focusRule || cR.focusRule || ''
+              focusRule: lR.focusRule || cR.focusRule || '',
+              sessionCommitment: lR.sessionCommitment || cR.sessionCommitment || '',
+              physicalPrimed: !!(lR.physicalPrimed || cR.physicalPrimed),
+              mentalPrimed: !!(lR.mentalPrimed || cR.mentalPrimed)
             };
           }
         });
