@@ -537,3 +537,52 @@
     box-sizing: border-box;
   }
 }
+
+/* --- Period Selector --- */
+.review-period-selector {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: var(--space-4);
+}
+
+.review-period-btn {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.review-period-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+}
+
+.review-period-btn--active {
+  background: rgba(168, 85, 247, 0.1);
+  color: var(--purple);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.review-period-btn--completed {
+  border-color: rgba(57, 255, 20, 0.15);
+}
+
+.review-period-btn--completed:not(.review-period-btn--active) {
+  color: var(--neon-green);
+}
+

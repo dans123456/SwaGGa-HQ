@@ -50,46 +50,75 @@ function getTradesInRange(startDate, endDate) {
   });
 }
 
-function getDateRange(type) {
+function getDateRange(type, period = 'previous') {
   const now = new Date();
   let startDate, endDate;
 
   if (type === 'weekly') {
-    const day = now.getDay();
-    const daysToLastMonday = (day === 0 ? 6 : day - 1) + 7;
-    const lastMonday = new Date(now);
-    lastMonday.setDate(now.getDate() - daysToLastMonday);
-    const lastSunday = new Date(lastMonday);
-    lastSunday.setDate(lastMonday.getDate() + 6);
-    
-    startDate = lastMonday.toISOString().slice(0, 10);
-    endDate = lastSunday.toISOString().slice(0, 10);
-  } else if (type === 'monthly') {
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    
-    startDate = lastMonthStart.toISOString().slice(0, 10);
-    endDate = lastMonthEnd.toISOString().slice(0, 10);
-  } else {
-    const currentQuarter = Math.floor(now.getMonth() / 3);
-    let prevQuarter = currentQuarter - 1;
-    let prevQuarterYear = now.getFullYear();
-    if (prevQuarter < 0) {
-      prevQuarter = 3;
-      prevQuarterYear--;
+    if (period === 'previous') {
+      const day = now.getDay();
+      const daysToLastMonday = (day === 0 ? 6 : day - 1) + 7;
+      const lastMonday = new Date(now);
+      lastMonday.setDate(now.getDate() - daysToLastMonday);
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+      
+      startDate = lastMonday.toISOString().slice(0, 10);
+      endDate = lastSunday.toISOString().slice(0, 10);
+    } else {
+      const day = now.getDay();
+      const daysToMonday = (day === 0 ? 6 : day - 1);
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - daysToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      
+      startDate = monday.toISOString().slice(0, 10);
+      endDate = sunday.toISOString().slice(0, 10);
     }
-    const lastQuarterStart = new Date(prevQuarterYear, prevQuarter * 3, 1);
-    const lastQuarterEnd = new Date(prevQuarterYear, (prevQuarter + 1) * 3, 0);
-    
-    startDate = lastQuarterStart.toISOString().slice(0, 10);
-    endDate = lastQuarterEnd.toISOString().slice(0, 10);
+  } else if (type === 'monthly') {
+    if (period === 'previous') {
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      
+      startDate = lastMonthStart.toISOString().slice(0, 10);
+      endDate = lastMonthEnd.toISOString().slice(0, 10);
+    } else {
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      startDate = currentMonthStart.toISOString().slice(0, 10);
+      endDate = currentMonthEnd.toISOString().slice(0, 10);
+    }
+  } else {
+    if (period === 'previous') {
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      let prevQuarter = currentQuarter - 1;
+      let prevQuarterYear = now.getFullYear();
+      if (prevQuarter < 0) {
+        prevQuarter = 3;
+        prevQuarterYear--;
+      }
+      const lastQuarterStart = new Date(prevQuarterYear, prevQuarter * 3, 1);
+      const lastQuarterEnd = new Date(prevQuarterYear, (prevQuarter + 1) * 3, 0);
+      
+      startDate = lastQuarterStart.toISOString().slice(0, 10);
+      endDate = lastQuarterEnd.toISOString().slice(0, 10);
+    } else {
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      const currentQuarterStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
+      const currentQuarterEnd = new Date(now.getFullYear(), (currentQuarter + 1) * 3, 0);
+      
+      startDate = currentQuarterStart.toISOString().slice(0, 10);
+      endDate = currentQuarterEnd.toISOString().slice(0, 10);
+    }
   }
 
   return { startDate, endDate };
 }
 
-function computeReviewStats(type) {
-  const { startDate, endDate } = getDateRange(type);
+function computeReviewStats(type, period = 'previous') {
+  const { startDate, endDate } = getDateRange(type, period);
   const trades = getTradesInRange(startDate, endDate);
   const stats = calculateStats(trades);
 
@@ -386,17 +415,77 @@ export function renderReviewPage(container) {
   renderReflectionsView();
 }
 
-function renderReviewContent(container, type) {
+function renderReviewContent(container, type, period = null) {
+  // Determine if previous period is completed
+  const prevRange = getDateRange(type, 'previous');
+  const prevKey = `${type}_${prevRange.startDate}_${prevRange.endDate}`;
+  const reviews = getReviews();
+  const prevCompleted = reviews.some(r => r.periodKey === prevKey && r.type === type);
+
+  // Smart default logic: if previous is completed, load current active period
+  if (!period) {
+    period = prevCompleted ? 'current' : 'previous';
+  }
+
+  const stats = computeReviewStats(type, period);
+  const { startDate, endDate } = getDateRange(type, period);
+  
+  let periodLabel = '';
+  if (type === 'weekly') {
+    periodLabel = period === 'previous' ? 'Previous Week' : 'Current Week';
+  } else if (type === 'monthly') {
+    periodLabel = period === 'previous' ? 'Previous Month' : 'Current Month';
+  } else {
+    periodLabel = period === 'previous' ? 'Previous Quarter' : 'Current Quarter';
+  }
+
+  const periodKey = `${type}_${startDate}_${endDate}`;
+  const existingReview = reviews.find(r => r.periodKey === periodKey && r.type === type);
+
   container.replaceChildren();
 
-  const stats = computeReviewStats(type);
-  const { startDate, endDate } = getDateRange(type);
-  const periodLabel = type === 'weekly' ? 'This Week' : type === 'monthly' ? 'This Month' : 'This Quarter';
-  const periodKey = `${type}_${startDate}_${endDate}`;
+  // Period Selector Button Group
+  const selectorWrapper = el('div', 'review-period-selector');
 
-  // Load existing review if any
-  const reviews = getReviews();
-  const existingReview = reviews.find(r => r.periodKey === periodKey && r.type === type);
+  const prevBtn = el('button', `review-period-btn${period === 'previous' ? ' review-period-btn--active' : ''}`);
+  prevBtn.textContent = type === 'weekly' ? '⏮️ Previous Week' : type === 'monthly' ? '⏮️ Previous Month' : '⏮️ Previous Quarter';
+  if (prevCompleted) {
+    prevBtn.classList.add('review-period-btn--completed');
+    prevBtn.textContent += ' (Completed)';
+  }
+  prevBtn.addEventListener('click', () => {
+    playSynthSound('click');
+    renderReviewContent(container, type, 'previous');
+  });
+
+  const currRange = getDateRange(type, 'current');
+  const currKey = `${type}_${currRange.startDate}_${currRange.endDate}`;
+  const currCompleted = reviews.some(r => r.periodKey === currKey && r.type === type);
+
+  const currBtn = el('button', `review-period-btn${period === 'current' ? ' review-period-btn--active' : ''}`);
+  currBtn.textContent = type === 'weekly' ? '⏭️ Current Week' : type === 'monthly' ? '⏭️ Current Month' : '⏭️ Current Quarter';
+  if (currCompleted) {
+    currBtn.classList.add('review-period-btn--completed');
+    currBtn.textContent += ' (Completed)';
+  }
+  currBtn.addEventListener('click', () => {
+    playSynthSound('click');
+    renderReviewContent(container, type, 'current');
+  });
+
+  selectorWrapper.appendChild(prevBtn);
+  selectorWrapper.appendChild(currBtn);
+  container.appendChild(selectorWrapper);
+
+  // Period Date Range Subtitle Info
+  const boundsInfo = el('p', 'review-date-subtitle');
+  boundsInfo.style.fontSize = 'var(--text-xs)';
+  boundsInfo.style.color = 'var(--text-muted)';
+  boundsInfo.style.textAlign = 'center';
+  boundsInfo.style.marginBottom = 'var(--space-4)';
+  boundsInfo.style.fontWeight = '600';
+  boundsInfo.textContent = `📅 Period Bounds: ${startDate} to ${endDate}`;
+  container.appendChild(boundsInfo);
 
   // Stats overview grid
   const statsGrid = el('div', 'review-stats-grid');
@@ -529,6 +618,17 @@ function renderReviewContent(container, type) {
     triggerConfetti();
     addXP('review', 30);
     showNotificationToast(`${periodLabel} review saved! +30 XP 📊`);
+
+    // Reload the content area so the Period Selector and forms reflect saved state immediately
+    renderReviewContent(container, type, period);
+
+    // Dynamic History section update
+    const historySection = document.querySelector('.review-history-section');
+    if (historySection) {
+      historySection.replaceChildren();
+      historySection.appendChild(el('h2', 'review-section-title', '📂 Past Reviews'));
+      renderReviewHistory(historySection);
+    }
   });
   form.appendChild(saveBtn);
 
