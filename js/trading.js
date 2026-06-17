@@ -1919,8 +1919,38 @@ export function renderTradeForm(container, onSaved) {
     const span = el('span', 'form-check-label', g.label);
     wrapper.appendChild(span);
     guardrailsFieldset.appendChild(wrapper);
-  });
   form.appendChild(guardrailsFieldset);
+
+  // ---- EdgeFlo Pre-Entry 7-Question Filter ----
+  const filterFieldset = el('fieldset', 'confluence-fieldset pre-entry-fieldset');
+  filterFieldset.style.borderColor = 'rgba(142, 94, 237, 0.2)';
+  const filterLegend = el('legend', '', '📋 EdgeFlo Pre-Entry 7-Question Filter');
+  filterLegend.style.color = 'var(--purple)';
+  filterFieldset.appendChild(filterLegend);
+
+  const filterQuestions = [
+    { key: 'trendAligned', label: 'Higher-timeframe trend aligned with direction? 📈' },
+    { key: 'setupMatch', label: 'Matches a documented setup in my playbook? 📖' },
+    { key: 'invalidationSet', label: 'Exact invalidation price level identified? 🛑' },
+    { key: 'rrOk', label: 'Potential R:R meets minimum target ratio? 🎯' },
+    { key: 'sizingMath', label: 'Position size calculated mathematically (no feel)? 🧮' },
+    { key: 'catalystPresent', label: 'Clear execution trigger or volume catalyst? ⚡' },
+    { key: 'planAligned', label: 'Emotionally calm & fully aligned with trading plan? 🧘' }
+  ];
+
+  filterQuestions.forEach(q => {
+    const wrapper = el('label', 'form-check');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.name = `pretrade_${q.key}`;
+    cb.checked = true; // Default checked to encourage professional discipline
+    cb.addEventListener('change', () => nativeHaptic('light'));
+    wrapper.appendChild(cb);
+    const span = el('span', 'form-check-label', q.label);
+    wrapper.appendChild(span);
+    filterFieldset.appendChild(wrapper);
+  });
+  form.appendChild(filterFieldset);
 
   // ---- Outcome ----
   const outcomeSelect = document.createElement('select');
@@ -2231,6 +2261,22 @@ export function renderTradeForm(container, onSaved) {
     if (outcome === 'loss' && mistake) {
       edgeScore -= 20;
     }
+
+    const preTradeChecklist = {
+      trendAligned: form.querySelector('input[name="pretrade_trendAligned"]').checked,
+      setupMatch: form.querySelector('input[name="pretrade_setupMatch"]').checked,
+      invalidationSet: form.querySelector('input[name="pretrade_invalidationSet"]').checked,
+      rrOk: form.querySelector('input[name="pretrade_rrOk"]').checked,
+      sizingMath: form.querySelector('input[name="pretrade_sizingMath"]').checked,
+      catalystPresent: form.querySelector('input[name="pretrade_catalystPresent"]').checked,
+      planAligned: form.querySelector('input[name="pretrade_planAligned"]').checked,
+    };
+
+    let uncheckedPtcCount = 0;
+    Object.values(preTradeChecklist).forEach(val => {
+      if (!val) uncheckedPtcCount++;
+    });
+    edgeScore -= (uncheckedPtcCount * 10);
     edgeScore = Math.max(0, edgeScore);
 
     const entry = Number(fd.get('entry'));
@@ -2295,6 +2341,7 @@ export function renderTradeForm(container, onSaved) {
       },
       edgeScore,
       setupQuality: fd.get('setupQuality'),
+      preTradeChecklist,
     };
 
     saveTrade(tradeData);
@@ -2459,6 +2506,14 @@ function openTradeDetail(trade, onRefresh = null) {
   const mult = getContractMultiplier(trade.asset);
   const lotsVal = trade.manualLots !== undefined && trade.manualLots !== '' ? trade.manualLots : (trade.size / mult);
 
+  const ptc = trade.preTradeChecklist || {
+    trendAligned: true, setupMatch: true, invalidationSet: true, rrOk: true, sizingMath: true, catalystPresent: true, planAligned: true
+  };
+  let ptcChecked = 0;
+  Object.values(ptc).forEach(val => {
+    if (val) ptcChecked++;
+  });
+
   const detailPairs = [
     { label: 'Date', value: formatDate(trade.date) },
     { label: 'Direction', value: trade.direction ? trade.direction.toUpperCase() : '—' },
@@ -2473,6 +2528,7 @@ function openTradeDetail(trade, onRefresh = null) {
     { label: 'Risk:Reward', value: `${trade.rr}R` },
     { label: 'Outcome', value: trade.outcome ? trade.outcome.charAt(0).toUpperCase() + trade.outcome.slice(1) : '—' },
     { label: 'EdgeScore', value: `${scoreVal}% (${grade})`, cls: scoreVal >= 80 ? 'pnl-positive' : scoreVal >= 60 ? 'pnl-neutral' : 'pnl-negative' },
+    { label: 'Pre-Trade Filter', value: `${ptcChecked}/7 Questions Verified 📋`, cls: ptcChecked === 7 ? 'pnl-positive' : ptcChecked >= 5 ? 'pnl-neutral' : 'pnl-negative' },
   ];
 
   if (trade.simulated) {
@@ -3149,6 +3205,50 @@ export function openEditTradeModal(trade, onRefresh) {
   guardrailsWrap.appendChild(gcSize.wrap);
   form.appendChild(formGroup('EdgeFlo Guardrails Checklist', guardrailsWrap));
 
+  // ---- EdgeFlo Pre-Entry 7-Question Filter ----
+  const filterFieldset = el('fieldset', 'confluence-fieldset pre-entry-fieldset');
+  filterFieldset.style.borderColor = 'rgba(142, 94, 237, 0.2)';
+  const filterLegend = el('legend', '', '📋 EdgeFlo Pre-Entry 7-Question Filter');
+  filterLegend.style.color = 'var(--purple)';
+  filterFieldset.appendChild(filterLegend);
+
+  const filterQuestions = [
+    { key: 'trendAligned', label: 'Higher-timeframe trend aligned with direction? 📈' },
+    { key: 'setupMatch', label: 'Matches a documented setup in my playbook? 📖' },
+    { key: 'invalidationSet', label: 'Exact invalidation price level identified? 🛑' },
+    { key: 'rrOk', label: 'Potential R:R meets minimum target ratio? 🎯' },
+    { key: 'sizingMath', label: 'Position size calculated mathematically (no feel)? 🧮' },
+    { key: 'catalystPresent', label: 'Clear execution trigger or volume catalyst? ⚡' },
+    { key: 'planAligned', label: 'Emotionally calm & fully aligned with trading plan? 🧘' }
+  ];
+
+  const initialPreTrade = trade.preTradeChecklist || {
+    trendAligned: true, setupMatch: true, invalidationSet: true, rrOk: true, sizingMath: true, catalystPresent: true, planAligned: true
+  };
+
+  const preTradeCheckboxes = {};
+
+  filterQuestions.forEach(q => {
+    const wrap = el('label', 'checkbox-label');
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = 'var(--space-2)';
+    wrap.style.fontSize = 'var(--text-xs)';
+    wrap.style.cursor = 'pointer';
+    wrap.style.marginBottom = 'var(--space-1)';
+
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.name = `pretrade_${q.key}`;
+    chk.checked = !!initialPreTrade[q.key];
+    chk.addEventListener('change', () => nativeHaptic('light'));
+    wrap.appendChild(chk);
+    wrap.appendChild(document.createTextNode(q.label));
+    filterFieldset.appendChild(wrap);
+    preTradeCheckboxes[q.key] = chk;
+  });
+  form.appendChild(filterFieldset);
+
   // ---- Confluences Checklist ----
   const confTitle = el('label', 'form-label', 'Confluences');
   
@@ -3414,6 +3514,22 @@ export function openEditTradeModal(trade, onRefresh) {
     if (outcome === 'loss' && mistake) {
       edgeScore -= 20;
     }
+
+    const preTradeChecklist = {
+      trendAligned: form.querySelector('input[name="pretrade_trendAligned"]').checked,
+      setupMatch: form.querySelector('input[name="pretrade_setupMatch"]').checked,
+      invalidationSet: form.querySelector('input[name="pretrade_invalidationSet"]').checked,
+      rrOk: form.querySelector('input[name="pretrade_rrOk"]').checked,
+      sizingMath: form.querySelector('input[name="pretrade_sizingMath"]').checked,
+      catalystPresent: form.querySelector('input[name="pretrade_catalystPresent"]').checked,
+      planAligned: form.querySelector('input[name="pretrade_planAligned"]').checked,
+    };
+
+    let uncheckedPtcCount = 0;
+    Object.values(preTradeChecklist).forEach(val => {
+      if (!val) uncheckedPtcCount++;
+    });
+    edgeScore -= (uncheckedPtcCount * 10);
     edgeScore = Math.max(0, edgeScore);
 
     const sizingMode = sizingModeSelect.value;
@@ -3472,6 +3588,7 @@ export function openEditTradeModal(trade, onRefresh) {
       },
       edgeScore,
       setupQuality: form.querySelector('input[name="setupQuality"]').value,
+      preTradeChecklist,
     };
 
     updateTrade(trade.id, updatedData);
