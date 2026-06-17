@@ -2835,19 +2835,36 @@ function openAddBaLessonPopup(nextNum, currContainer, onRefresh) {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const title = sanitizeText(titleInput.value.trim());
-    const desc = sanitizeText(descInput.value.trim(), 5000);
-    if (!title || !desc) return;
+    const title = titleInput.value.trim();
+    const desc = descInput.value.trim();
+
+    if (!title || !desc) {
+      import('./audio.js').then(({ playSynthSound }) => playSynthSound('error'));
+      showNotificationToast('Lesson Title and Description/Words are required! ⚠️', 'warning');
+      
+      // Focus and scroll first empty required field into view
+      if (!title) {
+        titleInput.focus();
+        titleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (!desc) {
+        descInput.focus();
+        descInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    const sanitizedTitle = sanitizeText(title);
+    const sanitizedDesc = sanitizeText(desc, 5000);
 
     const newLesson = {
       id: `ba-${nextNum}`,
       lesson: nextNum,
-      title,
+      title: sanitizedTitle,
       type: typeSelect.value,
       concepts: conceptInput.value.trim()
         ? conceptInput.value.split(',').map(c => sanitizeText(c.trim())).filter(Boolean)
         : [],
-      description: desc,
+      description: sanitizedDesc,
       resource: linkInput.value.trim() || null,
       resourceLabel: sanitizeText(linkLabelInput.value.trim()) || null,
       instructions: sanitizeText(instrInput.value.trim()) || null,
@@ -2856,6 +2873,14 @@ function openAddBaLessonPopup(nextNum, currContainer, onRefresh) {
     const userLessons = getUserBaLessons();
     userLessons.push(newLesson);
     storage.set(STORAGE_BA_USER_LESSONS, userLessons);
+
+    // Sync to cloud immediately
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
+
+    import('./audio.js').then(({ playSynthSound }) => playSynthSound('success'));
+    showNotificationToast('Boss Ackah lesson added successfully! 👑', 'success');
 
     close();
     if (typeof onRefresh === 'function') onRefresh();
