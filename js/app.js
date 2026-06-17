@@ -3677,12 +3677,28 @@ export function setTheme(themeKey) {
 function init() {
   // Temporary Cleanup for Episode 30 (run once if it exists)
   try {
+    let changed = false;
+    
+    // Remove completion entry
     const lessons = storage.get('lessons', []);
     const filtered = lessons.filter(l => l.episodeId !== 'ep30');
     if (lessons.length !== filtered.length) {
       storage.set('lessons', filtered);
-      console.log('[App] Ep30 lesson record removed successfully.');
-      // Push the deletion to the cloud if a user is logged in
+      changed = true;
+      console.log('[App] Ep30 completion record removed successfully.');
+    }
+
+    // Remove unlock override so it locks back up
+    const overrides = storage.get('bg_unlocked_lessons', {});
+    if (overrides && overrides['ep30']) {
+      delete overrides['ep30'];
+      storage.set('bg_unlocked_lessons', overrides);
+      changed = true;
+      console.log('[App] Ep30 unlock override cleared successfully.');
+    }
+
+    if (changed) {
+      // Push the updates to the cloud if a user is logged in
       import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
         if (getCurrentUser()) pushToCloud();
       }).catch(() => {});
