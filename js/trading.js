@@ -389,11 +389,14 @@ function parseDrawdownLimit(limitStr) {
 // Persists a new trade to local storage and updates setup quality
 export function saveTrade(tradeData) {
   const trades = getTrades(true);
-  const confCount = Array.isArray(tradeData.confluences) ? tradeData.confluences.length : 0;
-  let setupQuality = 'C';
-  if (confCount >= 5) setupQuality = 'A+';
-  else if (confCount === 4) setupQuality = 'A';
-  else if (confCount === 3) setupQuality = 'B';
+  let setupQuality = tradeData.setupQuality;
+  if (!setupQuality) {
+    const confCount = Array.isArray(tradeData.confluences) ? tradeData.confluences.length : 0;
+    setupQuality = 'C';
+    if (confCount >= 5) setupQuality = 'A+';
+    else if (confCount === 4) setupQuality = 'A';
+    else if (confCount === 3) setupQuality = 'B';
+  }
 
   const trade = {
     id: generateId(),
@@ -526,6 +529,7 @@ export function updateTrade(id, updatedData) {
       })(),
       rr: calculateRiskReward(updatedData.entry, updatedData.stop, updatedData.exit),
       setupQuality: (() => {
+        if (updatedData.setupQuality) return updatedData.setupQuality;
         const confCount = Array.isArray(updatedData.confluences) ? updatedData.confluences.length : 0;
         if (confCount >= 5) return 'A+';
         if (confCount === 4) return 'A';
@@ -1781,9 +1785,114 @@ export function renderTradeForm(container, onSaved) {
   renderCategorizedConfluencesChecklist(checklistContainer, [], () => {
     nativeHaptic('light');
     updateEdgePreviewBadge(confFieldset, edgePreviewBadge);
+    autoSelectGradeFromConfluences();
   });
 
   form.appendChild(confFieldset);
+
+  // ---- Setup Grade Picker (EdgeFlo A+ Setup integration) ----
+  const gradeWrapper = el('div', 'form-group');
+  const gradeLabel = el('label', 'form-label', '⭐ Setup Grade');
+  gradeWrapper.appendChild(gradeLabel);
+
+  const gradeSegment = el('div', 'premarket-segment-control');
+  gradeSegment.style.marginBottom = 'var(--space-2)';
+
+  const grades = [
+    { key: 'A+', label: '🏆 A+' },
+    { key: 'A', label: '🥇 A' },
+    { key: 'B', label: '🥈 B' },
+    { key: 'C', label: '🥉 C' }
+  ];
+
+  // Warning/info text container below picker
+  const gradeWarning = el('div', 'grade-warning-banner');
+  gradeWarning.style.display = 'none';
+  gradeWarning.style.fontSize = 'var(--text-xs)';
+  gradeWarning.style.padding = 'var(--space-2) var(--space-3)';
+  gradeWarning.style.borderRadius = 'var(--radius-md)';
+  gradeWarning.style.marginTop = 'var(--space-2)';
+
+  let selectedGrade = '';
+  let isGradeManuallySelected = false;
+
+  const hiddenGradeInput = document.createElement('input');
+  hiddenGradeInput.type = 'hidden';
+  hiddenGradeInput.name = 'setupQuality';
+  hiddenGradeInput.value = '';
+  gradeWrapper.appendChild(hiddenGradeInput);
+
+  grades.forEach(g => {
+    const btn = el('button', 'segment-btn', g.label);
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      playSynthSound('click');
+      isGradeManuallySelected = true;
+      selectedGrade = g.key;
+      hiddenGradeInput.value = g.key;
+      gradeSegment.querySelectorAll('.segment-btn').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      updateGradeWarning(g.key);
+    });
+    gradeSegment.appendChild(btn);
+  });
+  gradeWrapper.appendChild(gradeSegment);
+  gradeWrapper.appendChild(gradeWarning);
+  form.appendChild(gradeWrapper);
+
+  function updateGradeWarning(grade) {
+    if (!grade) {
+      gradeWarning.style.display = 'none';
+      return;
+    }
+    gradeWarning.style.display = 'block';
+    if (grade === 'A+') {
+      gradeWarning.textContent = '🟢 EdgeFlo: Optimal maximum confluence setup! High probability, execute cleanly.';
+      gradeWarning.style.background = 'rgba(57, 255, 20, 0.08)';
+      gradeWarning.style.color = 'var(--neon-green)';
+      gradeWarning.style.border = '1px solid rgba(57, 255, 20, 0.2)';
+    } else if (grade === 'A') {
+      gradeWarning.textContent = '🟢 EdgeFlo: High conviction setup. Follow your execution plan closely.';
+      gradeWarning.style.background = 'rgba(57, 255, 20, 0.05)';
+      gradeWarning.style.color = 'var(--neon-green)';
+      gradeWarning.style.border = '1px solid rgba(57, 255, 20, 0.1)';
+    } else if (grade === 'B') {
+      gradeWarning.textContent = '⚠️ EdgeFlo Warning: B-grade setup is missing a non-negotiable. Recommend skipping to protect capital.';
+      gradeWarning.style.background = 'rgba(245, 158, 11, 0.08)';
+      gradeWarning.style.color = '#f59e0b';
+      gradeWarning.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+    } else {
+      gradeWarning.textContent = '❌ EdgeFlo Caution: C-grade setup is low-conviction or ad-hoc. Trading C-grade setups breaks professional discipline. Do not trade!';
+      gradeWarning.style.background = 'rgba(255, 59, 59, 0.08)';
+      gradeWarning.style.color = 'var(--neon-red)';
+      gradeWarning.style.border = '1px solid rgba(255, 59, 59, 0.2)';
+    }
+  }
+
+  function autoSelectGradeFromConfluences() {
+    if (isGradeManuallySelected) return;
+    const confluencesCount = confFieldset.querySelectorAll('input[name="confluences"]:checked').length;
+    let suggestedGrade = 'C';
+    if (confluencesCount >= 5) suggestedGrade = 'A+';
+    else if (confluencesCount === 4) suggestedGrade = 'A';
+    else if (confluencesCount === 3) suggestedGrade = 'B';
+
+    selectedGrade = suggestedGrade;
+    hiddenGradeInput.value = suggestedGrade;
+    
+    // Update active button state in UI
+    gradeSegment.querySelectorAll('.segment-btn').forEach(btn => {
+      const isMatch = btn.textContent.includes(suggestedGrade);
+      if (isMatch) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    updateGradeWarning(suggestedGrade);
+  }
+
+  autoSelectGradeFromConfluences();
 
   // ---- EdgeFlo Discipline Checklist ----
   const guardrailsFieldset = el('fieldset', 'confluence-fieldset guardrails-fieldset');
@@ -2185,6 +2294,7 @@ export function renderTradeForm(container, onSaved) {
         sizeCalculatorUsed,
       },
       edgeScore,
+      setupQuality: fd.get('setupQuality'),
     };
 
     saveTrade(tradeData);
@@ -3068,11 +3178,120 @@ export function openEditTradeModal(trade, onRefresh) {
   confWrapper.appendChild(edgePreviewBadge);
   confWrapper.appendChild(confContainer);
 
-  renderCategorizedConfluencesChecklist(confContainer, trade.confluences || [], () => {
+  const originalOnCheckboxChange = () => {
     updateEdgePreviewBadge(confWrapper, edgePreviewBadge);
-  });
+    autoSelectGradeFromConfluences();
+  };
+
+  renderCategorizedConfluencesChecklist(confContainer, trade.confluences || [], originalOnCheckboxChange);
   
   form.appendChild(confWrapper);
+
+  // ---- Setup Grade Picker (EdgeFlo A+ Setup integration) ----
+  const gradeWrapper = el('div', 'form-group');
+  const gradeLabel = el('label', 'form-label', '⭐ Setup Grade');
+  gradeWrapper.appendChild(gradeLabel);
+
+  const gradeSegment = el('div', 'premarket-segment-control');
+  gradeSegment.style.marginBottom = 'var(--space-2)';
+
+  const grades = [
+    { key: 'A+', label: '🏆 A+' },
+    { key: 'A', label: '🥇 A' },
+    { key: 'B', label: '🥈 B' },
+    { key: 'C', label: '🥉 C' }
+  ];
+
+  const gradeWarning = el('div', 'grade-warning-banner');
+  gradeWarning.style.display = 'none';
+  gradeWarning.style.fontSize = 'var(--text-xs)';
+  gradeWarning.style.padding = 'var(--space-2) var(--space-3)';
+  gradeWarning.style.borderRadius = 'var(--radius-md)';
+  gradeWarning.style.marginTop = 'var(--space-2)';
+
+  let selectedGrade = trade.setupQuality || '';
+  let isGradeManuallySelected = !!trade.setupQuality;
+
+  const hiddenGradeInput = document.createElement('input');
+  hiddenGradeInput.type = 'hidden';
+  hiddenGradeInput.name = 'setupQuality';
+  hiddenGradeInput.value = selectedGrade;
+  gradeWrapper.appendChild(hiddenGradeInput);
+
+  grades.forEach(g => {
+    const btn = el('button', `segment-btn${selectedGrade === g.key ? ' active' : ''}`, g.label);
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      playSynthSound('click');
+      isGradeManuallySelected = true;
+      selectedGrade = g.key;
+      hiddenGradeInput.value = g.key;
+      gradeSegment.querySelectorAll('.segment-btn').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      updateGradeWarning(g.key);
+    });
+    gradeSegment.appendChild(btn);
+  });
+  gradeWrapper.appendChild(gradeSegment);
+  gradeWrapper.appendChild(gradeWarning);
+  form.appendChild(gradeWrapper);
+
+  function updateGradeWarning(grade) {
+    if (!grade) {
+      gradeWarning.style.display = 'none';
+      return;
+    }
+    gradeWarning.style.display = 'block';
+    if (grade === 'A+') {
+      gradeWarning.textContent = '🟢 EdgeFlo: Optimal maximum confluence setup! High probability, execute cleanly.';
+      gradeWarning.style.background = 'rgba(57, 255, 20, 0.08)';
+      gradeWarning.style.color = 'var(--neon-green)';
+      gradeWarning.style.border = '1px solid rgba(57, 255, 20, 0.2)';
+    } else if (grade === 'A') {
+      gradeWarning.textContent = '🟢 EdgeFlo: High conviction setup. Follow your execution plan closely.';
+      gradeWarning.style.background = 'rgba(57, 255, 20, 0.05)';
+      gradeWarning.style.color = 'var(--neon-green)';
+      gradeWarning.style.border = '1px solid rgba(57, 255, 20, 0.1)';
+    } else if (grade === 'B') {
+      gradeWarning.textContent = '⚠️ EdgeFlo Warning: B-grade setup is missing a non-negotiable. Recommend skipping to protect capital.';
+      gradeWarning.style.background = 'rgba(245, 158, 11, 0.08)';
+      gradeWarning.style.color = '#f59e0b';
+      gradeWarning.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+    } else {
+      gradeWarning.textContent = '❌ EdgeFlo Caution: C-grade setup is low-conviction or ad-hoc. Trading C-grade setups breaks professional discipline. Do not trade!';
+      gradeWarning.style.background = 'rgba(255, 59, 59, 0.08)';
+      gradeWarning.style.color = 'var(--neon-red)';
+      gradeWarning.style.border = '1px solid rgba(255, 59, 59, 0.2)';
+    }
+  }
+
+  function autoSelectGradeFromConfluences() {
+    if (isGradeManuallySelected) return;
+    const confluencesCount = confContainer.querySelectorAll('input[name="confluences"]:checked').length;
+    let suggestedGrade = 'C';
+    if (confluencesCount >= 5) suggestedGrade = 'A+';
+    else if (confluencesCount === 4) suggestedGrade = 'A';
+    else if (confluencesCount === 3) suggestedGrade = 'B';
+
+    selectedGrade = suggestedGrade;
+    hiddenGradeInput.value = suggestedGrade;
+    
+    gradeSegment.querySelectorAll('.segment-btn').forEach(btn => {
+      const isMatch = btn.textContent.includes(suggestedGrade);
+      if (isMatch) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    updateGradeWarning(suggestedGrade);
+  }
+
+  if (selectedGrade) {
+    updateGradeWarning(selectedGrade);
+  } else {
+    autoSelectGradeFromConfluences();
+  }
 
   // Trigger initial calculation if confluences are checked
   updateEdgePreviewBadge(confWrapper, edgePreviewBadge);
@@ -3252,6 +3471,7 @@ export function openEditTradeModal(trade, onRefresh) {
         sizeCalculatorUsed,
       },
       edgeScore,
+      setupQuality: form.querySelector('input[name="setupQuality"]').value,
     };
 
     updateTrade(trade.id, updatedData);
