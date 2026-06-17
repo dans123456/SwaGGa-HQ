@@ -579,6 +579,18 @@ export async function pullFromCloud() {
       }
     });
 
+    // TEMPORARY CLEANUP FOR EP30
+    try {
+      if (merged.lessons && Array.isArray(merged.lessons)) {
+        merged.lessons = merged.lessons.filter(l => l.episodeId !== 'ep30');
+      }
+      if (merged.bg_unlocked_lessons && merged.bg_unlocked_lessons['ep30']) {
+        delete merged.bg_unlocked_lessons['ep30'];
+      }
+    } catch (e) {
+      console.warn('Sync cleanup for ep30 failed:', e);
+    }
+
     writeLocalData(merged);
 
     merged._lastSync = new Date().toISOString();
