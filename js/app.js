@@ -3675,6 +3675,22 @@ export function setTheme(themeKey) {
 // --- Init ---
 
 function init() {
+  // Temporary Cleanup for Episode 30 (run once if it exists)
+  try {
+    const lessons = storage.get('lessons', []);
+    const filtered = lessons.filter(l => l.episodeId !== 'ep30');
+    if (lessons.length !== filtered.length) {
+      storage.set('lessons', filtered);
+      console.log('[App] Ep30 lesson record removed successfully.');
+      // Push the deletion to the cloud if a user is logged in
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('[App] Cleanup failed:', e);
+  }
+
   // Initialize mobile guestures/gestures
   initMobileGestures();
 
