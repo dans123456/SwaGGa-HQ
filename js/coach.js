@@ -649,9 +649,13 @@ export function renderCoachPage(container) {
       }
     });
 
-    const sendBtn = el('button', 'btn btn-cyan btn-sm', 'Send');
-    sendBtn.style.height = '40px';
-    sendBtn.style.padding = '0 var(--space-4)';
+    const sendBtn = el('button', 'btn btn-cyan btn-sm', '🚀 Send');
+    sendBtn.style.height = '48px';
+    sendBtn.style.padding = '0 var(--space-5)';
+    sendBtn.style.borderRadius = '14px';
+    sendBtn.style.fontSize = 'var(--text-sm)';
+    sendBtn.style.fontWeight = '700';
+    sendBtn.style.letterSpacing = '0.02em';
     
     const submitMessage = async () => {
       const userVal = textInput.value.trim();
