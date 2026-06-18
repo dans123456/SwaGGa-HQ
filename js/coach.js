@@ -282,6 +282,39 @@ function getApiKey(provider) {
   return cleaned;
 }
 
+async function fetchAndExtractBlogContent(url) {
+  const slugMatch = url.match(/\/blog\/([a-zA-Z0-9\-_]+)/i);
+  if (!slugMatch) return null;
+  const slug = slugMatch[1].toLowerCase();
+
+  try {
+    const res = await fetch('./EdgeFlo_Blog_Database.md');
+    if (!res.ok) throw new Error('Failed to load blog database');
+    const mdText = await res.text();
+    
+    // Split the database by articles using "## 📝"
+    const sections = mdText.split(/## 📝/);
+    
+    for (let i = 1; i < sections.length; i++) {
+      const section = sections[i];
+      // Find the source URL line in this section
+      const sourceMatch = section.match(/\*\*Source:\*\* [^\n]+/i);
+      if (sourceMatch) {
+        const sourceUrl = sourceMatch[0].toLowerCase();
+        if (sourceUrl.includes(`/blog/${slug}`)) {
+          // Found the matching article! Prepend the markdown header and split by --- divider
+          let content = "## 📝 " + section.split(/---/)[0].trim();
+          return content;
+        }
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error('Error fetching blog content:', err);
+    return null;
+  }
+}
+
 function getCustomKB() {
   let val = localStorage.getItem('swagga:ai_kb') || '';
   // Self-healing migration for double-stringified config keys
@@ -833,37 +866,144 @@ export function renderCoachPage(container) {
     });
     kbDetailsContent.appendChild(loadBtn);
 
+    // Resolve Blog Links Button inside details
+    const resolveBtn = el('button', 'btn btn-outline-cyan btn-xs', '🔍 Resolve Blog Links');
+    resolveBtn.style.width = '100%';
+    resolveBtn.style.fontSize = '10px';
+    resolveBtn.style.padding = '4px var(--space-2)';
+    resolveBtn.style.borderRadius = 'var(--radius-sm)';
+    resolveBtn.style.borderColor = 'rgba(0, 242, 254, 0.4)';
+    resolveBtn.style.color = 'var(--cyan)';
+    resolveBtn.addEventListener('click', async () => {
+      let currentKB = getCustomKB();
+      if (!currentKB) {
+        showNotificationToast('Your Knowledge Base is empty.');
+        return;
+      }
+
+      // Regex to find EdgeFlo blog URLs in current KB content
+      const blogUrlPatternGlobal = /https?:\/\/(?:www\.)?edgeflo\.com\/blog\/[a-zA-Z0-9\-_]+/gi;
+      const urls = currentKB.match(blogUrlPatternGlobal);
+
+      if (!urls || urls.length === 0) {
+        showNotificationToast('No raw EdgeFlo blog links found to resolve!');
+        return;
+      }
+
+      resolveBtn.textContent = '⏳ Resolving Links...';
+      resolveBtn.disabled = true;
+
+      let resolvedCount = 0;
+      let newKB = currentKB;
+
+      for (const url of urls) {
+        const content = await fetchAndExtractBlogContent(url);
+        if (content) {
+          const escapedUrl = url.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const blockPattern = new RegExp(`===\\s*Rule\\s+Added:\\s*\\d{2}/\\d{2}/\\d{4}\\s*===(?:\\s*===)?\\s*${escapedUrl}`, 'gi');
+          
+          if (blockPattern.test(newKB)) {
+            newKB = newKB.replace(blockPattern, `=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\n` + content);
+          } else {
+            newKB = newKB.replace(new RegExp(escapedUrl, 'gi'), `=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\n` + content);
+          }
+          resolvedCount++;
+        }
+      }
+
+      resolveBtn.textContent = '🔍 Resolve Blog Links';
+      resolveBtn.disabled = false;
+
+      if (resolvedCount > 0) {
+        localStorage.setItem('swagga:ai_kb', newKB);
+        fullKbArea.value = newKB;
+        charBadge.textContent = `Total Chars: ${newKB.length}`;
+
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        }).catch(() => {});
+
+        showNotificationToast(`Successfully resolved ${resolvedCount} blog link(s)! 📚✨`);
+        playSynthSound('success');
+        nativeHaptic();
+      } else {
+        showNotificationToast('Found blog links, but failed to fetch content from the local database.');
+      }
+    });
+    kbDetailsContent.appendChild(resolveBtn);
+
     kbDetails.appendChild(kbDetailsContent);
     kbCard.appendChild(kbDetails);
 
     // Event listener for main "Add" button
-    addBtn.addEventListener('click', () => {
+    addBtn.addEventListener('click', async () => {
       const text = newRuleInput.value.trim();
       if (!text) {
         showNotificationToast('Please paste or write a rule first!');
         return;
       }
       
-      let currentKB = getCustomKB();
-      if (currentKB) {
-        currentKB += `\n\n=== Rule Added: ${new Date().toLocaleDateString()} ===\n` + text;
+      // Check if the input is an EdgeFlo blog link
+      const blogUrlPattern = /https?:\/\/(?:www\.)?edgeflo\.com\/blog\/[a-zA-Z0-9\-_]+/i;
+      const match = text.match(blogUrlPattern);
+
+      if (match) {
+        const blogUrl = match[0];
+        addBtn.textContent = '⏳ Fetching Blog...';
+        addBtn.disabled = true;
+
+        const content = await fetchAndExtractBlogContent(blogUrl);
+        
+        addBtn.textContent = '➕ Add to Knowledge Base';
+        addBtn.disabled = false;
+
+        if (content) {
+          let currentKB = getCustomKB();
+          if (currentKB) {
+            currentKB += `\n\n=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\n` + content;
+          } else {
+            currentKB = content;
+          }
+
+          localStorage.setItem('swagga:ai_kb', currentKB);
+          newRuleInput.value = '';
+
+          charBadge.textContent = `Total Chars: ${currentKB.length}`;
+          fullKbArea.value = currentKB;
+
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          }).catch(() => {});
+          
+          showNotificationToast('EdgeFlo Blog content imported into SwagAI! 📚✨');
+          playSynthSound('success');
+          nativeHaptic();
+        } else {
+          showNotificationToast('Blog link detected, but could not find matching content in local database.');
+        }
       } else {
-        currentKB = text;
+        // Fallback for regular text rules
+        let currentKB = getCustomKB();
+        if (currentKB) {
+          currentKB += `\n\n=== Rule Added: ${new Date().toLocaleDateString()} ===\n` + text;
+        } else {
+          currentKB = text;
+        }
+        
+        localStorage.setItem('swagga:ai_kb', currentKB);
+        newRuleInput.value = ''; // Let it disappear!
+        
+        charBadge.textContent = `Total Chars: ${currentKB.length}`;
+        fullKbArea.value = currentKB;
+        
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        }).catch(() => {});
+        
+        playSynthSound('click');
+        nativeHaptic();
+        showNotificationToast('Rule added to Knowledge Base! 💾');
       }
-      
-      localStorage.setItem('swagga:ai_kb', currentKB);
-      newRuleInput.value = ''; // Let it disappear!
-      
-      charBadge.textContent = `Total Chars: ${currentKB.length}`;
-      fullKbArea.value = currentKB;
-      
-      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
-        if (getCurrentUser()) pushToCloud();
-      }).catch(() => {});
-      
-      playSynthSound('click');
-      nativeHaptic();
-      showNotificationToast('Rule added to Knowledge Base! 💾');
     });
 
     sideCol.appendChild(kbCard);

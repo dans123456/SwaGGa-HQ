@@ -4,7 +4,7 @@
   "description": "SwaGGa HQ — Personal command center for trading, learning, and daily habit tracking.",
   "private": true,
   "scripts": {
-    "copy": "powershell -Command \"if (Test-Path dist) { Remove-Item dist -Recurse -Force }; New-Item dist -ItemType Directory | Out-Null; Copy-Item index.html dist/; Copy-Item manifest.json dist/; Copy-Item sw.js dist/; Copy-Item -Recurse js dist/js; Copy-Item -Recurse css dist/css; Copy-Item -Recurse img dist/img\"",
+    "copy": "powershell -Command \"if (Test-Path dist) { Remove-Item dist -Recurse -Force }; New-Item dist -ItemType Directory | Out-Null; Copy-Item index.html dist/; Copy-Item manifest.json dist/; Copy-Item sw.js dist/; Copy-Item EdgeFlo_Blog_Database.md dist/; Copy-Item -Recurse js dist/js; Copy-Item -Recurse css dist/css; Copy-Item -Recurse img dist/img\"",
     "cap:sync": "npm run copy && npx cap sync android",
     "cap:open": "npx cap open android",
     "cap:run": "npm run copy && npx cap sync android && npx cap run android",

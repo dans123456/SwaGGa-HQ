@@ -4,7 +4,7 @@
  * Strategy: Cache-first for static assets, network-first for dynamic.
  */
 
-const CACHE_NAME = 'swagga-hq-v118';
+const CACHE_NAME = 'swagga-hq-v120';
 
 // Core files to cache on install
 const CORE_ASSETS = [
@@ -47,6 +47,7 @@ const CORE_ASSETS = [
   './img/icon-512.png',
   './img/brad-goh.png',
   './img/boss-ackah.png',
+  './EdgeFlo_Blog_Database.md',
 ];
 
 // Install — cache core assets
