@@ -246,7 +246,9 @@ export function renderReviewPage(container) {
 
     // Period tabs
     const targetTab = storage.get('active_review_tab', 'weekly');
+    const targetPeriod = storage.get('active_review_period', null);
     storage.delete('active_review_tab');
+    storage.delete('active_review_period');
     let activeTab = targetTab;
     const tabBar = el('div', 'review-tab-bar');
 
@@ -276,7 +278,7 @@ export function renderReviewPage(container) {
     bodyContainer.appendChild(tabBar);
     bodyContainer.appendChild(contentArea);
 
-    renderReviewContent(contentArea, targetTab);
+    renderReviewContent(contentArea, targetTab, targetPeriod);
 
     // Past Reviews Section
     const historySection = el('div', 'review-history-section');

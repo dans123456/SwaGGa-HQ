@@ -1330,20 +1330,47 @@ function renderDashboard(container) {
 
   let hasReviewAlert = false;
 
-  // 1. Check Weekly Review
-  const day = now.getDay();
-  const daysToLastMonday = (day === 0 ? 6 : day - 1) + 7;
-  const lastMonday = new Date(now);
-  lastMonday.setDate(now.getDate() - daysToLastMonday);
-  const lastSunday = new Date(lastMonday);
-  lastSunday.setDate(lastMonday.getDate() + 6);
-
-  const lastMondayStr = lastMonday.toISOString().slice(0, 10);
-  const lastSundayStr = lastSunday.toISOString().slice(0, 10);
+  // 1. Check Weekly Review (Smart check for last 3 weeks with weekend inclusion)
+  const currentDayOfWeek = now.getDay();
+  const isWeekend = (currentDayOfWeek === 0 || currentDayOfWeek === 6);
   
-  const weeklyCompleted = reviews.some(r => r.type === 'weekly' && r.startDate <= lastMondayStr && r.endDate >= lastSundayStr);
+  // On weekends (Sat/Sun), the week just ending (offset 0) is ready to be reviewed.
+  const weeksToCheck = isWeekend ? [-2, -1, 0] : [-3, -2, -1];
+  let weeklyPendingRange = null;
+  let pendingOffset = 0;
 
-  if (!weeklyCompleted) {
+  // Helper to get Monday/Sunday of a week given an offset in weeks (0 = current week, -1 = last week, etc.)
+  const getWeekBounds = (weekOffset) => {
+    const d = new Date(now);
+    const currentDay = d.getDay();
+    const daysToMonday = (currentDay === 0 ? 6 : currentDay - 1);
+    d.setDate(d.getDate() - daysToMonday + (weekOffset * 7));
+    
+    const mon = new Date(d);
+    mon.setHours(0,0,0,0);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    sun.setHours(23,59,59,999);
+    
+    return {
+      mondayStr: mon.toISOString().slice(0, 10),
+      sundayStr: sun.toISOString().slice(0, 10)
+    };
+  };
+
+  for (let offset of weeksToCheck) {
+    const bounds = getWeekBounds(offset);
+    const key = `weekly_${bounds.mondayStr}_${bounds.sundayStr}`;
+    const isCompleted = reviews.some(r => r.type === 'weekly' && (r.periodKey === key || (r.startDate === bounds.mondayStr && r.endDate === bounds.sundayStr)));
+    
+    if (!isCompleted) {
+      weeklyPendingRange = bounds;
+      pendingOffset = offset;
+      break; // Show the oldest pending weekly review
+    }
+  }
+
+  if (weeklyPendingRange) {
     hasReviewAlert = true;
     const alert = el('div', 'dashboard-discipline-alert');
     alert.style.background = 'rgba(0, 212, 255, 0.06)';
@@ -1374,7 +1401,7 @@ function renderDashboard(container) {
     title.style.fontWeight = '800';
     textWrap.appendChild(title);
 
-    const desc = el('p', '', `Your Weekly review for ${lastMondayStr} to ${lastSundayStr} is due. Reflect on your performance and earn +30 XP!`);
+    const desc = el('p', '', `Your Weekly review for ${weeklyPendingRange.mondayStr} to ${weeklyPendingRange.sundayStr} is due. Reflect on your performance and earn +30 XP!`);
     desc.style.margin = 'var(--space-1) 0 0 0';
     desc.style.fontSize = '12px';
     desc.style.color = 'var(--text-muted)';
@@ -1386,6 +1413,7 @@ function renderDashboard(container) {
     actionBtn.style.flexShrink = '0';
     actionBtn.addEventListener('click', () => {
       storage.set('active_review_tab', 'weekly');
+      storage.set('active_review_period', pendingOffset === 0 ? 'current' : 'previous');
       router.navigate('#review');
     });
     alert.appendChild(actionBtn);
