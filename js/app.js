@@ -1548,9 +1548,9 @@ function renderDashboard(container) {
   const actions = el('div', 'quick-actions');
   const quickItems = [
     { icon: '📊', label: 'Log Trade', route: '#trading' },
+    { icon: '🧘', label: 'Review Hub', route: '#review' },
     { icon: '📝', label: 'Start Quiz', route: '#learning' },
     { icon: '🔥', label: 'Mark Streaks', route: '#streaks' },
-    { icon: '📚', label: 'Log Lesson', route: '#learning' },
   ];
   quickItems.forEach(({ icon, label, route }) => {
     const btn = el('button', 'quick-action');
@@ -1569,7 +1569,6 @@ function renderDashboard(container) {
 
   container.appendChild(actions);
 
-  /* ---- Equity Curve Chart (Upgrade #5) ---- */
   if (trades.length > 0) {
     const chartCard = el('div', 'overview-panel dashboard-chart-card glass-card');
     chartCard.style.padding = 'var(--space-4)';
@@ -3128,6 +3127,51 @@ function buildAppShell() {
   utilsRow.appendChild(backupBtn);
 
   sidebar.appendChild(utilsRow);
+
+  // ⚡ Update App & Version panel in sidebar
+  const updatePanel = el('div', 'sidebar-update-panel');
+  
+  const versionText = el('span', 'sidebar-version-text', 'v1.1.6');
+  updatePanel.appendChild(versionText);
+
+  const updateBtn = el('button', 'sidebar-update-btn', '⚡ Update App');
+  updateBtn.type = 'button';
+  updateBtn.addEventListener('click', async () => {
+    updateBtn.textContent = '⏳ Clearing...';
+    updateBtn.disabled = true;
+    
+    // Clear Service Workers
+    if ('serviceWorker' in navigator) {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let reg of registrations) {
+          await reg.unregister();
+        }
+      } catch (e) {
+        console.error('SW unregister failed:', e);
+      }
+    }
+    
+    // Clear Caches
+    if ('caches' in window) {
+      try {
+        const keys = await caches.keys();
+        for (let key of keys) {
+          await caches.delete(key);
+        }
+      } catch (e) {
+        console.error('Cache clear failed:', e);
+      }
+    }
+    
+    updateBtn.textContent = '🔄 Reloading...';
+    setTimeout(() => {
+      window.location.reload(true);
+    }, 800);
+  });
+  
+  updatePanel.appendChild(updateBtn);
+  sidebar.appendChild(updatePanel);
 
   const collapseBtn = el('button', 'sidebar-collapse-btn', '◀');
   collapseBtn.setAttribute('aria-label', 'Toggle sidebar');

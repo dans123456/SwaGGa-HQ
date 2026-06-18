@@ -4,7 +4,7 @@
  * Strategy: Cache-first for static assets, network-first for dynamic.
  */
 
-const CACHE_NAME = 'swagga-hq-v115';
+const CACHE_NAME = 'swagga-hq-v116';
 
 // Core files to cache on install
 const CORE_ASSETS = [
@@ -53,7 +53,9 @@ const CORE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(CORE_ASSETS);
+      // Force fetching assets from network to bypass browser HTTP cache
+      const requests = CORE_ASSETS.map(url => new Request(url, { cache: 'reload' }));
+      return cache.addAll(requests);
     })
   );
   // Activate immediately without waiting for old SW to finish
