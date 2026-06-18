@@ -260,15 +260,26 @@ strong { font-weight: 600; }
     overflow-x: hidden !important;
     max-width: 100vw !important;
   }
+  #app,
+  #main-content,
+  .main-content,
   .page-container,
   .page,
   .overview-panel,
   .glass-card,
   .overview-grid,
   .mindset-layout,
-  .stats-grid {
+  .stats-grid,
+  .dashboard-hero,
+  .dashboard-bottom-grid,
+  .dashboard-left-col,
+  .dashboard-panels-col,
+  .quick-actions,
+  .killzones-panel,
+  .kz-sessions {
     max-width: 100% !important;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
 }
 

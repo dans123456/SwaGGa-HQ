@@ -2308,5 +2308,183 @@
   }
 }
 
+/* ============================================================
+   COMPREHENSIVE MOBILE DASHBOARD OVERFLOW FIX
+   Prevents horizontal scroll on all phone screen sizes.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Force all dashboard children to respect container width */
+  #page-dashboard,
+  #page-dashboard > * {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Shrink hero banner padding on mobile */
+  .dashboard-hero {
+    padding: var(--space-6) var(--space-4) !important;
+  }
+
+  .hero-title {
+    font-size: var(--text-2xl) !important;
+    word-break: break-word;
+  }
+
+  .hero-subtitle {
+    font-size: var(--text-sm) !important;
+  }
+
+  /* Stats grid: 2 cols on tablet, stacks on phone */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--space-3) !important;
+  }
+
+  .stat-card {
+    padding: var(--space-3) !important;
+    min-width: 0 !important;
+  }
+
+  .stat-card__value {
+    font-size: var(--text-xl) !important;
+  }
+
+  /* Quick actions: wrap tightly */
+  .quick-actions {
+    gap: var(--space-2) !important;
+  }
+
+  .quick-action {
+    padding: 0.4rem 0.8rem !important;
+    font-size: var(--text-xs) !important;
+  }
+
+  /* Equity chart card */
+  .dashboard-chart-card {
+    height: 260px !important;
+    padding: var(--space-3) !important;
+  }
+
+  .dashboard-chart-container {
+    height: 190px !important;
+  }
+
+  /* Bottom grid: single column */
+  .dashboard-bottom-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-4) !important;
+  }
+
+  /* Killzone clocks */
+  .kz-clocks {
+    gap: var(--space-2) !important;
+  }
+
+  .kz-clock {
+    padding: var(--space-2) var(--space-3) !important;
+  }
+
+  .kz-clock__value {
+    font-size: var(--text-sm) !important;
+  }
+
+  /* Overview panels */
+  .overview-panel {
+    padding: var(--space-4) !important;
+  }
+
+  .overview-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: var(--space-2) !important;
+  }
+
+  /* Rank widget */
+  .rank-card-row {
+    gap: var(--space-2) !important;
+  }
+
+  /* Achievements grid */
+  .achieve-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .achieve-badge {
+    padding: 6px 2px !important;
+  }
+
+  .achieve-badge__emoji {
+    font-size: 1.1rem !important;
+  }
+
+  .achieve-badge__name {
+    font-size: 0.5rem !important;
+  }
+
+  /* Review alert cards on dashboard */
+  .dashboard-review-alerts {
+    gap: var(--space-2) !important;
+  }
+
+  /* Discipline widget */
+  .discipline-sparkline-row {
+    gap: 2px !important;
+  }
+
+  /* XP hero bar */
+  .xp-hero-bar {
+    max-width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: var(--space-2) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even tighter on very small screens */
+  .dashboard-hero {
+    padding: var(--space-5) var(--space-3) !important;
+    border-radius: var(--radius-lg) !important;
+  }
+
+  .hero-title {
+    font-size: var(--text-xl) !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: var(--space-2) !important;
+  }
+
+  .stat-card__value {
+    font-size: var(--text-lg) !important;
+  }
+
+  /* Notepad card */
+  .notepad-card {
+    padding: var(--space-3) !important;
+  }
+
+  .notepad-textarea {
+    min-height: 100px !important;
+    font-size: var(--text-xs) !important;
+  }
+
+  /* Premarket routine */
+  .premarket-routine-card {
+    padding: var(--space-3) !important;
+  }
+
+  /* Force all text to wrap */
+  .dashboard-section__title {
+    font-size: var(--text-sm) !important;
+    word-break: break-word;
+  }
+
+  .overview-panel__title {
+    font-size: var(--text-sm) !important;
+  }
+}
 
 
