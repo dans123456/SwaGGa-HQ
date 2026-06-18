@@ -190,10 +190,27 @@ function getLocalContextString() {
     .map(([m, c]) => `${m} (${c} times)`)
     .join(', ');
 
-  // 3. Get Custom Knowledge Base text
+  // 3. Fetch Recent Review Hub Reflections (Weekly & Monthly Reviews)
+  const reviews = storage.get('reviews', []) || [];
+  const recentReviews = reviews
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 2)
+    .map(r => {
+      const respSummary = Object.entries(r.responses || {})
+        .map(([k, v]) => `   - ${k}: ${v.substring(0, 120)}${v.length > 120 ? '...' : ''}`)
+        .join('\n');
+      return `* ${r.type.toUpperCase()} Review (${r.startDate} to ${r.endDate}) - Rating: ${r.rating || 'N/A'}/5\n${respSummary}`;
+    })
+    .join('\n\n');
+
+  // 4. Fetch Habit Tracking & Mindset Room streaks
+  const habits = storage.get('habits', []) || [];
+  const mindsetSessions = storage.get('mindset_sessions_completed', 0);
+  
+  // 5. Get Custom Knowledge Base text
   const customKB = getCustomKB() || 'None provided yet.';
 
-  // 4. Create structured context block
+  // 6. Create structured context block
   return `
 --- USER TRADING CONTEXT & PROFILE ---
 Username: SwaGGa
@@ -202,6 +219,11 @@ Win Rate: ${stats.winRate}%
 Total Profit/Loss: $${stats.totalPnL.toFixed(2)}
 Frequent Mistake Tags: ${topMistakes || 'None logged yet'}
 Completed Playbook Rules: ${completedPlaybookSteps.length > 0 ? completedPlaybookSteps.join(', ') : 'None marked completed yet'}
+Habit Streaks Logged: ${habits.length} habits active
+Mindset Sessions Completed: ${mindsetSessions}
+
+--- RECENT PERFORMANCE REVIEWS & REFLECTIONS ---
+${recentReviews || 'No weekly or monthly reviews saved yet.'}
 
 --- CUSTOM KNOWLEDGE BASE STRATEGY NOTES ---
 ${customKB}
