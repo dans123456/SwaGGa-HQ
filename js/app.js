@@ -2177,6 +2177,9 @@ const ACHIEVEMENTS = [
   }},
   { id: 'rising-star',   emoji: '🏅', name: 'Rising Star',     desc: 'Reach Level 5 (Lieutenant)',           check: () => getLevel().level >= 5 },
   { id: 'the-legend',    emoji: '👑', name: 'The Legend',       desc: 'Reach Level 10 (Legend)',              check: () => getLevel().level >= 10 },
+  { id: 'the-sage',      emoji: '🧙', name: 'The Sage',        desc: 'Reach Level 15 (Sage)',               check: () => getLevel().level >= 15 },
+  { id: 'the-god',       emoji: '⚜️', name: 'Ascension',       desc: 'Reach Level 19 (God)',                check: () => getLevel().level >= 19 },
+  { id: 'the-infinite',  emoji: '♾️', name: 'The Infinite',     desc: 'Reach Level 20 (The Infinite)',       check: () => getLevel().level >= 20 },
   // ---- New Premium upgrades ----
   { id: 'risk-manager',  emoji: '🛡️', name: 'Risk Manager',     desc: 'Log 5 consecutive trades with SL',      check: () => {
     const trades = getTrades();
@@ -2355,6 +2358,18 @@ function openAchievementDetail(a) {
   } else if (a.id === 'the-legend') {
     currentVal = getLevel().level;
     targetVal = 10;
+    labelText = `Level ${currentVal} / ${targetVal} reached`;
+  } else if (a.id === 'the-sage') {
+    currentVal = getLevel().level;
+    targetVal = 15;
+    labelText = `Level ${currentVal} / ${targetVal} reached`;
+  } else if (a.id === 'the-god') {
+    currentVal = getLevel().level;
+    targetVal = 19;
+    labelText = `Level ${currentVal} / ${targetVal} reached`;
+  } else if (a.id === 'the-infinite') {
+    currentVal = getLevel().level;
+    targetVal = 20;
     labelText = `Level ${currentVal} / ${targetVal} reached`;
   } else if (a.id === 'risk-manager') {
     const trades = getTrades();

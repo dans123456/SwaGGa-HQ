@@ -3,16 +3,26 @@
 import storage from './storage.js';
 
 export const LEVELS = [
-  { level: 1,  xp: 0,    title: 'Recruit',    emoji: '🪖' },
-  { level: 2,  xp: 100,  title: 'Cadet',      emoji: '⭐' },
-  { level: 3,  xp: 300,  title: 'Soldier',    emoji: '🎖️' },
-  { level: 4,  xp: 600,  title: 'Sergeant',   emoji: '🏅' },
-  { level: 5,  xp: 1000, title: 'Lieutenant', emoji: '⚔️' },
-  { level: 6,  xp: 1500, title: 'Captain',    emoji: '🛡️' },
-  { level: 7,  xp: 2200, title: 'Commander',  emoji: '🦅' },
-  { level: 8,  xp: 3000, title: 'Colonel',    emoji: '🎯' },
-  { level: 9,  xp: 4000, title: 'General',    emoji: '⭐⭐' },
-  { level: 10, xp: 5500, title: 'Legend',     emoji: '👑' },
+  { level: 1,  xp: 0,     title: 'Recruit',       emoji: '🪖' },
+  { level: 2,  xp: 100,   title: 'Cadet',         emoji: '⭐' },
+  { level: 3,  xp: 300,   title: 'Soldier',       emoji: '🎖️' },
+  { level: 4,  xp: 600,   title: 'Sergeant',      emoji: '🏅' },
+  { level: 5,  xp: 1000,  title: 'Lieutenant',    emoji: '⚔️' },
+  { level: 6,  xp: 1500,  title: 'Captain',       emoji: '🛡️' },
+  { level: 7,  xp: 2200,  title: 'Commander',     emoji: '🦅' },
+  { level: 8,  xp: 3000,  title: 'Colonel',       emoji: '🎯' },
+  { level: 9,  xp: 4000,  title: 'General',       emoji: '⭐⭐' },
+  { level: 10, xp: 5500,  title: 'Legend',        emoji: '👑' },
+  { level: 11, xp: 8000,  title: 'Warlord',      emoji: '🔱' },
+  { level: 12, xp: 11000, title: 'Titan',         emoji: '🗿' },
+  { level: 13, xp: 15000, title: 'Sovereign',     emoji: '🏛️' },
+  { level: 14, xp: 20000, title: 'Mythic',        emoji: '🐉' },
+  { level: 15, xp: 26000, title: 'Sage',          emoji: '🧙' },
+  { level: 16, xp: 33000, title: 'Ascendant',     emoji: '🌟' },
+  { level: 17, xp: 42000, title: 'Immortal',      emoji: '💀' },
+  { level: 18, xp: 53000, title: 'Overlord',      emoji: '👁️' },
+  { level: 19, xp: 67000, title: 'God',           emoji: '⚜️' },
+  { level: 20, xp: 85000, title: 'The Infinite',  emoji: '♾️' },
 ];
 
 export const XP_REWARDS = {
@@ -169,7 +179,7 @@ export function getLevelProgress() {
       next: currentLvl.xp,
       progress: 1,
       nextTitle: 'MAX',
-      nextEmoji: '👑',
+      nextEmoji: '♾️',
     };
   }
 

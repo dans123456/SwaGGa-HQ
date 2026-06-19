@@ -149,6 +149,77 @@ The first time price returns to a supply or demand zone, it often fails. Learn t
 Never Trade the First Mitigation of a Zone
 You marked a clean demand zone. Price pulled back to it. You entered on the touch. And then price sliced right through your zone like it was not there.
 
+[Demand Zone Entry: 3 Confirmations Before You Buy]
+Key Topics: Confirmation 1: Strong Rejection Candle, Confirmation 2: Break and Close in Buyer Direction, Confirmation 3: Failure to Continue Lower, Walkthrough: Waiting for All Three, How EdgeFlo Documents Your Entry Confirmations
+Three lower-timeframe confirmations prevent premature entries at demand zones: rejection candle, break and close, failure to continue. Full walkthrough.
+Demand Zone Entry: 3 Confirmations Before You Buy
+Price touches your demand zone. Your heart rate spikes. Every second it sits there feels like the last chance to enter before the rocket takes off. So you buy.
+
+[Direction, Location, Execution: 3 Steps to Every Trade]
+Key Topics: Step 1: Identify Who Controls Price, Step 2: Find the Best Location to Enter, Step 3: Wait for Execution Confirmation, Why This Order Prevents Stupid Trades, How EdgeFlo Keeps Your 3-Step Process Visible
+Every profitable trade follows three steps: direction, location, execution. Learn the exact sequence that eliminates guesswork from your entries.
+Direction, Location, Execution: 3 Steps to Every Trade
+Every losing streak has the same root cause. You skipped a step.
+
+[Double Tops and Bottoms Are Liquidity Traps]
+Key Topics: Why Double Tops and Bottoms Attract Liquidity, How Banks Use These Patterns to Fill Orders, The Difference Between a Real Reversal and a Liquidity Grab, How to Trade After the Trap Springs, How EdgeFlo Marks Liquidity Zones on Your Chart
+Double tops and bottoms are not reversal signals. They are liquidity magnets where banks collect stop losses before the real move. Learn how to trade the reaction.
+Double Tops and Bottoms Are Liquidity Traps
+Every trading textbook teaches the same thing: sell the double top, buy the double bottom. And every year, that advice costs retail traders billions in stopped-out positions.
+
+[Equilibrium Level: Why 50% Changes Your Entry Quality]
+Key Topics: What the Equilibrium Level Means, Premium vs Discount Pricing, Why Demand Zones in Discount Win More, How to Set Up the Premium-Discount Tool, How EdgeFlo Helps You Track Entry Quality
+The 50% equilibrium splits premium from discount pricing. Buy below it, sell above it, and watch your entry quality transform. Setup guide included.
+Equilibrium Level: Why 50% Changes Your Entry Quality
+You found a demand zone. The trend is bullish. You feel good about the trade. But the zone sits above the 50% mark of your swing range, and you do not realize that you are about to buy at a premium price with a mediocre risk-to-reward ratio.
+
+[Extreme Demand Zone: The Last Line of Defense]
+Key Topics: What Makes a Demand Zone Extreme, Why the Swing Low Is Make or Break, If This Breaks, the Trend Flips, Walkthrough: Finding the Extreme Zone, How EdgeFlo Tracks Your Zone Selection
+The extreme demand zone at the swing low is where bullish structure lives or dies. If it breaks, the trend flips. Step-by-step identification guide.
+Extreme Demand Zone: The Last Line of Defense
+Not all demand zones are equal. Some sit in the middle of a swing range, products of minor pullbacks and shallow consolidations. Others sit at the very bottom, at the exact price level where the entire bullish trend was born.
+
+[Funded Account Survival During News Events]
+Key Topics: Why News Events Kill More Funded Accounts Than Bad Trades, Prop Firm Rules You Must Know Before Any News Day, The Pre-News Checklist for Funded Traders, Position Management When the Spike Hits, How EdgeFlo Protects Your Funded Account on News Days
+News events are the top funded account killer. Learn the pre-news checklist, position management rules, and risk controls that keep your funded account alive.
+Funded Account Survival During News Events
+A single FOMC announcement. A 90-pip whipsaw. A funded account gone in under two minutes.
+
+[Funded Traders Who Survive Play the Long Game]
+Key Topics: Why Most Funded Traders Blow Up in 90 Days, The Payout Chase That Destroys Funded Accounts, Treat Funded Capital Like Your Own Money, Persistence Through Losing Streaks Is the Real Edge, How EdgeFlo Guardrails Keep Funded Accounts Alive
+Most funded traders blow their accounts within 90 days by chasing fast payouts. The survivors treat funded capital like their own and accept slow compounding.
+Funded Traders Who Survive Play the Long Game
+Getting funded is not the hard part. Staying funded is. Most traders who pass a prop firm challenge lose their funded account within the first 90 days. Not because they cannot trade, but because the moment real capital is on the line, their behavior changes.
+
+[How Banks Hunt Your Stop Loss (And How to Avoid It)]
+Key Topics: Why Smart Money Needs Your Stop Loss, The Swing Low Trap Explained, What Happens When Your Stop Gets Hit, How to Place Stops That Survive Hunts, How EdgeFlo Keeps Risk Visible at Entry
+Banks need your stop loss orders to fill large positions. Learn the stop hunting mechanic, why swing lows are targets, and how to place stops that survive.
+How Banks Hunt Your Stop Loss (And How to Avoid It)
+Banks need your stop loss orders to fill their massive positions. When smart money wants to buy millions in EUR/USD, they need an equal amount of sell orders on the other side. The most predictable source of those sell orders? Retail stop losses clustered below swing lows. Understanding this mechanic is the difference between being the liquidity and trading with the institutions that take it.
+
+[How Inducements Bait You Into Bad Trades]
+Key Topics: What an Inducement Looks Like on a Chart, Why Tiny Breakouts Trigger Early Entries, The Mechanics: How Banks Use Inducements to Fill, Rules for Filtering Inducements from Real Breaks, How EdgeFlo Helps You Wait for Confirmation
+Inducements are tiny structure breaks that bait early entries before the real move reverses. Learn the mechanics and how to filter inducements from real breakouts.
+How Inducements Bait You Into Bad Trades
+You found a clean demand zone. Price pulled back to it. You entered long. And within three candles, your stop got clipped before price rocketed in the exact direction you predicted.
+
+[How to Break the Deposit, Blow, Repeat Cycle]
+Key Topics: The Anatomy of the Deposit, Blow, Repeat Loop, Why Motivation After a Blow-Up Is the Most Dangerous Phase, Position Rules That Physically Prevent the Blow-Up, From Cycle to Climb: What the Turnaround Looks Like, How EdgeFlo Blocks the Blow-Up Before It Starts
+The deposit, blow, repeat loop is the most common pattern in retail trading. Learn the exact mechanics and concrete steps to break it for good.
+How to Break the Deposit, Blow, Repeat Cycle
+You deposit $500. You trade well for a few days, maybe a couple of weeks. The account grows to $1,500, then $2,000. You have never seen this number before. You feel invincible. Then you increase your lot size, take a few extra trades, get caught on the wrong side of a move, and by the end of the week the account is back to $200. Or zero.
+
+[How to Build Trading Habits That Scale With Your Account]
+Key Topics: Why Habits Scale With Account Size, The $50 Mistake That Becomes a $5,000 Mistake, The Three Habits That Must Be Automatic Before You Scale, Using Journal Reviews to Catch Habit Drift, How EdgeFlo Journal Auto-Import Removes Excuses
+Bad habits on a $500 account cost $50. The same habits on a $50,000 account cost $5,000. Build the journal-risk-review loop now while the stakes are low.
+How to Build Trading Habits That Scale With Your Account
+Bad habits on a $500 account cost $50. The same habits on a $50,000 account cost $5,000. Habits do not magically improve when the account gets bigger. They scale.
+
+[How to Choose Your Trading Style in 4 Steps]
+Key Topics: The Four Trading Styles in Plain English, Step One: Match Your Goals to a Timeframe, Step Two: Audit Your Available Hours, Step Three: Be Honest About Your Personality, How to Use Your Journal to Pick Your Style, When to Change Styles (And When Not To), How EdgeFlo Edge Plan Locks Your Style Into Your System
+Choose between scalping, day trading, swing, and position trading using 4 filters: goals, schedule, personality, and strengths.
+How to Choose Your Trading Style in 4 Steps
+Four trading styles exist, and only one of them fits your life right now. Scalping, day trading, swing trading, and position trading each demand different time, energy, and temperament. The right choice depends on four factors: your goals, your schedule, your personality, and your strengths. Run each style through those four filters, and the answer becomes obvious without trial-and-error blowups.
 `;
 
 
@@ -244,6 +315,7 @@ Your goals:
    - For fear of execution or taking losses: Suggest the "Risk Acceptance Primer" (8 Min) or "P&L Detachment Meditation" (12 Min).
    - For winding down after a tough session: Suggest the "Post-Session Adrenaline Flush" (5 Min) or "Trading Day Closure Routine" (10 Min).
 6. Format your responses using clean Markdown, bullets, and bold text. Keep paragraphs short (1-3 sentences).
+7. When referencing a strategy or psychology rule from the Knowledge Base, write it as [Rule Title] (using square brackets) and DO NOT put quotation marks around it. For example, write Refer to [Your Trading Reflects Your Weaknesses: Use That] instead of "Your Trading Reflects Your Weaknesses" or "[Your Trading Reflects...]".
 `;
 
 // TODO(security): Personal API key is stored locally on-device for direct client-to-API calls.
@@ -282,10 +354,18 @@ function getApiKey(provider) {
   return cleaned;
 }
 
-async function fetchAndExtractBlogContent(url) {
-  const slugMatch = url.match(/\/blog\/([a-zA-Z0-9\-_]+)/i);
-  if (!slugMatch) return null;
-  const slug = slugMatch[1].toLowerCase();
+async function fetchAndExtractBlogContent(urlOrTitle) {
+  let slug = '';
+  let isTitle = false;
+
+  const slugMatch = urlOrTitle.match(/\/blog\/([a-zA-Z0-9\-_]+)/i);
+  if (slugMatch) {
+    slug = slugMatch[1].toLowerCase();
+  } else {
+    // Treat as title
+    slug = urlOrTitle.trim().toLowerCase();
+    isTitle = true;
+  }
 
   try {
     const res = await fetch('./EdgeFlo_Blog_Database.md');
@@ -297,14 +377,23 @@ async function fetchAndExtractBlogContent(url) {
     
     for (let i = 1; i < sections.length; i++) {
       const section = sections[i];
-      // Find the source URL line in this section
-      const sourceMatch = section.match(/\*\*Source:\*\* [^\n]+/i);
-      if (sourceMatch) {
-        const sourceUrl = sourceMatch[0].toLowerCase();
-        if (sourceUrl.includes(`/blog/${slug}`)) {
-          // Found the matching article! Prepend the markdown header and split by --- divider
+      
+      if (isTitle) {
+        // Match by title (first line of the section)
+        const firstLine = section.split('\n')[0].trim().toLowerCase();
+        if (firstLine.includes(slug) || slug.includes(firstLine)) {
           let content = "## 📝 " + section.split(/---/)[0].trim();
           return content;
+        }
+      } else {
+        // Match by source URL
+        const sourceMatch = section.match(/\*\*Source:\*\* [^\n]+/i);
+        if (sourceMatch) {
+          const sourceUrl = sourceMatch[0].toLowerCase();
+          if (sourceUrl.includes(`/blog/${slug}`)) {
+            let content = "## 📝 " + section.split(/---/)[0].trim();
+            return content;
+          }
         }
       }
     }
@@ -334,8 +423,10 @@ function getCustomKB() {
 
 // --- Safe Markdown Text Formatter (No innerHTML) ---
 function formatMarkdownText(text) {
+  // Strip quotes around bracketed rules, e.g. "[Rule Title]" -> [Rule Title]
+  const cleanedText = text.replace(/"\[(.*?)\]"/g, "[$1]").replace(/'\[(.*?)\]'/g, "[$1]");
   const container = el('div', 'markdown-body');
-  const lines = text.split('\n');
+  const lines = cleanedText.split('\n');
   let currentList = null;
 
   lines.forEach(line => {
@@ -380,10 +471,115 @@ function formatMarkdownText(text) {
   return container;
 }
 
-// Sub-parser to process **bold** and `code` tags within lines
+// Modal popup to display the full blog article content beautifully
+function showArticleModal(title, markdownContent) {
+  // Create overlay
+  const overlay = el('div', 'modal-overlay');
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.width = '100vw';
+  overlay.style.height = '100vh';
+  overlay.style.background = 'rgba(6, 6, 8, 0.82)';
+  overlay.style.backdropFilter = 'blur(8px)';
+  overlay.style.webkitBackdropFilter = 'blur(8px)';
+  overlay.style.zIndex = '10000';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.padding = 'var(--space-4)';
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity 0.2s ease-out';
+
+  // Create modal card
+  const card = el('div', 'modal-card');
+  card.style.background = '#121118';
+  card.style.border = '1px solid rgba(0, 242, 254, 0.2)';
+  card.style.borderRadius = '20px';
+  card.style.width = '100%';
+  card.style.maxWidth = '640px';
+  card.style.maxHeight = '80vh';
+  card.style.display = 'flex';
+  card.style.flexDirection = 'column';
+  card.style.boxShadow = '0 25px 50px rgba(0,0,0,0.6), 0 0 40px rgba(0, 242, 254, 0.08)';
+  card.style.transform = 'translateY(12px) scale(0.98)';
+  card.style.transition = 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+  // Modal header
+  const header = el('div');
+  header.style.display = 'flex';
+  header.style.justifyContent = 'space-between';
+  header.style.alignItems = 'center';
+  header.style.padding = 'var(--space-4) var(--space-5)';
+  header.style.borderBottom = '1px solid rgba(255,255,255,0.06)';
+
+  const h3 = el('h3', '', title);
+  h3.style.margin = '0';
+  h3.style.fontSize = 'var(--text-sm)';
+  h3.style.fontWeight = '800';
+  h3.style.color = 'var(--cyan)';
+  header.appendChild(h3);
+
+  const closeBtn = el('button', '', '✕');
+  closeBtn.style.background = 'rgba(255,255,255,0.05)';
+  closeBtn.style.border = 'none';
+  closeBtn.style.color = 'var(--text-muted)';
+  closeBtn.style.fontSize = '12px';
+  closeBtn.style.fontWeight = 'bold';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.width = '24px';
+  closeBtn.style.height = '24px';
+  closeBtn.style.borderRadius = '50%';
+  closeBtn.style.display = 'flex';
+  closeBtn.style.alignItems = 'center';
+  closeBtn.style.justifyContent = 'center';
+  closeBtn.style.transition = 'background 0.2s';
+  closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = 'rgba(255,255,255,0.1)'; });
+  closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'rgba(255,255,255,0.05)'; });
+  closeBtn.addEventListener('click', () => {
+    overlay.style.opacity = '0';
+    card.style.transform = 'translateY(12px) scale(0.98)';
+    setTimeout(() => overlay.remove(), 200);
+  });
+  header.appendChild(closeBtn);
+  card.appendChild(header);
+
+  // Modal body
+  const body = el('div');
+  body.style.padding = 'var(--space-5)';
+  body.style.overflowY = 'auto';
+  body.style.flex = '1';
+  body.style.fontSize = '12px';
+  body.style.lineHeight = '1.7';
+  body.style.color = 'rgba(255,255,255,0.85)';
+  
+  const formattedBody = formatMarkdownText(markdownContent);
+  body.appendChild(formattedBody);
+  card.appendChild(body);
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  // Trigger animations
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    card.style.transform = 'translateY(0) scale(1)';
+  });
+
+  // Close modal when clicking outside the card
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.style.opacity = '0';
+      card.style.transform = 'translateY(12px) scale(0.98)';
+      setTimeout(() => overlay.remove(), 200);
+    }
+  });
+}
+
+// Sub-parser to process **bold**, `code`, and [Rule Title] tags within lines
 function parseInlineMarkdown(text, parentElement) {
-  // Regex to match markdown syntax: bold (**), code (`)
-  const regex = /(\*\*.*?\*\*|`.*?`|[^\*`]+)/g;
+  // Regex to match markdown syntax: bold (**), code (`), rule brackets ([...])
+  const regex = /(\*\*.*?\*\*|`.*?`|\[.*?\]|[^\*`\[]+)/g;
   const matches = text.match(regex);
   
   if (!matches) {
@@ -398,6 +594,52 @@ function parseInlineMarkdown(text, parentElement) {
     } else if (chunk.startsWith('`') && chunk.endsWith('`')) {
       const code = el('code', '', chunk.slice(1, -1));
       parentElement.appendChild(code);
+    } else if (chunk.startsWith('[') && chunk.endsWith(']')) {
+      const ruleTitle = chunk.slice(1, -1);
+      const span = el('span', 'kb-rule-badge', ruleTitle);
+      span.style.background = 'rgba(0, 242, 254, 0.08)';
+      span.style.border = '1px solid rgba(0, 242, 254, 0.25)';
+      span.style.color = 'var(--cyan)';
+      span.style.padding = '1px 6px';
+      span.style.borderRadius = '6px';
+      span.style.fontSize = '11px';
+      span.style.fontWeight = '700';
+      span.style.margin = '0 2px';
+      span.style.display = 'inline-flex';
+      span.style.alignItems = 'center';
+      span.style.cursor = 'pointer';
+      span.style.transition = 'all 0.2s';
+      
+      span.addEventListener('mouseenter', () => {
+        span.style.background = 'rgba(0, 242, 254, 0.15)';
+        span.style.border = '1px solid rgba(0, 242, 254, 0.4)';
+        span.style.boxShadow = '0 0 8px rgba(0, 242, 254, 0.2)';
+      });
+      span.addEventListener('mouseleave', () => {
+        span.style.background = 'rgba(0, 242, 254, 0.08)';
+        span.style.border = '1px solid rgba(0, 242, 254, 0.25)';
+        span.style.boxShadow = 'none';
+      });
+      
+      span.addEventListener('click', async () => {
+        playSynthSound('click');
+        nativeHaptic();
+        
+        // Show loading state
+        const originalText = span.textContent;
+        span.textContent = '⏳ Loading...';
+        
+        const content = await fetchAndExtractBlogContent(ruleTitle);
+        
+        span.textContent = originalText;
+        
+        if (content) {
+          showArticleModal(ruleTitle, content);
+        } else {
+          showNotificationToast(`Rule referenced: ${ruleTitle}`);
+        }
+      });
+      parentElement.appendChild(span);
     } else {
       const textNode = document.createTextNode(chunk);
       parentElement.appendChild(textNode);
