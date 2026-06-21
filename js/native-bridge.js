@@ -152,13 +152,6 @@ export async function schedulePremarketReminder() {
     if (existing.length) {
       await LocalNotifications.cancel({ notifications: existing });
     }
-    
-    // Schedule at 8:30 AM today (or tomorrow if already past)
-    const fireAt = new Date();
-    fireAt.setHours(8, 30, 0, 0);
-    if (fireAt < new Date()) {
-      fireAt.setDate(fireAt.getDate() + 1); // Push to tomorrow if today's 8:30 has passed
-    }
 
     await LocalNotifications.schedule({
       notifications: [
@@ -167,9 +160,12 @@ export async function schedulePremarketReminder() {
           title: '⚡ Pre-Market Routine',
           body: 'Time to check the news, mark your bias, and set your levels. Lock in before the session!',
           schedule: {
-            at: fireAt,
             repeats: true,
             every: 'day',
+            on: {
+              hour: 8,
+              minute: 30
+            }
           },
           sound: 'default',
           smallIcon: 'ic_stat_icon_config_sample',
@@ -274,12 +270,6 @@ export async function scheduleDailyReminder(id, title, body, hour, minute) {
       await LocalNotifications.cancel({ notifications: existing });
     }
 
-    const fireAt = new Date();
-    fireAt.setHours(hour, minute, 0, 0);
-    if (fireAt < new Date()) {
-      fireAt.setDate(fireAt.getDate() + 1);
-    }
-
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -287,9 +277,12 @@ export async function scheduleDailyReminder(id, title, body, hour, minute) {
           title,
           body,
           schedule: {
-            at: fireAt,
             repeats: true,
             every: 'day',
+            on: {
+              hour,
+              minute
+            }
           },
           sound: 'default',
           smallIcon: 'ic_stat_icon_config_sample',
@@ -297,7 +290,7 @@ export async function scheduleDailyReminder(id, title, body, hour, minute) {
         },
       ],
     });
-    console.log(`[NativeBridge] Scheduled daily reminder ID ${id} at ${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`);
+    console.log(`[NativeBridge] Scheduled daily reminder ID ${id} (Every day at ${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')})`);
   } catch (err) {
     console.warn('[NativeBridge] scheduleDailyReminder error:', err);
   }
@@ -322,6 +315,30 @@ export async function cancelNotification(id) {
 /**
  * Schedules Weekly, Monthly, and Quarterly performance reviews notifications.
  */
+/**
+ * Helper to calculate the next quarter's date.
+ * Quarters start on Jan 1 (month 0), Apr 1 (month 3), Jul 1 (month 6), Oct 1 (month 9)
+ * @param {number} hour
+ * @param {number} minute
+ * @returns {Date}
+ */
+export function getNextQuarterDate(hour = 10, minute = 0) {
+  const now = new Date();
+  const quarterMonths = [0, 3, 6, 9];
+  for (let y = now.getFullYear(); y <= now.getFullYear() + 1; y++) {
+    for (const qMonth of quarterMonths) {
+      const qDate = new Date(y, qMonth, 1, hour, minute, 0, 0);
+      if (qDate > now) {
+        return qDate;
+      }
+    }
+  }
+  return new Date(now.getFullYear(), 0, 1, hour, minute, 0, 0); // fallback
+}
+
+/**
+ * Schedules Weekly, Monthly, and Quarterly performance reviews notifications.
+ */
 export async function scheduleReviewReminders() {
   if (!isNative()) {
     console.log('[NativeBridge] Web Fallback: Mock scheduling review reminders');
@@ -337,14 +354,8 @@ export async function scheduleReviewReminders() {
       const timeStr = storage.get('review_weekly_reminder_time', '18:00');
       const [h, m] = timeStr.split(':').map(Number);
       
-      const fireAt = new Date();
-      const currentDay = fireAt.getDay(); // 0 is Sunday, 1 is Monday...
-      let daysToAdd = (0 - currentDay + 7) % 7; // Sunday is 0
-      fireAt.setHours(h !== undefined && !isNaN(h) ? h : 18, m !== undefined && !isNaN(m) ? m : 0, 0, 0);
-      if (daysToAdd === 0 && fireAt < new Date()) {
-        daysToAdd = 7;
-      }
-      fireAt.setDate(fireAt.getDate() + daysToAdd);
+      const hr = h !== undefined && !isNaN(h) ? h : 18;
+      const min = m !== undefined && !isNaN(m) ? m : 0;
 
       // Cancel existing if scheduled
       const pending = await LocalNotifications.getPending();
@@ -360,9 +371,13 @@ export async function scheduleReviewReminders() {
             title: '🪖 Weekly Performance Review',
             body: 'Stop escaping! Weekly reflection is due now. Open the app, review your leaks, and face the data. No excuses!',
             schedule: {
-              at: fireAt,
               repeats: true,
               every: 'week',
+              on: {
+                weekday: 1, // Sunday (Capacitor Weekday.Sunday is 1)
+                hour: hr,
+                minute: min,
+              }
             },
             sound: 'default',
             smallIcon: 'ic_stat_icon_config_sample',
@@ -370,7 +385,7 @@ export async function scheduleReviewReminders() {
           }
         ]
       });
-      console.log(`[NativeBridge] Scheduled Weekly review reminder for ${fireAt.toString()}`);
+      console.log(`[NativeBridge] Scheduled Weekly review reminder (Every Sunday at ${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')})`);
     } else {
       await cancelNotification(2001);
     }
@@ -381,12 +396,8 @@ export async function scheduleReviewReminders() {
       const timeStr = storage.get('review_monthly_reminder_time', '09:00');
       const [h, m] = timeStr.split(':').map(Number);
 
-      const fireAt = new Date();
-      fireAt.setDate(1); // Set to 1st
-      fireAt.setHours(h !== undefined && !isNaN(h) ? h : 9, m !== undefined && !isNaN(m) ? m : 0, 0, 0);
-      if (fireAt < new Date()) {
-        fireAt.setMonth(fireAt.getMonth() + 1);
-      }
+      const hr = h !== undefined && !isNaN(h) ? h : 9;
+      const min = m !== undefined && !isNaN(m) ? m : 0;
 
       // Cancel existing
       const pending = await LocalNotifications.getPending();
@@ -402,9 +413,13 @@ export async function scheduleReviewReminders() {
             title: '📆 Monthly Trading Audit',
             body: 'A month of trading has passed. Are you actually getting better, or just repeating mistakes? Audit your setups now!',
             schedule: {
-              at: fireAt,
               repeats: true,
               every: 'month',
+              on: {
+                day: 1, // 1st of the month
+                hour: hr,
+                minute: min,
+              }
             },
             sound: 'default',
             smallIcon: 'ic_stat_icon_config_sample',
@@ -412,7 +427,7 @@ export async function scheduleReviewReminders() {
           }
         ]
       });
-      console.log(`[NativeBridge] Scheduled Monthly review reminder for ${fireAt.toString()}`);
+      console.log(`[NativeBridge] Scheduled Monthly review reminder (1st of the month at ${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')})`);
     } else {
       await cancelNotification(2002);
     }
@@ -423,28 +438,10 @@ export async function scheduleReviewReminders() {
       const timeStr = storage.get('review_quarterly_reminder_time', '10:00');
       const [h, m] = timeStr.split(':').map(Number);
 
-      const fireAt = new Date();
-      const currentMonth = fireAt.getMonth();
-      let targetMonth;
-      if (currentMonth < 3) {
-        targetMonth = 3;
-      } else if (currentMonth < 6) {
-        targetMonth = 6;
-      } else if (currentMonth < 9) {
-        targetMonth = 9;
-      } else {
-        targetMonth = 0;
-      }
+      const hr = h !== undefined && !isNaN(h) ? h : 10;
+      const min = m !== undefined && !isNaN(m) ? m : 0;
 
-      fireAt.setMonth(targetMonth);
-      fireAt.setDate(1);
-      fireAt.setHours(h !== undefined && !isNaN(h) ? h : 10, m !== undefined && !isNaN(m) ? m : 0, 0, 0);
-      if (targetMonth === 0 && currentMonth >= 9) {
-        fireAt.setFullYear(fireAt.getFullYear() + 1);
-      }
-      if (fireAt < new Date()) {
-        fireAt.setMonth(fireAt.getMonth() + 3);
-      }
+      const fireAt = getNextQuarterDate(hr, min);
 
       // Cancel existing
       const pending = await LocalNotifications.getPending();
