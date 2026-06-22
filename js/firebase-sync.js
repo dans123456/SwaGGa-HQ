@@ -419,8 +419,17 @@ export async function pullFromCloud() {
           merged[key] = mergedHabits;
 
           merged[key].forEach(h => {
-            if (h.id === 'duolingo' && h.baseStreak !== 44) {
-              h.baseStreak = 44;
+            if (h.id === 'duolingo') {
+              if (h.baseStreak !== 44) {
+                h.baseStreak = 44;
+              }
+              // Prevent merged log from retaining May 29, 2026, which would break the 68 streak constraint
+              if (h.log) {
+                delete h.log['2026-05-29'];
+              }
+              if (h.freezes) {
+                delete h.freezes['2026-05-29'];
+              }
             }
           });
         } else {

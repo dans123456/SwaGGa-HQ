@@ -75,9 +75,41 @@ export function getHabits() {
         migrated = true;
       }
       // Force duolingo base streak to be exactly 44 (so 44 + logged days = correct count)
-      if (h.id === 'duolingo' && h.baseStreak !== 44) {
-        h.baseStreak = 44;
-        migrated = true;
+      if (h.id === 'duolingo') {
+        if (h.baseStreak !== 44) {
+          h.baseStreak = 44;
+          migrated = true;
+        }
+        if (!storage.get('duolingo_backfill_68_applied', false)) {
+          h.log = h.log || {};
+          h.freezes = h.freezes || {};
+          
+          // Force a break at May 29, 2026 to ensure the streak is exactly 68 days today (June 22, 2026)
+          delete h.log['2026-05-29'];
+          delete h.freezes['2026-05-29'];
+          
+          // Backfill 24 days from May 30, 2026 to June 22, 2026
+          const startDate = new Date(2026, 4, 30); // May 30, 2026 (Month is 0-indexed, so 4 is May)
+          for (let i = 0; i < 24; i++) {
+            const d = new Date(startDate);
+            d.setDate(startDate.getDate() + i);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const key = `${y}-${m}-${day}`;
+            h.log[key] = true;
+          }
+          
+          storage.set('duolingo_backfill_68_applied', true);
+          migrated = true;
+          
+          // Trigger push to cloud so that the cloud also receives the updated logs
+          setTimeout(() => {
+            import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+              if (getCurrentUser()) pushToCloud();
+            });
+          }, 100);
+        }
       }
     });
     if (migrated) _saveHabits(habits);
