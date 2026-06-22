@@ -2260,6 +2260,125 @@ function renderFlashcardMode() {
 
 // --- Study Journal ---
 
+function getYouTubeVideoId(url) {
+  if (!url) return '';
+  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  return match ? match[1] : '';
+}
+
+function deleteJournalEntry(id) {
+  const entries = getJournalEntries();
+  const updated = entries.filter(e => e.id !== id);
+  storage.set(STORAGE_JOURNAL, updated);
+  showNotificationToast('Entry deleted successfully! 🗑️');
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  });
+}
+
+function openEditStudyPopup(entry, onSaved) {
+  const { body, close } = createModal('✏️ Edit Study Entry');
+
+  const form = el('form', 'modal-form');
+  form.setAttribute('novalidate', '');
+
+  // Title
+  const titleGroup = el('div', 'form-group');
+  titleGroup.appendChild(el('label', 'form-label', 'What did you watch / study?'));
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.className = 'form-input';
+  titleInput.value = entry.title || '';
+  titleInput.required = true;
+  titleGroup.appendChild(titleInput);
+  form.appendChild(titleGroup);
+
+  // Source / Mentor
+  const sourceGroup = el('div', 'form-group');
+  sourceGroup.appendChild(el('label', 'form-label', 'Source / Mentor'));
+  const sourceInput = document.createElement('input');
+  sourceInput.type = 'text';
+  sourceInput.className = 'form-input';
+  sourceInput.value = entry.source || '';
+  sourceGroup.appendChild(sourceInput);
+  form.appendChild(sourceGroup);
+
+  // Link (optional)
+  const linkGroup = el('div', 'form-group');
+  linkGroup.appendChild(el('label', 'form-label', 'Video / Resource Link (optional)'));
+  const linkInput = document.createElement('input');
+  linkInput.type = 'url';
+  linkInput.className = 'form-input';
+  linkInput.value = entry.link || '';
+  linkGroup.appendChild(linkInput);
+  form.appendChild(linkGroup);
+
+  // Key Takeaways
+  const takeawaysGroup = el('div', 'form-group');
+  takeawaysGroup.appendChild(el('label', 'form-label', 'Key Takeaways — What did you learn?'));
+  const takeawaysInput = document.createElement('textarea');
+  takeawaysInput.className = 'form-textarea';
+  takeawaysInput.rows = 5;
+  takeawaysInput.value = entry.takeaways || '';
+  takeawaysInput.required = true;
+  takeawaysGroup.appendChild(takeawaysInput);
+  form.appendChild(takeawaysGroup);
+
+  // Category
+  const catGroup = el('div', 'form-group');
+  catGroup.appendChild(el('label', 'form-label', 'Category'));
+  const catSelect = document.createElement('select');
+  catSelect.className = 'form-select';
+  JOURNAL_CATEGORIES.forEach(cat => {
+    const opt = el('option', '', cat);
+    opt.value = cat;
+    if (cat === entry.category) opt.selected = true;
+    catSelect.appendChild(opt);
+  });
+  catGroup.appendChild(catSelect);
+  form.appendChild(catGroup);
+
+  // Submit
+  const submitBtn = el('button', 'btn btn-primary btn-lg', '💾 Save Changes');
+  submitBtn.type = 'submit';
+  form.appendChild(submitBtn);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = titleInput.value.trim();
+    const takeaways = takeawaysInput.value.trim();
+    if (!title) { titleInput.focus(); return; }
+    if (!takeaways) { takeawaysInput.focus(); return; }
+
+    const linkVal = linkInput.value.trim();
+    if (linkVal && !linkVal.startsWith('http://') && !linkVal.startsWith('https://')) {
+      showNotificationToast('Link must start with http:// or https://');
+      linkInput.focus();
+      return;
+    }
+
+    const entries = getJournalEntries();
+    const idx = entries.findIndex(e => e.id === entry.id);
+    if (idx !== -1) {
+      entries[idx].title = sanitizeText(title, 200);
+      entries[idx].source = sanitizeText(sourceInput.value.trim() || 'Brah Goh', 100);
+      entries[idx].link = linkVal;
+      entries[idx].takeaways = sanitizeText(takeaways, 5000);
+      entries[idx].category = catSelect.value;
+      storage.set(STORAGE_JOURNAL, entries);
+      showNotificationToast('Study entry updated! 💾');
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      });
+    }
+
+    close();
+    if (typeof onSaved === 'function') onSaved();
+  });
+
+  body.appendChild(form);
+}
+
 function renderStudyJournal(container, onRefresh) {
   container.replaceChildren();
   const entries = getJournalEntries();
@@ -2291,7 +2410,6 @@ function renderStudyJournal(container, onRefresh) {
 
   section.appendChild(headerRow);
 
-  // Empty state
   if (entries.length === 0) {
     const emptyCard = el('div', 'overview-panel glass-card');
     emptyCard.style.padding = 'var(--space-8)';
@@ -2323,15 +2441,138 @@ function renderStudyJournal(container, onRefresh) {
 
     section.appendChild(emptyCard);
   } else {
-    // Timeline of entries (newest first)
-    const timeline = el('div', 'study-journal-timeline');
-    timeline.style.display = 'flex';
-    timeline.style.flexDirection = 'column';
-    timeline.style.gap = 'var(--space-3)';
+    // Search & Filter controls
+    const controlsRow = el('div', 'study-journal-controls');
+    controlsRow.style.display = 'flex';
+    controlsRow.style.flexDirection = 'column';
+    controlsRow.style.gap = 'var(--space-3)';
+    controlsRow.style.marginBottom = 'var(--space-4)';
+    controlsRow.style.padding = 'var(--space-3)';
+    controlsRow.style.background = 'rgba(255, 255, 255, 0.01)';
+    controlsRow.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+    controlsRow.style.borderRadius = 'var(--radius-md)';
 
-    const sorted = [...entries].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const searchGroup = el('div', 'search-input-group');
+    searchGroup.style.position = 'relative';
+    searchGroup.style.width = '100%';
 
-    sorted.forEach(entry => {
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-input';
+    searchInput.placeholder = '🔍 Search study notes (titles, takeaways, mentors)...';
+    searchInput.style.paddingLeft = 'var(--space-8)';
+    searchGroup.appendChild(searchInput);
+    controlsRow.appendChild(searchGroup);
+
+    const filterWrap = el('div', 'category-filters');
+    filterWrap.style.display = 'flex';
+    filterWrap.style.flexWrap = 'wrap';
+    filterWrap.style.gap = 'var(--space-2)';
+    filterWrap.style.alignItems = 'center';
+
+    const filterLabel = el('span', '', 'Filter:');
+    filterLabel.style.fontSize = 'var(--text-xs)';
+    filterLabel.style.color = 'var(--text-muted)';
+    filterWrap.appendChild(filterLabel);
+
+    const categories = ['All', ...JOURNAL_CATEGORIES];
+    let activeFilter = 'All';
+
+    const filterButtons = [];
+    categories.forEach(cat => {
+      const btn = el('button', 'btn btn-xs btn-ghost', cat);
+      btn.style.fontSize = '10px';
+      btn.style.padding = '2px 8px';
+      btn.style.borderRadius = '4px';
+      
+      if (cat === activeFilter) {
+        btn.style.background = 'rgba(245, 158, 11, 0.15)';
+        btn.style.color = '#f59e0b';
+        btn.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+      } else {
+        btn.style.background = 'rgba(255, 255, 255, 0.02)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+      }
+
+      btn.addEventListener('click', () => {
+        activeFilter = cat;
+        filterButtons.forEach(b => {
+          if (b.textContent === activeFilter) {
+            b.style.background = 'rgba(245, 158, 11, 0.15)';
+            b.style.color = '#f59e0b';
+            b.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+          } else {
+            b.style.background = 'rgba(255, 255, 255, 0.02)';
+            b.style.color = 'var(--text-secondary)';
+            b.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+          }
+        });
+        applySearchAndFilter();
+      });
+
+      filterButtons.push(btn);
+      filterWrap.appendChild(btn);
+    });
+    controlsRow.appendChild(filterWrap);
+    section.appendChild(controlsRow);
+
+    const listWrapper = el('div', 'study-journal-list-wrapper');
+    section.appendChild(listWrapper);
+
+    const applySearchAndFilter = () => {
+      listWrapper.replaceChildren();
+      const query = searchInput.value.toLowerCase().trim();
+
+      const filtered = entries.filter(entry => {
+        if (activeFilter !== 'All' && entry.category !== activeFilter) return false;
+        if (query) {
+          const matchesTitle = entry.title && entry.title.toLowerCase().includes(query);
+          const matchesTakeaways = entry.takeaways && entry.takeaways.toLowerCase().includes(query);
+          const matchesSource = entry.source && entry.source.toLowerCase().includes(query);
+          return matchesTitle || matchesTakeaways || matchesSource;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        const emptyCard = el('div', 'overview-panel glass-card');
+        emptyCard.style.padding = 'var(--space-6)';
+        emptyCard.style.textAlign = 'center';
+        emptyCard.style.display = 'flex';
+        emptyCard.style.flexDirection = 'column';
+        emptyCard.style.alignItems = 'center';
+        emptyCard.style.gap = 'var(--space-2)';
+
+        emptyCard.appendChild(el('span', '', '🔍'));
+        
+        const emptyTitle = el('h3', '', 'No matching study entries');
+        emptyTitle.style.color = 'var(--text-primary)';
+        emptyTitle.style.fontSize = 'var(--text-xs)';
+        emptyCard.appendChild(emptyTitle);
+
+        const emptyDesc = el('p', '', 'Try adjusting your search keywords or choosing a different category.');
+        emptyDesc.style.color = 'var(--text-muted)';
+        emptyDesc.style.fontSize = '11px';
+        emptyCard.appendChild(emptyDesc);
+
+        listWrapper.appendChild(emptyCard);
+      } else {
+        const timeline = el('div', 'study-journal-timeline');
+        timeline.style.display = 'flex';
+        timeline.style.flexDirection = 'column';
+        timeline.style.gap = 'var(--space-3)';
+
+        const sorted = [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        sorted.forEach(entry => {
+          const card = renderEntryCard(entry);
+          timeline.appendChild(card);
+        });
+        listWrapper.appendChild(timeline);
+      }
+    };
+
+    const renderEntryCard = (entry) => {
       const card = el('div', 'overview-panel glass-card study-journal-entry');
       card.style.padding = 'var(--space-4)';
       card.style.display = 'flex';
@@ -2349,7 +2590,6 @@ function renderStudyJournal(container, onRefresh) {
         card.style.boxShadow = '';
       });
 
-      // Top row: title + category tag
       const topRow = el('div', '');
       topRow.style.display = 'flex';
       topRow.style.justifyContent = 'space-between';
@@ -2376,7 +2616,6 @@ function renderStudyJournal(container, onRefresh) {
 
       card.appendChild(topRow);
 
-      // Source + date meta row
       const metaRow = el('div', '');
       metaRow.style.display = 'flex';
       metaRow.style.gap = 'var(--space-3)';
@@ -2391,47 +2630,115 @@ function renderStudyJournal(container, onRefresh) {
 
       card.appendChild(metaRow);
 
-      // Takeaways
+      if (entry.link) {
+        const videoId = getYouTubeVideoId(entry.link);
+        if (videoId) {
+          const embedContainer = el('div', 'study-journal-embed');
+          embedContainer.style.position = 'relative';
+          embedContainer.style.width = '100%';
+          embedContainer.style.paddingBottom = '56.25%';
+          embedContainer.style.height = '0';
+          embedContainer.style.borderRadius = 'var(--radius-md)';
+          embedContainer.style.overflow = 'hidden';
+          embedContainer.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+          embedContainer.style.marginTop = 'var(--space-2)';
+          embedContainer.style.background = '#000';
+
+          const iframe = document.createElement('iframe');
+          iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}`;
+          iframe.style.position = 'absolute';
+          iframe.style.top = '0';
+          iframe.style.left = '0';
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          iframe.style.border = '0';
+          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+          iframe.allowFullscreen = true;
+          embedContainer.appendChild(iframe);
+          card.appendChild(embedContainer);
+        }
+      }
+
       const takeawaysEl = el('p', '', entry.takeaways);
       takeawaysEl.style.fontSize = 'var(--text-xs)';
       takeawaysEl.style.color = 'var(--text-secondary)';
       takeawaysEl.style.lineHeight = '1.5';
       takeawaysEl.style.whiteSpace = 'pre-wrap';
+      takeawaysEl.style.marginTop = 'var(--space-2)';
       card.appendChild(takeawaysEl);
 
-      // Link (if provided)
+      const bottomRow = el('div', '');
+      bottomRow.style.display = 'flex';
+      bottomRow.style.justifyContent = 'space-between';
+      bottomRow.style.alignItems = 'center';
+      bottomRow.style.marginTop = 'var(--space-2)';
+      bottomRow.style.flexWrap = 'wrap';
+      bottomRow.style.gap = 'var(--space-2)';
+
+      const leftActions = el('div', '');
+      leftActions.style.display = 'flex';
+      leftActions.style.gap = 'var(--space-2)';
+
+      const editBtn = el('button', 'btn btn-ghost btn-xs', '✏️ Edit');
+      editBtn.style.fontSize = '10px';
+      editBtn.style.color = 'var(--cyan)';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditStudyPopup(entry, () => {
+          if (typeof onRefresh === 'function') onRefresh();
+          else renderStudyJournal(container, onRefresh);
+        });
+      });
+      leftActions.appendChild(editBtn);
+
+      const deleteBtn = el('button', 'btn btn-ghost btn-xs', '🗑️ Delete');
+      deleteBtn.style.fontSize = '10px';
+      deleteBtn.style.color = 'var(--neon-red)';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Are you sure you want to delete this study entry? This cannot be undone.')) {
+          deleteJournalEntry(entry.id);
+          if (typeof onRefresh === 'function') onRefresh();
+          else renderStudyJournal(container, onRefresh);
+        }
+      });
+      leftActions.appendChild(deleteBtn);
+
+      bottomRow.appendChild(leftActions);
+
       if (entry.link) {
         const linkEl = document.createElement('a');
         linkEl.href = entry.link;
         linkEl.target = '_blank';
         linkEl.rel = 'noopener noreferrer';
-        linkEl.textContent = '🔗 View Video / Resource';
-        linkEl.style.fontSize = 'var(--text-xs)';
+        linkEl.textContent = '🔗 View Original Resource';
+        linkEl.style.fontSize = '10px';
         linkEl.style.color = '#f59e0b';
         linkEl.style.textDecoration = 'none';
         linkEl.style.fontWeight = '600';
         linkEl.style.display = 'inline-flex';
         linkEl.style.alignItems = 'center';
         linkEl.style.gap = 'var(--space-1)';
-        linkEl.style.padding = '4px 10px';
+        linkEl.style.padding = '2px 8px';
         linkEl.style.borderRadius = 'var(--radius-sm)';
         linkEl.style.background = 'rgba(245, 158, 11, 0.08)';
         linkEl.style.border = '1px solid rgba(245, 158, 11, 0.2)';
-        linkEl.style.marginTop = 'var(--space-1)';
-        linkEl.style.width = 'fit-content';
-        card.appendChild(linkEl);
+        bottomRow.appendChild(linkEl);
       }
 
-      timeline.appendChild(card);
-    });
+      bottomRow.style.width = '100%';
+      card.appendChild(bottomRow);
+      return card;
+    };
 
-    section.appendChild(timeline);
+    searchInput.addEventListener('input', applySearchAndFilter);
+    applySearchAndFilter();
   }
 
   container.appendChild(section);
 }
 
-function openLogStudyPopup(onSaved) {
+function openLogStudyPopup(onSaved, defaults = {}) {
   const { body, close } = createModal('📓 Log New Study');
 
   const form = el('form', 'modal-form');
@@ -2444,6 +2751,7 @@ function openLogStudyPopup(onSaved) {
   titleInput.type = 'text';
   titleInput.className = 'form-input';
   titleInput.placeholder = 'e.g. ICT Silver Bullet Strategy Explained';
+  titleInput.value = defaults.title || '';
   titleInput.required = true;
   titleGroup.appendChild(titleInput);
   form.appendChild(titleGroup);
@@ -2455,7 +2763,7 @@ function openLogStudyPopup(onSaved) {
   sourceInput.type = 'text';
   sourceInput.className = 'form-input';
   sourceInput.placeholder = 'Brah Goh';
-  sourceInput.value = 'Brah Goh';
+  sourceInput.value = defaults.source || 'Brah Goh';
   sourceGroup.appendChild(sourceInput);
   form.appendChild(sourceGroup);
 
@@ -2466,6 +2774,7 @@ function openLogStudyPopup(onSaved) {
   linkInput.type = 'url';
   linkInput.className = 'form-input';
   linkInput.placeholder = 'https://youtu.be/...';
+  linkInput.value = defaults.link || '';
   linkGroup.appendChild(linkInput);
   form.appendChild(linkGroup);
 
@@ -2530,7 +2839,6 @@ function openLogStudyPopup(onSaved) {
 
   body.appendChild(form);
 }
-
 // --- Main Render ---
 
 export function renderLearningPage(container) {
@@ -3659,12 +3967,15 @@ export function openGuidedVideoModal(title, videoUrl) {
   videoWrap.appendChild(iframe);
   modal.appendChild(videoWrap);
 
-  // Fallback link
+  // Fallback link & Log button
   const fallbackRow = el('div', '');
-  fallbackRow.style.padding = 'var(--space-3) var(--space-5)';
+  fallbackRow.style.padding = 'var(--space-4) var(--space-5)';
   fallbackRow.style.textAlign = 'center';
   fallbackRow.style.background = 'rgba(0, 0, 0, 0.4)';
   fallbackRow.style.borderTop = '1px solid rgba(255, 255, 255, 0.06)';
+  fallbackRow.style.display = 'flex';
+  fallbackRow.style.flexDirection = 'column';
+  fallbackRow.style.gap = 'var(--space-2)';
 
   const fallbackLink = document.createElement('a');
   fallbackLink.href = youtubeWatchUrl;
@@ -3677,8 +3988,27 @@ export function openGuidedVideoModal(title, videoUrl) {
   fallbackLink.style.opacity = '0.7';
   fallbackLink.addEventListener('mouseenter', () => { fallbackLink.style.opacity = '1'; });
   fallbackLink.addEventListener('mouseleave', () => { fallbackLink.style.opacity = '0.7'; });
-
   fallbackRow.appendChild(fallbackLink);
+
+  const logBtn = el('button', 'btn btn-primary btn-sm', '📓 Log in Study Journal');
+  logBtn.style.marginTop = 'var(--space-1)';
+  logBtn.style.width = '100%';
+  logBtn.addEventListener('click', () => {
+    overlay.remove();
+    openLogStudyPopup(() => {
+      // Refresh current page if in learning hash
+      if (window.location.hash === '#learning') {
+        const page = document.getElementById('page-learning');
+        if (page) renderLearningPage(page);
+      }
+    }, {
+      title: title,
+      link: youtubeWatchUrl,
+      source: 'Brah Goh'
+    });
+  });
+  fallbackRow.appendChild(logBtn);
+
   modal.appendChild(fallbackRow);
 
   overlay.appendChild(modal);
