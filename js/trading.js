@@ -1573,6 +1573,44 @@ export function renderTradeForm(container, onSaved) {
 
   riskHelper.appendChild(rhInputs);
 
+  // High Volatility / News Day risk capper toggle
+  const newsToggleGroup = el('div', 'form-group');
+  newsToggleGroup.style.display = 'flex';
+  newsToggleGroup.style.alignItems = 'center';
+  newsToggleGroup.style.gap = 'var(--space-2)';
+  newsToggleGroup.style.marginBottom = 'var(--space-3)';
+
+  const newsCheckbox = document.createElement('input');
+  newsCheckbox.type = 'checkbox';
+  newsCheckbox.id = 'trade-news-day-toggle';
+  newsCheckbox.style.cursor = 'pointer';
+  newsCheckbox.checked = storage.get('trade_news_day_active', false);
+
+  const newsCheckboxLabel = el('label', 'form-label', '⚠️ High Volatility / News Day (Cap Risk at 0.5% max)');
+  newsCheckboxLabel.setAttribute('for', 'trade-news-day-toggle');
+  newsCheckboxLabel.style.cursor = 'pointer';
+  newsCheckboxLabel.style.margin = '0';
+  newsCheckboxLabel.style.color = 'var(--neon-red)';
+  newsCheckboxLabel.style.fontSize = 'var(--text-xs)';
+
+  newsToggleGroup.appendChild(newsCheckbox);
+  newsToggleGroup.appendChild(newsCheckboxLabel);
+  riskHelper.appendChild(newsToggleGroup);
+
+  // Warning text if capped
+  const newsWarning = el('p', 'news-warning-msg', '⚠️ News day risk capping is active! Risk is capped at 0.5% max.');
+  newsWarning.style.fontSize = 'var(--text-xs)';
+  newsWarning.style.color = 'var(--neon-red)';
+  newsWarning.style.margin = '0 0 var(--space-2) 0';
+  newsWarning.style.display = 'none';
+  newsWarning.style.fontWeight = 'bold';
+  riskHelper.appendChild(newsWarning);
+
+  newsCheckbox.addEventListener('change', () => {
+    storage.set('trade_news_day_active', newsCheckbox.checked);
+    updateLiveRisk();
+  });
+
   // Outputs grid
   const rhGrid = el('div', 'risk-helper-grid');
   rhGrid.style.display = 'grid';
@@ -1652,7 +1690,16 @@ export function renderTradeForm(container, onSaved) {
     const entry = Number(entryInput.value);
     const stop = Number(stopInput.value);
     const balance = Number(balInput.value);
-    const riskPct = Number(pctInput.value);
+    let riskPct = Number(pctInput.value);
+
+    if (newsCheckbox.checked) {
+      newsWarning.style.display = 'block';
+      if (riskPct > 0.5) {
+        riskPct = 0.5;
+      }
+    } else {
+      newsWarning.style.display = 'none';
+    }
 
     // Calculate risk amount
     const riskAmount = (balance * riskPct) / 100;

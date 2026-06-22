@@ -201,6 +201,29 @@ const SIM_SCENARIOS = [
       { open: 1.2495, high: 1.2500, low: 1.2482, close: 1.2484 }, // 11. Expansion to Take Profit target at 1.2485!
       { open: 1.2484, high: 1.2490, low: 1.2480, close: 1.2482 }, // 12. Consolidation
     ]
+  },
+  {
+    id: 'ep30-news',
+    title: 'Ep 30: NFP High-Impact News (EUR/USD)',
+    asset: 'EUR/USD',
+    description: 'Day 30 News Rules Practice: High-impact NFP prints on the next candle. Retail traders gamble on the release, but SMC rules dictate we must wait for the volatility to settle. If you hold a trade through the release without moving SL to breakeven, spread expansion will stop you out immediately. If you enter on the news candle, you will suffer 15 pips of slippage. Wait for the sweep to finish, then enter on the rejection candle!',
+    optimalDirection: 'long',
+    initialBalance: 10000,
+    historyCount: 3,
+    zones: [
+      { type: 'liquidity', name: '⚡ Pre-News Liquidity Pool (Equal Lows)', priceMin: 1.0790, priceMax: 1.0795, color: 'rgba(255, 71, 87, 0.04)', strokeColor: '#ff4757', startCandle: 1, endCandle: 4 }
+    ],
+    candles: [
+      { open: 1.0805, high: 1.0810, low: 1.0800, close: 1.0804 }, // 1. Pre-news consolidation
+      { open: 1.0804, high: 1.0808, low: 1.0795, close: 1.0798 }, // 2. Quiet drift down
+      { open: 1.0798, high: 1.0802, low: 1.0792, close: 1.0796 }, // 3. Equal lows formed (CONTEXT ENDS HERE)
+      { open: 1.0796, high: 1.0835, low: 1.0770, close: 1.0778 }, // 4. NFP News Candle: Sweeps lows to 1.0770, wicks to 1.0835, closes at 1.0778. Very high volatility!
+      { open: 1.0778, high: 1.0805, low: 1.0772, close: 1.0802 }, // 5. Rejection Candle: Rejects low, engulfs upward, closes bullish at 1.0802. (ENTRY TRIGGER FOR LONG!)
+      { open: 1.0802, high: 1.0815, low: 1.0798, close: 1.0812 }, // 6. Follow-through momentum
+      { open: 1.0812, high: 1.0825, low: 1.0808, close: 1.0822 }, // 7. Upward continuation
+      { open: 1.0822, high: 1.0845, low: 1.0820, close: 1.0842 }, // 8. Hits Take Profit target at 1.0840!
+      { open: 1.0842, high: 1.0848, low: 1.0835, close: 1.0838 }  // 9. High consolidation
+    ]
   }
 ];
 
@@ -856,6 +879,25 @@ export function renderSimulatorPage(container) {
     _visibleCandles.push(nextCandle);
     _historyIndex++;
 
+    // Check news spread expansion / stop out rules for Ep 30 NFP
+    if (_activeScenario.id === 'ep30-news' && _historyIndex === 4 && _activePosition) {
+      if (_activePosition.openIndex < 4) {
+        if (!_activePosition.isBreakeven && Math.abs(_activePosition.sl - _activePosition.entry) > 0.00001) {
+          showNotificationToast('🚨 NFP Spread Expansion! Stopped out instantly due to high-impact news spread blow-out.', 'fail');
+          resolveTrade(_activePosition.sl, 'loss');
+          drawChart();
+          updateObjectivesUI();
+          return;
+        } else {
+          showNotificationToast('🛡️ NFP news volatility hit your breakeven stop loss. Closed at $0.00 loss!', 'info');
+          resolveTrade(_activePosition.entry, 'loss');
+          drawChart();
+          updateObjectivesUI();
+          return;
+        }
+      }
+    }
+
     // Check active positions for collisions
     if (_activePosition) {
       const dir = _activePosition.direction;
@@ -897,7 +939,16 @@ export function renderSimulatorPage(container) {
   function openPosition(direction) {
     if (_activePosition) return;
 
-    const entryPrice = _visibleCandles[_visibleCandles.length - 1].close;
+    let entryPrice = _visibleCandles[_visibleCandles.length - 1].close;
+    if (_activeScenario.id === 'ep30-news' && _historyIndex === 4) {
+      const slippage = 0.0015; // 15 pips
+      if (direction === 'long') {
+        entryPrice += slippage;
+      } else {
+        entryPrice -= slippage;
+      }
+      showNotificationToast('⚠️ News Volatility! 15 pips slippage applied to entry.', 'warning');
+    }
     const slPrice = Number(slInput.value);
     const tpPrice = Number(tpInput.value);
 
@@ -1007,7 +1058,8 @@ export function renderSimulatorPage(container) {
     const riskDistance = Math.abs(_activePosition.entry - _activePosition.sl);
     const riskCash = 200; // Risk $200 baseline per trade
     
-    const floatingPnl = (diff / riskDistance) * riskCash * pnlMultiplier;
+    const isBreakeven = _activePosition.isBreakeven || riskDistance < 0.00001;
+    const floatingPnl = isBreakeven ? 0 : ((diff / riskDistance) * riskCash * pnlMultiplier);
 
     const row = el('div', '');
     row.style.fontSize = 'var(--text-xs)';
@@ -1030,6 +1082,23 @@ export function renderSimulatorPage(container) {
     row.appendChild(el('span', 'val-muted', `Entry: ${_activePosition.entry.toFixed(config.decimals)}`));
     row.appendChild(el('span', 'val-muted', `Stop: ${_activePosition.sl.toFixed(config.decimals)}`));
     row.appendChild(el('span', 'val-muted', `Target: ${_activePosition.tp.toFixed(config.decimals)}`));
+
+    // Add "Move SL to Breakeven" button if position is active and not already at breakeven
+    if (!isBreakeven) {
+      const beBtn = el('button', 'btn btn-outline btn-sm dev-bypass-btn', '🛡️ Move SL to Breakeven');
+      beBtn.style.marginTop = 'var(--space-2)';
+      beBtn.style.color = 'var(--cyan)';
+      beBtn.style.borderColor = 'var(--cyan)';
+      beBtn.style.width = '100%';
+      beBtn.addEventListener('click', () => {
+        _activePosition.sl = _activePosition.entry;
+        _activePosition.isBreakeven = true;
+        showNotificationToast('Stop Loss moved to Entry Price (Breakeven)! 🛡️');
+        updateActivePositionUI();
+        drawChart();
+      });
+      row.appendChild(beBtn);
+    }
 
     posDetails.appendChild(row);
   }
@@ -1059,6 +1128,8 @@ export function renderSimulatorPage(container) {
       journalTrade.confluences = ['Flip Zones / Mitigations [Ep 14]'];
     } else if (simTrade.scenario.includes('Judas')) {
       journalTrade.confluences = ['ICT Killzones Timing [Ep 12]', 'Liquidity Sweeps / Inducements [Ep 13]'];
+    } else if (simTrade.scenario.includes('NFP') || simTrade.scenario.includes('News')) {
+      journalTrade.confluences = ['Trading High Impact News [Ep 30]'];
     }
 
     saveTrade(journalTrade);
@@ -1075,7 +1146,8 @@ export function renderSimulatorPage(container) {
     const riskDistance = Math.abs(_activePosition.entry - _activePosition.sl);
     const riskCash = 200; // standard simulated risk size
     
-    const pnl = (diff / riskDistance) * riskCash * pnlMultiplier;
+    const isBreakeven = _activePosition.isBreakeven || riskDistance < 0.00001;
+    const pnl = isBreakeven ? 0 : parseFloat(((diff / riskDistance) * riskCash * pnlMultiplier).toFixed(2));
     
     _simBalance += pnl;
     storage.set('sim_balance', _simBalance);
@@ -1088,7 +1160,7 @@ export function renderSimulatorPage(container) {
       direction: _activePosition.direction,
       entry: _activePosition.entry,
       exit: exitPrice,
-      pnl: parseFloat(pnl.toFixed(2)),
+      pnl: pnl,
       outcome,
       timestamp: new Date().toISOString()
     };
@@ -1096,7 +1168,11 @@ export function renderSimulatorPage(container) {
     storage.set('sim_trade_log', _tradeLog);
 
     // Sound and toast feedback
-    if (outcome === 'win') {
+    if (pnl === 0) {
+      playSynthSound('success');
+      showNotificationToast(`Breakeven trade resolved at entry price. $0.00 PnL change. 🤝`);
+      addXP('practice', 15);
+    } else if (outcome === 'win') {
       playSynthSound('success');
       showNotificationToast(`WIN! Earned +${formatCurrency(pnl)} in Simulated Balance! 🏆`);
       addXP('practice', 30);
@@ -1148,8 +1224,9 @@ export function renderSimulatorPage(container) {
     // Determine current milestone indices
     const isFvgOrFlip = _activeScenario.id.includes('fvg') || _activeScenario.id.includes('flip');
     const isJudas = _activeScenario.id.includes('judas');
-    const targetStepIndex = isJudas ? 7 : (isFvgOrFlip ? 8 : 9);
-    const targetRejectionIndex = isJudas ? 8 : (isFvgOrFlip ? 9 : 10);
+    const isNews = _activeScenario.id === 'ep30-news';
+    const targetStepIndex = isNews ? 4 : (isJudas ? 7 : (isFvgOrFlip ? 8 : 9));
+    const targetRejectionIndex = isNews ? 5 : (isJudas ? 8 : (isFvgOrFlip ? 9 : 10));
     
     // Step 1: Step to Mitigation candle
     const step1Done = _historyIndex >= targetStepIndex;
@@ -1170,7 +1247,7 @@ export function renderSimulatorPage(container) {
 
     const objectives = [
       {
-        text: `Step Candle to Candle ${targetStepIndex} (${isFvgOrFlip ? 'Fill FVG / Mitigate Flip' : 'Mitigate Order Block'})`,
+        text: `Step Candle to Candle ${targetStepIndex} (${isNews ? 'NFP Volatility Candle' : (isFvgOrFlip ? 'Fill FVG / Mitigate Flip' : 'Mitigate Order Block')})`,
         done: step1Done,
         active: step1Active
       },

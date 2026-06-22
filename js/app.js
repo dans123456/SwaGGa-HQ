@@ -1269,6 +1269,9 @@ function renderDashboard(container) {
   hero.appendChild(dateBadge);
   container.appendChild(hero);
 
+  // Render News Countdown Banner
+  renderNewsCountdownBanner(container);
+
   // ── Discipline / Revenge Warning Banner ──
   const cooldownExpiry = storage.get('cooldown_expiry', 0);
   const isCooldownActive = cooldownExpiry > Date.now();
@@ -3290,7 +3293,7 @@ function buildAppShell() {
   focusBanner.style.display = 'none';
   main.appendChild(focusBanner);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'mindset', 'blitz', 'review', 'notebook', 'coach'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'news-blackout', 'mindset', 'blitz', 'review', 'notebook', 'coach'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -3633,6 +3636,7 @@ async function launchApp() {
   router.registerRoute('#coach', renderCoachPage);
   router.registerRoute('#premarket-lockout', renderPremarketLockoutScreen);
   router.registerRoute('#cooldown-lockout', renderCooldownLockoutScreen);
+  router.registerRoute('#news-blackout', renderNewsBlackoutScreen);
 
   // Real-time XP & Level progression reactive updater
   window.addEventListener('xp-change', (e) => {
@@ -3906,6 +3910,10 @@ function init() {
       checkAndVoiceNewsWarnings(cached);
     }
   }, 60000);
+
+  // Check news blackout every 10 seconds
+  setInterval(runNewsBlackoutCheck, 10000);
+  runNewsBlackoutCheck(); // initial check
 
   // Show login screen in checking state first
   showLoginScreen(true);
@@ -4261,7 +4269,7 @@ function renderEventsList(container, events) {
   container.appendChild(listEl);
 }
 
-// Check and announce USD high-volatility news events starting in exactly 10 minutes
+// Check and announce USD high-volatility news events starting in exactly 15 minutes
 export function checkAndVoiceNewsWarnings(events) {
   if (!events || !Array.isArray(events)) return;
   const now = Date.now();
@@ -4273,8 +4281,8 @@ export function checkAndVoiceNewsWarnings(events) {
       const eventTime = new Date(e.date).getTime();
       const diffMin = Math.round((eventTime - now) / 60000);
       
-      // If it starts in 10 minutes (between 0 and 10 minutes from now)
-      if (diffMin > 0 && diffMin <= 10) {
+      // If it starts in 15 minutes (between 0 and 15 minutes from now)
+      if (diffMin > 0 && diffMin <= 15) {
         const eventId = `${e.country}_${e.title}_${e.date}`;
         if (!announced[eventId]) {
           announced[eventId] = true;
@@ -4293,7 +4301,7 @@ export function checkAndVoiceNewsWarnings(events) {
 
 function announceNewsWarning(event) {
   // 1. Show notification toast
-  showNotificationToast(`⚠️ USD NEWS ALARM: ${event.title} in 10 mins!`);
+  showNotificationToast(`⚠️ USD NEWS ALARM: ${event.title} in 15 mins!`);
   
   // 2. Play warning alert chime
   import('./audio.js').then(({ playSynthSound }) => {
@@ -4305,7 +4313,7 @@ function announceNewsWarning(event) {
     const audioMuted = storage.get('audio_muted', false);
     if (!audioMuted) {
       setTimeout(() => {
-        const text = `Warning. High volatility U.S. dollar news release, ${event.title}, in ten minutes. Manage your open positions.`;
+        const text = `Warning. High volatility U.S. dollar news release, ${event.title}, in fifteen minutes. Manage your open positions.`;
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 0.95;
         utterance.volume = 1.0;
@@ -4320,4 +4328,206 @@ function announceNewsWarning(event) {
       }, 1200);
     }
   }
+}
+
+// --- Episode 30 Upgrades: News Blackout & Countdown ---
+
+export function runNewsBlackoutCheck() {
+  const events = storage.get('economic_calendar', null);
+  if (!events || !Array.isArray(events)) return;
+
+  const now = Date.now();
+  let blackoutActive = false;
+  let activeDetails = null;
+
+  // Check if dev bypass is active
+  const bypass = storage.get('news_blackout_bypass', false);
+  if (bypass) {
+    // Clear bypass once no news is active in [-15, 15] range
+    const activeNews = events.some(e => {
+      const isMajor = ['USD', 'EUR', 'GBP'].includes(e.country);
+      if (isMajor && e.impact === 'High') {
+        const time = new Date(e.date).getTime();
+        const diffMin = (time - now) / 60000;
+        return diffMin >= -15 && diffMin <= 15;
+      }
+      return false;
+    });
+    if (!activeNews) {
+      storage.delete('news_blackout_bypass');
+    }
+    return;
+  }
+
+  events.forEach(e => {
+    const isMajor = ['USD', 'EUR', 'GBP'].includes(e.country);
+    if (isMajor && e.impact === 'High') {
+      const time = new Date(e.date).getTime();
+      const diffMin = (time - now) / 60000;
+
+      // Active 15 mins before to 15 mins after
+      if (diffMin >= -15 && diffMin <= 15) {
+        blackoutActive = true;
+        activeDetails = { title: e.title, country: e.country, date: e.date };
+      }
+    }
+  });
+
+  const previousState = storage.get('news_blackout_active', false);
+  if (blackoutActive) {
+    storage.set('news_blackout_active', true);
+    storage.set('news_blackout_details', activeDetails);
+    
+    const currentHash = window.location.hash;
+    if ((currentHash === '#trading' || currentHash === '#simulator') && !previousState) {
+      window.location.hash = '#news-blackout';
+    }
+  } else {
+    storage.delete('news_blackout_active');
+    storage.delete('news_blackout_details');
+    
+    if (window.location.hash === '#news-blackout') {
+      window.location.hash = '#trading';
+    }
+  }
+}
+
+function renderNewsBlackoutScreen(container) {
+  container.replaceChildren();
+
+  const wrap = el('div', 'cooldown-lockout-wrap');
+
+  wrap.appendChild(el('h1', 'cooldown-lockout-title', 'NEWS BLACKOUT ACTIVE'));
+  wrap.appendChild(el('p', 'cooldown-lockout-subtitle', 'Enforcing Day 30 News Rules. Access to the Simulator and Trading Log is locked to prevent news trading losses.'));
+
+  const details = storage.get('news_blackout_details', { title: 'High-Impact News', country: 'USD' });
+  const card = el('div', 'cooldown-quote-card glass-card');
+  card.style.borderColor = 'var(--neon-red)';
+  card.style.background = 'rgba(255, 71, 87, 0.02)';
+  
+  const detailsTitle = el('h3', '', `⚠️ Active Event: ${details.country} ${details.title}`);
+  detailsTitle.style.color = 'var(--neon-red)';
+  detailsTitle.style.fontSize = 'var(--text-md)';
+  detailsTitle.style.margin = '0 0 var(--space-2) 0';
+  card.appendChild(detailsTitle);
+
+  const quoteText = el('p', 'cooldown-quote-text', '"Staying flat 15 minutes before and after high-impact news preserves your capital. Retail traders lose because they gamble on releases. Wait for the sweep."');
+  const quoteAuthor = el('p', 'cooldown-quote-author', '— Brah Goh, Episode 30');
+  card.appendChild(quoteText);
+  card.appendChild(quoteAuthor);
+  wrap.appendChild(card);
+
+  const bypassBtn = el('button', 'btn btn-ghost dev-bypass-btn', '🔓 Dev Mode: Skip Blackout');
+  bypassBtn.style.marginTop = 'var(--space-4)';
+  bypassBtn.style.color = 'var(--cyan)';
+  bypassBtn.style.border = '1px dashed var(--cyan)';
+  bypassBtn.style.width = '100%';
+  bypassBtn.addEventListener('click', () => {
+    storage.set('news_blackout_bypass', true);
+    storage.delete('news_blackout_active');
+    showNotificationToast('News Blackout bypassed! 🔓');
+    window.location.hash = '#trading';
+  });
+  wrap.appendChild(bypassBtn);
+
+  container.appendChild(wrap);
+}
+
+function getNextHighImpactEvent() {
+  const events = storage.get('economic_calendar', null);
+  if (!events || !Array.isArray(events)) return null;
+
+  const now = Date.now();
+  const upcoming = events
+    .filter(e => {
+      const isMajor = ['USD', 'EUR', 'GBP'].includes(e.country);
+      return isMajor && e.impact === 'High';
+    })
+    .map(e => ({ ...e, time: new Date(e.date).getTime() }))
+    .filter(e => e.time > now)
+    .sort((a, b) => a.time - b.time);
+
+  return upcoming.length > 0 ? upcoming[0] : null;
+}
+
+function renderNewsCountdownBanner(container) {
+  const banner = el('div', 'dashboard-news-countdown-banner');
+  banner.id = 'news-countdown-banner';
+  banner.style.background = 'rgba(0, 212, 255, 0.05)';
+  banner.style.border = '1px solid var(--cyan)';
+  banner.style.borderRadius = 'var(--radius-md)';
+  banner.style.padding = 'var(--space-3) var(--space-4)';
+  banner.style.marginBottom = 'var(--space-4)';
+  banner.style.display = 'none';
+  banner.style.alignItems = 'center';
+  banner.style.justifyContent = 'space-between';
+  banner.style.gap = 'var(--space-3)';
+
+  const left = el('div', '');
+  left.style.display = 'flex';
+  left.style.alignItems = 'center';
+  left.style.gap = 'var(--space-2)';
+  left.appendChild(el('span', '', '⏳'));
+  
+  const text = el('span', 'news-countdown-text');
+  text.style.fontSize = '12px';
+  text.style.fontWeight = '700';
+  text.style.color = '#fff';
+  left.appendChild(text);
+  banner.appendChild(left);
+
+  const ruleBadge = el('span', 'news-rule-badge', 'Ep 30 Flat Rule');
+  ruleBadge.style.fontSize = '9px';
+  ruleBadge.style.fontWeight = '800';
+  ruleBadge.style.background = 'rgba(0, 212, 255, 0.15)';
+  ruleBadge.style.color = 'var(--cyan)';
+  ruleBadge.style.padding = '2px 6px';
+  ruleBadge.style.borderRadius = '4px';
+  banner.appendChild(ruleBadge);
+
+  container.appendChild(banner);
+
+  function updateTimer() {
+    const nextEvent = getNextHighImpactEvent();
+    if (!nextEvent) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    const timeDiff = nextEvent.time - Date.now();
+    if (timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000) {
+      banner.style.display = 'flex';
+      const hours = Math.floor(timeDiff / 3600000);
+      const minutes = Math.floor((timeDiff % 3600000) / 60000);
+      const seconds = Math.floor((timeDiff % 60000) / 1000);
+      
+      const timeStr = `${hours}h ${minutes}m ${seconds}s`;
+      text.textContent = `High-Impact ${nextEvent.country} ${nextEvent.title} in ${timeStr}`;
+      
+      if (timeDiff <= 15 * 60 * 1000) {
+        banner.style.borderColor = 'var(--neon-red)';
+        banner.style.background = 'rgba(255, 71, 87, 0.08)';
+        ruleBadge.style.background = 'rgba(255, 71, 87, 0.15)';
+        ruleBadge.style.color = 'var(--neon-red)';
+        text.style.color = 'var(--neon-red)';
+      } else {
+        banner.style.borderColor = 'var(--cyan)';
+        banner.style.background = 'rgba(0, 212, 255, 0.05)';
+        ruleBadge.style.background = 'rgba(0, 212, 255, 0.15)';
+        ruleBadge.style.color = 'var(--cyan)';
+        text.style.color = '#fff';
+      }
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  updateTimer();
+  const interval = setInterval(() => {
+    if (!document.getElementById('news-countdown-banner')) {
+      clearInterval(interval);
+      return;
+    }
+    updateTimer();
+  }, 1000);
 }

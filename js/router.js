@@ -74,6 +74,20 @@ class Router {
       return;
     }
 
+    // News Blackout Lockout Interceptor
+    const isNewsBlackoutActive = storage.get('news_blackout_active', false);
+    if (isNewsBlackoutActive) {
+      if (hash === '#trading' || hash === '#simulator') {
+        hash = '#news-blackout';
+        window.location.hash = '#news-blackout';
+        return;
+      }
+    } else if (hash === '#news-blackout') {
+      hash = '#trading';
+      window.location.hash = '#trading';
+      return;
+    }
+
     // Premarket Lockout Interceptor
     if (hash === '#trading' || hash === '#simulator') {
       const routine = storage.get('premarket_routine');
