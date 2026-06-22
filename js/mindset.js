@@ -99,6 +99,10 @@ function toggleFavorite(id) {
     favs.push(id);
   }
   storage.set('mindset_favorites', favs);
+  
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  });
 }
 
 // --- Preview Audio Engine ---
@@ -276,6 +280,10 @@ function openMeditationCheckIn(durationSeconds) {
     };
     sessions.push(newSession);
     storage.set('meditation_sessions', sessions);
+
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
 
     let xpAward = 25;
     if (durationSeconds >= 1800) xpAward = 100;
@@ -2024,6 +2032,9 @@ export function renderMindsetPage(container) {
       if (val.length === 0) return;
       
       storage.set('daily_intention_data', { date: todayDateStr, text: val });
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      });
       playSynthSound('success');
       nativeHapticNotification('success');
       showNotificationToast('Daily Intention Locked In! Stay focused.', '🏆');
