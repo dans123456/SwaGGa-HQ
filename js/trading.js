@@ -19,6 +19,7 @@ import {
 import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
+import { getAssignments } from './learning.js';
 
 // --- Constants ---
 
@@ -6041,11 +6042,194 @@ function renderLiveChart(container) {
   const sizer = buildFloatingRiskSizer();
   wrapper.appendChild(sizer);
 
+  // Append floating assignment HUD
+  const hud = buildFloatingAssignmentHUD(() => {
+    renderLiveChart(container);
+  });
+  if (hud) {
+    wrapper.appendChild(hud);
+  }
+
   // Load the chart
   loadTVChart(chartDiv, defaultSymbol);
 
   // Clear pending symbol after loading
   _pendingChartSymbol = null;
+}
+
+function buildFloatingAssignmentHUD(onRefresh) {
+  const activeAssignments = getAssignments().filter(a => !a.completed);
+  if (activeAssignments.length === 0) return null;
+
+  // Show the latest active assignment
+  const assignment = activeAssignments[activeAssignments.length - 1];
+
+  const panel = el('div', 'floating-assignment-hud collapsed');
+  panel.style.position = 'absolute';
+  panel.style.bottom = '24px';
+  panel.style.left = '24px'; // sizer is on right, HUD on left
+  panel.style.width = '320px';
+  panel.style.zIndex = '1000';
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+
+  // Header
+  const header = el('div', 'floating-hud-header');
+  const icon = el('span', 'floating-hud-icon', '🎯');
+  const title = el('span', 'floating-hud-title', `Task: ${assignment.asset}`);
+  const toggleBtn = el('button', 'btn-toggle-hud', '▲');
+  header.appendChild(icon);
+  header.appendChild(title);
+  header.appendChild(toggleBtn);
+  panel.appendChild(header);
+
+  // Body
+  const body = el('div', 'floating-hud-body');
+
+  // Goal text
+  const goalBox = el('div', 'hud-goal-box');
+  goalBox.appendChild(el('strong', 'hud-goal-lbl', 'ACTIVE ASSIGNMENT:'));
+  goalBox.appendChild(el('p', 'hud-goal-text', assignment.text));
+  body.appendChild(goalBox);
+
+  // Meta row (Level, timeframe)
+  const metaRow = el('div', 'hud-meta-row');
+  const levelTag = assignment.episodeNum ? `Level ${assignment.episodeNum}` : 'SMC';
+  metaRow.appendChild(el('span', 'tag tag-sm', levelTag));
+  metaRow.appendChild(el('span', 'tag tag-sm', assignment.timeframe));
+  body.appendChild(metaRow);
+
+  // Checklist
+  const checklistBox = el('div', 'hud-checklist-box');
+  checklistBox.appendChild(el('p', 'hud-checklist-title', 'CONFLUENCE CHECKLIST:'));
+
+  const steps = assignment.steps || [];
+  const checkboxList = [];
+
+  if (steps.length > 0) {
+    steps.forEach((s, idx) => {
+      const row = el('div', 'hud-checkbox-row');
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.id = `hud-step-${assignment.id}-${idx}`;
+      chk.className = 'hud-step-chk';
+
+      const lbl = el('label', 'hud-step-lbl', s.title);
+      lbl.setAttribute('for', chk.id);
+      
+      chk.addEventListener('change', () => {
+        playSynthSound('click');
+        updateCompleteBtnState();
+      });
+
+      row.appendChild(chk);
+      row.appendChild(lbl);
+      checklistBox.appendChild(row);
+      checkboxList.push(chk);
+    });
+  } else {
+    // Fallback steps
+    const defaultSteps = [
+      'Identify trends and swing highs/lows',
+      'Locate key supply/demand zones',
+      'Draw analysis on the live chart',
+      'Verify rejection confirmation candle'
+    ];
+    defaultSteps.forEach((s, idx) => {
+      const row = el('div', 'hud-checkbox-row');
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.id = `hud-step-fallback-${idx}`;
+      chk.className = 'hud-step-chk';
+
+      const lbl = el('label', 'hud-step-lbl', s);
+      lbl.setAttribute('for', chk.id);
+
+      chk.addEventListener('change', () => {
+        playSynthSound('click');
+        updateCompleteBtnState();
+      });
+
+      row.appendChild(chk);
+      row.appendChild(lbl);
+      checklistBox.appendChild(row);
+      checkboxList.push(chk);
+    });
+  }
+  body.appendChild(checklistBox);
+
+  // Complete button
+  const completeBtn = el('button', 'btn btn-primary hud-complete-btn', '✅ Mark Done (+40 XP)');
+  completeBtn.style.marginTop = 'var(--space-2)';
+  completeBtn.disabled = true;
+
+  function updateCompleteBtnState() {
+    const allChecked = checkboxList.every(chk => chk.checked);
+    completeBtn.disabled = !allChecked;
+    if (allChecked) {
+      completeBtn.classList.add('hud-btn-active');
+    } else {
+      completeBtn.classList.remove('hud-btn-active');
+    }
+  }
+
+  completeBtn.addEventListener('click', () => {
+    // Complete the assignment
+    const all = getAssignments();
+    const target = all.find(x => x.id === assignment.id);
+    if (target) {
+      const wasCompleted = target.completed;
+      target.completed = true;
+      storage.set('assignments', all);
+      
+      // Award XP
+      if (!wasCompleted) {
+        addXP('assignment', 40);
+        
+        // Award streak freeze token if < 3
+        const currentTokens = storage.get('streak_freeze_tokens', 0);
+        if (currentTokens < 3) {
+          storage.set('streak_freeze_tokens', currentTokens + 1);
+          showNotificationToast('Assignment Completed! Earned 1 Streak Freeze ❄️');
+          playSynthSound('fanfare');
+        } else {
+          playSynthSound('success');
+        }
+      }
+
+      triggerConfetti();
+
+      // Cloud Sync
+      import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+        if (getCurrentUser()) pushToCloud();
+      });
+
+      // Remove HUD panel and trigger page refresh
+      panel.remove();
+      if (typeof onRefresh === 'function') onRefresh();
+    }
+  });
+
+  body.appendChild(completeBtn);
+  panel.appendChild(body);
+
+  // Toggle Collapse
+  const toggle = (e) => {
+    e.stopPropagation();
+    const isCollapsed = panel.classList.contains('collapsed');
+    if (isCollapsed) {
+      panel.classList.remove('collapsed');
+      toggleBtn.textContent = '▼';
+    } else {
+      panel.classList.add('collapsed');
+      toggleBtn.textContent = '▲';
+    }
+    playSynthSound('click');
+  };
+
+  header.addEventListener('click', toggle);
+
+  return panel;
 }
 
 function buildFloatingRiskSizer() {

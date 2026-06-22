@@ -225,6 +225,34 @@ export function getConceptLibrary() {
 export function generateCumulativeAssignment(episodeNum, asset, timeframe) {
   const steps = [];
 
+  // Beginner levels 0-4
+  if (episodeNum === 0) {
+    steps.push({
+      title: 'Define Goals [Ep 0]',
+      text: 'Write down 3 realistic trading goals and detail how you will measure your progress.'
+    });
+  } else if (episodeNum === 1) {
+    steps.push({
+      title: 'Edge & Routine [Ep 1]',
+      text: 'Establish your off-chart morning prep routine. Write down 3 non-negotiable rules for your session.'
+    });
+  } else if (episodeNum === 2) {
+    steps.push({
+      title: 'Basic Swing Points [Ep 2]',
+      text: `Identify and label 3 major swing highs and 3 swing lows on the ${asset} ${timeframe} chart.`
+    });
+  } else if (episodeNum === 3) {
+    steps.push({
+      title: 'Lot Sizing & Pips [Ep 3]',
+      text: `Calculate the pip distance between your POI and your stop loss. Define your lot size based on a standard 1% risk constraint.`
+    });
+  } else if (episodeNum === 4) {
+    steps.push({
+      title: 'Psychology Check [Ep 4]',
+      text: 'Audit your current mental state (Greed vs Fear). Write a brief 1-sentence statement committing to wait for setup confirmation.'
+    });
+  }
+
   // Add Top Down if selected >= 11
   if (episodeNum >= 11) {
     steps.push({
@@ -289,6 +317,44 @@ export function generateCumulativeAssignment(episodeNum, asset, timeframe) {
     });
   }
 
+  // Add specific default steps for advanced episodes if selected
+  if (episodeNum >= 14) {
+    steps.push({
+      title: 'Flip Zones [Ep 14]',
+      text: `Locate a supply-to-demand or demand-to-supply flip zone where a previous key mitigation failed on ${asset}.`
+    });
+  }
+  if (episodeNum >= 17) {
+    steps.push({
+      title: 'AMD Strategy [Ep 17]',
+      text: 'Mark the Asian Accumulation range, the London Manipulation sweep, and wait for New York Distribution to expand.'
+    });
+  }
+  if (episodeNum >= 18) {
+    steps.push({
+      title: 'Breaker Blocks [Ep 18]',
+      text: 'Identify a broken order block that swept liquidity prior to the market shift, acting as resistance/support.'
+    });
+  }
+  if (episodeNum >= 20) {
+    steps.push({
+      title: 'Dealing Range Boundaries [Ep 20]',
+      text: `Mark the current dealing range boundaries from HTF swing high to swing low on the ${asset} chart.`
+    });
+  }
+  if (episodeNum >= 25) {
+    steps.push({
+      title: 'Pullback Entry Confirmation [Ep 25]',
+      text: 'Decide if you are using an Aggressive limit entry or waiting for a Conservative LTF CHOCH shift to trigger your execution.'
+    });
+  }
+  if (episodeNum >= 30) {
+    steps.push({
+      title: 'High-Impact News Filter [Ep 30]',
+      text: 'Check economic news release calendar. Ensure you are not executing within 15 minutes of release and trade size risks max 0.5%.'
+    });
+  }
+
   // Handle any custom dynamic lessons (> 13)
   const overrides = storage.get('bg_unlocked_lessons', {});
   const unlockedList = Object.values(overrides).filter(x => x.episode <= episodeNum);
@@ -309,7 +375,10 @@ export function generateCumulativeAssignment(episodeNum, asset, timeframe) {
     }
   });
 
-  const text = `Cumulative Trade Setup [Level ${episodeNum}]: Perform a full multi-confluence analysis on ${asset} (${timeframe} chart) integrating all steps from Episode 5 up to Episode ${episodeNum}.`;
+  const levelTitle = BRAH_GOH_CURRICULUM.find(x => x.episode === episodeNum)?.title || 'Exercise';
+  const text = episodeNum <= 4 
+    ? `Beginner Exercise [Level ${episodeNum}]: Complete the foundational tasks for "${levelTitle}" on ${asset} (${timeframe} chart).`
+    : `Cumulative Trade Setup [Level ${episodeNum}]: Perform a full multi-confluence analysis on ${asset} (${timeframe} chart) integrating all steps from Episode 5 up to Episode ${episodeNum}.`;
   
   return {
     text,
@@ -330,7 +399,7 @@ export function generateAssignment(conceptLibrary) {
 function openPracticeLevelSelector(onRefresh) {
   const { body, close } = createModal('🎲 Practice Level Selector');
 
-  body.appendChild(el('p', 'unlock-hint', 'Choose your practice level. Level 5 covers Market Structure. Each higher level adds confluences cumulatively (e.g., Level 9 adds FVGs on top of S/D, Fib, and Structure).'));
+  body.appendChild(el('p', 'unlock-hint', 'Choose your practice level. Levels 0-4 are foundational exercises. Levels 5-33 add confluences cumulatively (e.g., Level 9 adds FVGs on top of S/D, Fib, and Structure).'));
 
   const form = el('form', 'modal-form');
   form.setAttribute('novalidate', '');
@@ -343,27 +412,31 @@ function openPracticeLevelSelector(onRefresh) {
   lvlSelect.className = 'form-select';
   lvlSelect.name = 'level';
   
-  // Find which levels are unlocked
+  // Find which levels are unlocked in curriculum
+  const loggedLessons = getLessons();
   const overrides = storage.get('bg_unlocked_lessons', {});
-  const effectiveCurriculum = BRAH_GOH_CURRICULUM.map(ep => {
-    if (overrides[ep.id]) return { ...ep, ...overrides[ep.id], locked: false };
-    return ep;
+
+  BRAH_GOH_CURRICULUM.forEach(ep => {
+    const isLogged = loggedLessons.some(l => l.episodeId === ep.id);
+    const isUnlocked = isLogged || (overrides[ep.id] && !overrides[ep.id].locked);
+    
+    let prefix = '';
+    let suffix = '';
+    if (ep.episode <= 4) {
+      prefix = '🌱 ';
+      suffix = ' (Foundational)';
+    } else if (!isUnlocked) {
+      prefix = '🔒 ';
+      suffix = ' (Advanced)';
+    } else {
+      prefix = '🎯 ';
+    }
+
+    const opt = el('option', '', `${prefix}Level ${ep.episode}: ${ep.title}${suffix}`);
+    opt.value = String(ep.episode);
+    lvlSelect.appendChild(opt);
   });
 
-  // Filter episodes >= 5 that are not locked
-  const activeLevels = effectiveCurriculum.filter(ep => ep.episode >= 5 && !ep.locked);
-
-  if (activeLevels.length === 0) {
-    const opt = el('option', '', 'No levels unlocked yet (need Ep 5+)');
-    opt.value = '';
-    lvlSelect.appendChild(opt);
-  } else {
-    activeLevels.forEach(ep => {
-      const opt = el('option', '', `Level ${ep.episode}: ${ep.title}`);
-      opt.value = String(ep.episode);
-      lvlSelect.appendChild(opt);
-    });
-  }
   lvlGroup.appendChild(lvlSelect);
   form.appendChild(lvlGroup);
 
@@ -406,7 +479,6 @@ function openPracticeLevelSelector(onRefresh) {
   // Submit button
   const submitBtn = el('button', 'btn btn-primary btn-lg', 'Generate Setup ⚡');
   submitBtn.type = 'submit';
-  if (activeLevels.length === 0) submitBtn.disabled = true;
   form.appendChild(submitBtn);
 
   form.addEventListener('submit', (e) => {
@@ -2878,7 +2950,30 @@ export function renderLearningPage(container) {
     renderMentorCards(mentorContainer, refresh, curriculumContainer, baCurriculumContainer);
     renderCurriculumLog(curriculumContainer);
     renderBossAckahCurriculum(baCurriculumContainer, refresh);
-    renderAssignments(assignmentContainer, refresh);
+    
+    // Render a nice redirect card pointing to the unified Practice Hub
+    assignmentContainer.replaceChildren();
+    const card = el('div', 'practice-redirect-card');
+    card.style.background = 'linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)';
+    card.style.border = '1px solid rgba(0, 212, 255, 0.2)';
+    card.style.borderRadius = 'var(--radius-lg)';
+    card.style.padding = 'var(--space-5)';
+    card.style.marginBottom = 'var(--space-6)';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.gap = 'var(--space-2)';
+    card.style.boxShadow = 'var(--cyan-glow)';
+    
+    card.appendChild(el('h3', 'redirect-card-title', '🎯 Practice Hub & Active Assignments'));
+    card.appendChild(el('p', 'redirect-card-desc', 'SMC Blitz Speed Trainer, Replay Simulator, Quizzes, Flashcards, and custom chart markup assignments are now unified in the new Practice Hub.'));
+    
+    const goBtn = el('button', 'btn btn-primary btn-md redirect-card-btn', 'Go to Practice Hub 🚀');
+    goBtn.style.alignSelf = 'flex-start';
+    goBtn.addEventListener('click', () => {
+      window.location.hash = '#practice';
+    });
+    card.appendChild(goBtn);
+    assignmentContainer.appendChild(card);
   }
 
   refresh();
@@ -4358,5 +4453,100 @@ export function renderPullbackPlaybook(container) {
     });
   });
 }
+
+export function renderPracticePage(container) {
+  container.replaceChildren();
+  
+  const header = el('div', 'page-header');
+  header.appendChild(el('h1', 'page-title', '🎯 Interactive Practice Hub'));
+  header.appendChild(el('p', 'page-subtitle', 'Accelerate your market intuition. Test your SMC/ICT mechanics.'));
+  container.appendChild(header);
+
+  const wrapper = el('div', 'practice-hub-wrapper');
+
+  // Practice Modes Grid Section
+  const modesSection = el('div', 'practice-modes-section');
+  modesSection.appendChild(el('h2', 'section-title', '🎮 Interactive Training Modes'));
+
+  const grid = el('div', 'practice-card-grid');
+
+  const modes = [
+    {
+      title: '⚡ SMC Blitz Speed Trainer',
+      desc: 'Test your structure-marking speed with lives, high-scores, and a ticking clock.',
+      btnLabel: 'Play SMC Blitz 🕹️',
+      action: () => window.location.hash = '#blitz'
+    },
+    {
+      title: '🎮 Trading Replay Simulator',
+      desc: 'Backtest strategies candle-by-candle with simulated slippage and high-volatility news.',
+      btnLabel: 'Launch Simulator 🚀',
+      action: () => window.location.hash = '#simulator'
+    },
+    {
+      title: '🧩 Concept Quizzes',
+      desc: 'Test your memory with dynamic multiple-choice and open-ended review questions.',
+      btnLabel: 'Take a Quiz 🧠',
+      action: () => openQuizPopup()
+    },
+    {
+      title: '🃏 Definition Flashcards',
+      desc: 'Master the terminology by flipping 3D glassmorphic cards.',
+      btnLabel: 'Study Cards 📚',
+      action: () => renderFlashcardMode()
+    }
+  ];
+
+  modes.forEach(mode => {
+    const card = el('div', 'practice-mode-card');
+    card.appendChild(el('h3', 'practice-card-title', mode.title));
+    card.appendChild(el('p', 'practice-card-desc', mode.desc));
+    
+    const actionBtn = el('button', 'btn btn-primary btn-sm practice-card-btn', mode.btnLabel);
+    actionBtn.addEventListener('click', mode.action);
+    card.appendChild(actionBtn);
+    
+    grid.appendChild(card);
+  });
+
+  modesSection.appendChild(grid);
+  wrapper.appendChild(modesSection);
+
+  // Divider
+  wrapper.appendChild(el('div', 'section-divider'));
+
+  // Assignments Section
+  const assignmentsWrap = el('div', 'practice-assignments-wrap');
+  wrapper.appendChild(assignmentsWrap);
+
+  container.appendChild(wrapper);
+
+  // Render assignments inside the wrap
+  function refreshAssignments() {
+    assignmentsWrap.replaceChildren();
+    
+    const headerRow = el('div', 'assignments-header-row');
+    headerRow.style.display = 'flex';
+    headerRow.style.justifyContent = 'space-between';
+    headerRow.style.alignItems = 'center';
+    headerRow.style.marginBottom = 'var(--space-4)';
+    
+    headerRow.appendChild(el('h2', 'section-title', '📝 Active Assignments'));
+    
+    const genBtn = el('button', 'btn btn-secondary btn-md', '🎲 Generate Custom Exercise');
+    genBtn.addEventListener('click', () => {
+      openPracticeLevelSelector(refreshAssignments);
+    });
+    headerRow.appendChild(genBtn);
+    assignmentsWrap.appendChild(headerRow);
+
+    const listContainer = el('div', 'practice-assignments-list-container');
+    assignmentsWrap.appendChild(listContainer);
+    renderAssignments(listContainer, refreshAssignments);
+  }
+
+  refreshAssignments();
+}
+
 
 

@@ -5,7 +5,7 @@
 import router from './router.js';
 import { renderTradingPage } from './trading.js';
 import { renderChartPage } from './trading.js';
-import { renderLearningPage, getLessons, getAssignments } from './learning.js';
+import { renderLearningPage, getLessons, getAssignments, renderPracticePage } from './learning.js';
 import { renderStreaksPage, getHabits, calculateStreak, initStreakNotifications, checkAndApplyAutoFreezes } from './streaks.js';
 import { getTrades, calculateStats } from './trading.js';
 import { getTimeAgo, formatCurrency, triggerConfetti, showNotificationToast, createModal } from './utils.js';
@@ -38,6 +38,7 @@ const NAV_ITEMS = [
   { hash: '#trading', label: 'Trading', icon: '💹' },
   { hash: '#calendar', label: 'Calendar', icon: '📅' },
   { hash: '#chart', label: 'Live Chart', icon: '📊' },
+  { hash: '#practice', label: 'Practice Hub', icon: '🎯' },
   { hash: '#learning', label: 'Learning', icon: '📚' },
   { hash: '#simulator', label: 'Simulator', icon: '🎮' },
   { hash: '#mindset', label: 'Mindset Room', icon: '🧘' },
@@ -3293,7 +3294,7 @@ function buildAppShell() {
   focusBanner.style.display = 'none';
   main.appendChild(focusBanner);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'news-blackout', 'mindset', 'blitz', 'review', 'notebook', 'coach'];
+  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'news-blackout', 'mindset', 'blitz', 'review', 'notebook', 'coach', 'practice'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -3625,6 +3626,7 @@ async function launchApp() {
   router.registerRoute('#dashboard', renderDashboard);
   router.registerRoute('#trading', renderTradingPage);
   router.registerRoute('#chart', renderChartPage);
+  router.registerRoute('#practice', renderPracticePage);
   router.registerRoute('#learning', renderLearningPage);
   router.registerRoute('#streaks', renderStreaksPage);
   router.registerRoute('#calendar', renderCalendarPage);
