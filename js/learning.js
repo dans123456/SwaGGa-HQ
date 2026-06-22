@@ -43,6 +43,7 @@ export const BRAH_GOH_CURRICULUM = [
   { id: 'ep30', episode: 30, title: 'Trading High Impact News', concepts: ['news-events', 'volatility-control', 'slippage', 'risk-mitigation'], description: 'Guidelines for surviving NFP, FOMC, and CPI releases. Position sizing adjustments, pre-news checklists, and managing floating drawdown.', videoUrl: 'https://youtu.be/jl9t6KMoiHg' },
   { id: 'ep31', episode: 31, title: 'How to Pass Prop Firm Challenges', concepts: ['prop-firm', 'funded-account', 'drawdown-rules', 'compounding'], description: 'The exact 3-tier risk framework and psychological guidelines required to pass evaluations and keep funded capital without breaching drawdown limits.', videoUrl: 'https://youtu.be/kRYQFKysfis' },
   { id: 'ep32', episode: 32, title: 'Become a Disciplined Trader in 21 Days', concepts: ['discipline', 'habits-loop', 'consistency', 'routine-lockout'], description: 'A step-by-step habit loop challenge to build non-negotiable off-chart routines, enforce daily limits, and lock in professional discipline.', videoUrl: 'https://www.youtube.com/watch?v=IM9MYudJSxs' },
+  { id: 'ep33', episode: 33, title: 'Graduation — Lessons From Making Millions', concepts: ['graduation', 'trading-philosophy', 'reflection', 'skill-building', 'long-term-mindset'], description: 'The final graduation episode of the Market Mechanics Mentorship. Brad Goh shares key lessons learned from making millions, shifting focus from learning to execution, and building a sustainable trading career.', videoUrl: 'https://youtu.be/3rtET_1E040?si=jvSB-jxKapbGah8Q' },
 ];
 
 const QUIZ_BANK = [
@@ -719,7 +720,7 @@ const MENTOR_DATA = {
     name: 'Brad Goh',
     role: 'ICT / SMC Trading Educator',
     avatar: 'img/brad-goh.png',
-    bio: 'Brad Goh is a trading educator running three YouTube channels — @bradgtrades for trade breakdowns and live analysis, @bradgohofficial for personal branding and lifestyle content, and @thetradinggeek for in-depth trading education. His flagship 33-lesson course teaches ICT (Inner Circle Trader) and Smart Money Concepts from the ground up, covering market structure, price action, supply & demand zones, fair value gaps, Fibonacci entries, candlestick patterns, and the psychology behind consistent trading. Known for breaking down complex institutional concepts into practical, step-by-step lessons.',
+    bio: 'Brad Goh is a trading educator running three YouTube channels — @bradgtrades for trade breakdowns and live analysis, @bradgohofficial for personal branding and lifestyle content, and @thetradinggeek for in-depth trading education. His flagship 34-lesson course teaches ICT (Inner Circle Trader) and Smart Money Concepts from the ground up, covering market structure, price action, supply & demand zones, fair value gaps, Fibonacci entries, candlestick patterns, and the psychology behind consistent trading. Known for breaking down complex institutional concepts into practical, step-by-step lessons.',
     focusAreas: ['Market Structure', 'Price Action', 'Supply & Demand', 'Fair Value Gaps', 'Fibonacci / OTE', 'Candlestick Patterns', 'Trading Psychology', 'Order Flow', 'ICT Concepts', 'Smart Money'],
     link: 'https://youtube.com/playlist?list=PLBYSdC_HMWMrXE0cmstpBbcIN5pLgebEm',
     linkLabel: 'Course Playlist',
@@ -882,7 +883,7 @@ function renderCurriculumLog(container) {
   container.replaceChildren();
   const lessons = getLessons();
   const wrapper = el('div', 'curriculum-section');
-  wrapper.appendChild(el('h2', 'section-title', '🧠 Brad Goh Curriculum — 33 Lessons'));
+  wrapper.appendChild(el('h2', 'section-title', '🧠 Brad Goh Curriculum — 34 Lessons'));
 
   const timeline = el('div', 'curriculum-timeline');
   const loggedEpisodes = new Set(lessons.map((l) => l.episodeId));
