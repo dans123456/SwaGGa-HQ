@@ -216,6 +216,38 @@
             Press <strong>Ctrl + Shift + R</strong> (or <strong>Cmd + Shift + R</strong> on Mac) to refresh fresh!
           </div>
         </div>
+        <!-- SwagAI Daily Mindset Tip Loader Card -->
+        <div id="loading-tip-card" style="margin-top: 32px; padding: 16px 20px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(0, 212, 255, 0.15); border-radius: 12px; max-width: 340px; text-align: center; box-shadow: 0 0 15px rgba(0, 212, 255, 0.05); display: none;">
+          <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #00d4ff; margin-bottom: 8px; font-family: 'Outfit', sans-serif;">🧠 SwagAI Mindset Prep</div>
+          <p id="loading-tip-text" style="font-size: 12px; line-height: 1.6; color: rgba(255, 255, 255, 0.7); margin: 0; font-style: italic; font-family: 'Inter', sans-serif;"></p>
+        </div>
+        <script>
+          (function() {
+            var tips = [
+              "Your trading reflects your weaknesses. The market is a mirror for FOMO and impatience.",
+              "Would an investor fund you? Score your equity curve based on consistency, not just size.",
+              "Your P&L does not define your worth. The curve measures execution quality, not intelligence.",
+              "Never trade the first mitigation of a zone. Wait for the second touch and structure confirmation.",
+              "Cut risk in half (0.5%) during drawdowns. Preserving capital is your primary directive.",
+              "Better entry location equals better risk-to-reward. Don't buy/sell in the middle of nowhere.",
+              "Inducements bait early entries. Let the sweep happen before executing your setup.",
+              "Double tops and bottoms are retail liquidity pools. Anticipate stop hunts before the real move.",
+              "Daily loss limits are safety nets. Hit your limit? Walk away; protect your funded capital.",
+              "Consistency starts before the charts. Build a non-negotiable pre-market checklist.",
+              "Expectancy matters more than win rate. A 40% win rate with 3R beats 80% with 1R.",
+              "Direction, Location, Execution. Follow the 3-step sequence on every single trade.",
+              "Buy below the 50% equilibrium level (discount) and sell above it (premium).",
+              "The extreme demand zone at the swing low is the trend's final line of defense."
+            ];
+            var randomTip = tips[Math.floor(Math.random() * tips.length)];
+            var tipTextEl = document.getElementById('loading-tip-text');
+            var tipCardEl = document.getElementById('loading-tip-card');
+            if (tipTextEl && tipCardEl) {
+              tipTextEl.textContent = '“' + randomTip + '”';
+              tipCardEl.style.display = 'block';
+            }
+          })();
+        </script>
       </div>
     </div>
 

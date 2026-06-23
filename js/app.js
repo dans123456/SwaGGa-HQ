@@ -3478,6 +3478,7 @@ function showLoginScreen(isCheckingSession = false) {
     { icon: '📊', text: 'Track your trades & analytics' },
     { icon: '📚', text: 'Learn from Brah Goh & Boss Ackah' },
     { icon: '🔥', text: 'Build daily streaks & habits' },
+    { icon: '🤖', text: 'Consult SwagAI, your AI Trading Mentor' },
     { icon: '☁️', text: 'Sync across all your devices' },
   ];
   featureItems.forEach(({ icon, text }) => {
@@ -3522,6 +3523,57 @@ function showLoginScreen(isCheckingSession = false) {
 
     loader.appendChild(spinner);
     loader.appendChild(loaderText);
+
+    // Dynamic Mindset quotes array
+    const tips = [
+      "Your trading reflects your weaknesses. The market is a mirror for FOMO and impatience.",
+      "Would an investor fund you? Score your equity curve based on consistency, not just size.",
+      "Your P&L does not define your worth. The curve measures execution quality, not intelligence.",
+      "Never trade the first mitigation of a zone. Wait for the second touch and structure confirmation.",
+      "Cut risk in half (0.5%) during drawdowns. Preserving capital is your primary directive.",
+      "Better entry location equals better risk-to-reward. Don't buy/sell in the middle of nowhere.",
+      "Inducements bait early entries. Let the sweep happen before executing your setup.",
+      "Double tops and bottoms are retail liquidity pools. Anticipate stop hunts before the real move.",
+      "Daily loss limits are safety nets. Hit your limit? Walk away; protect your funded capital.",
+      "Consistency starts before the charts. Build a non-negotiable pre-market checklist.",
+      "Expectancy matters more than win rate. A 40% win rate with 3R beats 80% with 1R.",
+      "Direction, Location, Execution. Follow the 3-step sequence on every single trade.",
+      "Buy below the 50% equilibrium level (discount) and sell above it (premium).",
+      "The extreme demand zone at the swing low is the trend's final line of defense."
+    ];
+    const randomTip = tips[Math.floor(Math.random() * tips.length)];
+
+    // Mindset Tip Card (Styled glassmorphic matching index.html fallback)
+    const tipCard = el('div', 'login-loader-tip-card');
+    tipCard.style.marginTop = 'var(--space-6)';
+    tipCard.style.padding = 'var(--space-4) var(--space-5)';
+    tipCard.style.background = 'rgba(255, 255, 255, 0.02)';
+    tipCard.style.border = '1px solid rgba(0, 212, 255, 0.15)';
+    tipCard.style.borderRadius = 'var(--radius-lg)';
+    tipCard.style.maxWidth = '340px';
+    tipCard.style.textAlign = 'center';
+    tipCard.style.boxShadow = '0 0 15px rgba(0, 212, 255, 0.05)';
+    tipCard.style.animation = 'fadeInUp 0.8s ease both';
+
+    const tipTitle = el('div', 'login-loader-tip-title', '🧠 SwagAI Mindset Prep');
+    tipTitle.style.fontSize = '10px';
+    tipTitle.style.fontWeight = '800';
+    tipTitle.style.textTransform = 'uppercase';
+    tipTitle.style.letterSpacing = '0.1em';
+    tipTitle.style.color = 'var(--cyan)';
+    tipTitle.style.marginBottom = 'var(--space-2)';
+
+    const tipText = el('p', 'login-loader-tip-text', `“${randomTip}”`);
+    tipText.style.fontSize = 'var(--text-xs)';
+    tipText.style.lineHeight = '1.6';
+    tipText.style.color = 'rgba(255, 255, 255, 0.7)';
+    tipText.style.margin = '0';
+    tipText.style.fontStyle = 'italic';
+
+    tipCard.appendChild(tipTitle);
+    tipCard.appendChild(tipText);
+    loader.appendChild(tipCard);
+
     interactiveArea.appendChild(loader);
   } else {
     transitionToLoginButtons(interactiveArea);
