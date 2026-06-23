@@ -899,8 +899,29 @@ function renderSwagAICritiqueWidget(container, trades) {
 
     try {
       const userText = compileCritiqueContext(trades);
+      
+      // Load Custom Knowledge Base (Brah Goh's strategy parameters, psychology rules, and notes)
+      let customKB = '';
+      try {
+        const rawKb = localStorage.getItem('swagga:ai_kb') || '';
+        let cleaned = rawKb.trim();
+        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+          const parsed = JSON.parse(cleaned);
+          if (typeof parsed === 'string') cleaned = parsed.trim();
+        }
+        customKB = cleaned || 'No custom rules uploaded yet.';
+      } catch (e) {
+        customKB = 'Error loading custom rules.';
+      }
+
       const systemPrompt = `You are "SwagAI", SwaGGa's elite quantitative trade reviewer and performance psychologist.
 Analyze SwaGGa's trading history and write a blunt, direct, clinical performance review.
+Reference SwaGGa's Custom Knowledge Base (Brah Goh strategy parameters, psychology rules, and notes) to hold SwaGGa strictly accountable to their defined edge.
+
+--- SwaGGa's Custom Knowledge Base Rules ---
+${customKB}
+-------------------------------------------
+
 Keep it formatted in clean Markdown. Break it into three concise sections:
 1. 📈 EDGE DIAGNOSTIC (Identify the pairs, confluences, and sessions that show real statistical edge)
 2. 🩸 LEAK DETECTION (Identify the biggest mistakes, pair/session drag, or psychological errors costing money)
