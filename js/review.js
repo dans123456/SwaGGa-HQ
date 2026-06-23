@@ -697,6 +697,308 @@ function shortenConfluence(full) {
   return full.replace(/\s*\[Ep\s*\d+\]\s*$/i, '').trim();
 }
 
+// --- SwagAI Performance Critique Premium Upgrade ---
+
+function compileCritiqueContext(trades) {
+  const stats = calculateStats(trades);
+  
+  const confluenceMap = {};
+  const mistakeMap = {};
+  const pairMap = {};
+  const sessionMap = {};
+  
+  trades.forEach(t => {
+    if (Array.isArray(t.confluences)) {
+      t.confluences.forEach(c => {
+        if (!confluenceMap[c]) confluenceMap[c] = { pnl: 0, wins: 0, total: 0 };
+        confluenceMap[c].pnl += Number(t.pnl) || 0;
+        confluenceMap[c].total++;
+        if (Number(t.pnl) > 0) confluenceMap[c].wins++;
+      });
+    }
+    const m = t.mistake || 'none';
+    if (m !== 'none') {
+      mistakeMap[m] = (mistakeMap[m] || 0) + 1;
+    }
+    const p = t.asset || 'unknown';
+    if (!pairMap[p]) pairMap[p] = { pnl: 0, wins: 0, total: 0 };
+    pairMap[p].pnl += Number(t.pnl) || 0;
+    pairMap[p].total++;
+    if (Number(t.pnl) > 0) pairMap[p].wins++;
+    
+    const s = t.session || 'unknown';
+    if (!sessionMap[s]) sessionMap[s] = { pnl: 0, wins: 0, total: 0 };
+    sessionMap[s].pnl += Number(t.pnl) || 0;
+    sessionMap[s].total++;
+    if (Number(t.pnl) > 0) sessionMap[s].wins++;
+  });
+
+  const topConfluences = Object.entries(confluenceMap)
+    .map(([name, data]) => `- ${name}: P&L: $${data.pnl.toFixed(2)}, WR: ${Math.round((data.wins/data.total)*100)}% (Over ${data.total} trades)`)
+    .join('\n');
+    
+  const topMistakes = Object.entries(mistakeMap)
+    .sort((a, b) => b[1] - a[1])
+    .map(([m, count]) => `- ${m}: ${count} times`)
+    .join('\n');
+    
+  const topPairs = Object.entries(pairMap)
+    .map(([name, data]) => `- ${name}: P&L: $${data.pnl.toFixed(2)}, WR: ${Math.round((data.wins/data.total)*100)}% (Over ${data.total} trades)`)
+    .join('\n');
+
+  const topSessions = Object.entries(sessionMap)
+    .map(([name, data]) => `- ${name}: P&L: $${data.pnl.toFixed(2)}, WR: ${Math.round((data.wins/data.total)*100)}% (Over ${data.total} trades)`)
+    .join('\n');
+
+  return `
+USER: SwaGGa
+TOTAL TRADES LOGGED: ${stats.totalTrades}
+WIN RATE: ${stats.winRate}%
+TOTAL P&L: $${stats.totalPnL.toFixed(2)}
+AVERAGE R:R: ${stats.avgRR}R
+
+PAIR METRICS:
+${topPairs || 'No pairs logged.'}
+
+SESSION METRICS:
+${topSessions || 'No sessions logged.'}
+
+CONFLUENCE PERFORMANCE:
+${topConfluences || 'No confluences logged.'}
+
+FREQUENT MISTAKE TAGS:
+${topMistakes || 'No mistakes logged.'}
+  `;
+}
+
+function renderSwagAICritiqueWidget(container, trades) {
+  const card = el('div', 'strategy-lab-row strategy-lab-row--full glass-card');
+  card.style.padding = 'var(--space-6)';
+  card.style.marginBottom = 'var(--space-6)';
+  card.style.border = '1px solid rgba(168, 85, 247, 0.2)';
+  card.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.03) 0%, rgba(0, 212, 255, 0.02) 100%)';
+  card.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.4)';
+  container.appendChild(card);
+
+  const title = el('h3', 'review-form-title');
+  title.style.margin = '0 0 var(--space-2) 0';
+  title.style.display = 'flex';
+  title.style.alignItems = 'center';
+  title.style.gap = 'var(--space-2)';
+  title.style.color = 'var(--purple)';
+  title.textContent = '🤖 SwagAI Trade Performance Critique';
+  card.appendChild(title);
+
+  const desc = el('p', '', 'Get a direct, clinical, and data-driven analysis of your edge, trading mistakes, and risk parameters.');
+  desc.style.fontSize = 'var(--text-xs)';
+  desc.style.color = 'var(--text-muted)';
+  desc.style.margin = '0 0 var(--space-4) 0';
+  card.appendChild(desc);
+
+  const contentArea = el('div', 'swaggai-critique-content');
+  contentArea.style.minHeight = '60px';
+  contentArea.style.padding = 'var(--space-4)';
+  contentArea.style.borderRadius = 'var(--radius-md)';
+  contentArea.style.background = 'rgba(0, 0, 0, 0.2)';
+  contentArea.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+  contentArea.style.marginBottom = 'var(--space-4)';
+  card.appendChild(contentArea);
+
+  const savedCritique = storage.get('swagga:ai_performance_critique', null);
+  const lastGenerated = storage.get('swagga:ai_performance_critique_timestamp', null);
+
+  const renderCritiqueText = (text, timestamp) => {
+    contentArea.replaceChildren();
+    
+    import('./coach.js').then(({ formatMarkdownText }) => {
+      const formatted = formatMarkdownText(text);
+      contentArea.appendChild(formatted);
+    }).catch(() => {
+      const pre = el('pre');
+      pre.textContent = text;
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.fontFamily = 'inherit';
+      pre.style.fontSize = 'var(--text-xs)';
+      contentArea.appendChild(pre);
+    });
+
+    if (timestamp) {
+      const tsEl = el('div', '', `Last updated: ${new Date(timestamp).toLocaleString()}`);
+      tsEl.style.fontSize = '9px';
+      tsEl.style.color = 'var(--text-muted)';
+      tsEl.style.marginTop = 'var(--space-3)';
+      tsEl.style.textAlign = 'right';
+      contentArea.appendChild(tsEl);
+    }
+  };
+
+  if (savedCritique) {
+    renderCritiqueText(savedCritique, lastGenerated);
+  } else {
+    const emptyHint = el('p', '', 'No critique generated for this data yet. Click the button below to analyze your journal.');
+    emptyHint.style.fontSize = 'var(--text-xs)';
+    emptyHint.style.color = 'var(--text-muted)';
+    emptyHint.style.fontStyle = 'italic';
+    emptyHint.style.margin = '0';
+    contentArea.appendChild(emptyHint);
+  }
+
+  const btnRow = el('div');
+  btnRow.style.display = 'flex';
+  btnRow.style.justifyContent = 'flex-end';
+  
+  const genBtn = el('button', 'btn btn-purple btn-sm', savedCritique ? '🔄 Regenerate AI Critique' : '📊 Generate AI Critique');
+  btnRow.appendChild(genBtn);
+  card.appendChild(btnRow);
+
+  genBtn.addEventListener('click', async () => {
+    const model = storage.get('coach_selected_model', 'gemini');
+    const apiKey = localStorage.getItem(model === 'gemini' ? 'swagga:gemini_api_key' : 'swagga:claude_api_key') || '';
+
+    let cleanedApiKey = apiKey.trim();
+    if (cleanedApiKey.startsWith('"') && cleanedApiKey.endsWith('"')) {
+      try {
+        const parsed = JSON.parse(cleanedApiKey);
+        if (typeof parsed === 'string') cleanedApiKey = parsed.trim();
+      } catch (e) {}
+    }
+
+    if (!cleanedApiKey) {
+      showNotificationToast('Please configure your SwagAI API keys in the Coach settings tab first!', '⚠️');
+      return;
+    }
+
+    genBtn.disabled = true;
+    genBtn.textContent = '⏳ SwagAI is analyzing...';
+    contentArea.replaceChildren();
+    
+    const loadingWrap = el('div');
+    loadingWrap.style.display = 'flex';
+    loadingWrap.style.flexDirection = 'column';
+    loadingWrap.style.alignItems = 'center';
+    loadingWrap.style.gap = 'var(--space-3)';
+    loadingWrap.style.padding = 'var(--space-4) 0';
+
+    const spinner = el('div', 'login-spinner');
+    spinner.style.width = '24px';
+    spinner.style.height = '24px';
+    spinner.style.borderRadius = '50%';
+    spinner.style.border = '2px solid rgba(168, 85, 247, 0.1)';
+    spinner.style.borderTopColor = 'var(--purple)';
+    spinner.style.animation = 'spin 1s infinite linear';
+
+    const loadText = el('span', '', 'Reading trade logs, confluences, and mistake patterns...');
+    loadText.style.fontSize = 'var(--text-xs)';
+    loadText.style.color = 'var(--purple)';
+    loadText.style.fontWeight = '600';
+    loadText.style.animation = 'pulse 2s infinite ease-in-out';
+
+    loadingWrap.appendChild(spinner);
+    loadingWrap.appendChild(loadText);
+    contentArea.appendChild(loadingWrap);
+
+    try {
+      const userText = compileCritiqueContext(trades);
+      const systemPrompt = `You are "SwagAI", SwaGGa's elite quantitative trade reviewer and performance psychologist.
+Analyze SwaGGa's trading history and write a blunt, direct, clinical performance review.
+Keep it formatted in clean Markdown. Break it into three concise sections:
+1. 📈 EDGE DIAGNOSTIC (Identify the pairs, confluences, and sessions that show real statistical edge)
+2. 🩸 LEAK DETECTION (Identify the biggest mistakes, pair/session drag, or psychological errors costing money)
+3. 🛠️ ACTIONABLE RX (Provide 2 specific, non-negotiable rules SwaGGa must add to their pre-market routine to fix the leak)
+Speak like a strict trading mentor. Be concise. Avoid fluff.`;
+
+      let aiResponse = '';
+
+      if (model === 'gemini') {
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+        let finalResponse = null;
+        let lastError = null;
+
+        for (const modelName of modelsToTry) {
+          try {
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanedApiKey}`;
+            const res = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: userText }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+              })
+            });
+            if (res.ok) {
+              finalResponse = res;
+              break;
+            } else {
+              const body = await res.text();
+              lastError = new Error(`${modelName} failure: ${body.substring(0, 100)}`);
+            }
+          } catch (err) {
+            lastError = err;
+          }
+        }
+
+        if (!finalResponse) {
+          throw lastError || new Error('All Gemini API endpoints failed.');
+        }
+
+        const data = await finalResponse.json();
+        aiResponse = data.candidates[0].content.parts[0].text;
+      } else {
+        const endpoint = 'https://api.anthropic.com/v1/messages';
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'x-api-key': cleanedApiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userText }]
+          })
+        });
+
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(`Claude API Error ${response.status}: ${body.substring(0, 150)}`);
+        }
+
+        const data = await response.json();
+        aiResponse = data.content[0].text;
+      }
+
+      const now = Date.now();
+      storage.set('swagga:ai_performance_critique', aiResponse);
+      storage.set('swagga:ai_performance_critique_timestamp', now);
+      
+      renderCritiqueText(aiResponse, now);
+      genBtn.textContent = '🔄 Regenerate AI Critique';
+      showNotificationToast('SwagAI Critique generated successfully! 🤖📊');
+      playSynthSound('success');
+      triggerConfetti();
+      nativeHaptic();
+    } catch (err) {
+      console.error(err);
+      contentArea.replaceChildren();
+      
+      const errText = el('p', '', `Failed to generate critique: ${err.message || err}`);
+      errText.style.color = 'var(--neon-red)';
+      errText.style.fontSize = 'var(--text-xs)';
+      errText.style.margin = '0';
+      contentArea.appendChild(errText);
+      
+      genBtn.textContent = savedCritique ? '🔄 Regenerate AI Critique' : '📊 Generate AI Critique';
+      showNotificationToast('SwagAI query failed. Check console or API key.', '❌');
+      playSynthSound('error');
+    } finally {
+      genBtn.disabled = false;
+    }
+  });
+}
+
 function renderStrategyLab(container) {
   const trades = getTrades();
 
@@ -729,6 +1031,9 @@ function renderStrategyLab(container) {
   // Strategy Lab Grid container
   const grid = el('div', 'strategy-lab-grid');
   container.appendChild(grid);
+
+  // SwagAI Performance Critique Widget
+  renderSwagAICritiqueWidget(grid, trades);
 
   // Top Row: calculator & mistake stats
   const topRow = el('div', 'strategy-lab-row strategy-lab-row--top');

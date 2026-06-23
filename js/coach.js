@@ -422,7 +422,7 @@ function getCustomKB() {
 }
 
 // --- Safe Markdown Text Formatter (No innerHTML) ---
-function formatMarkdownText(text) {
+export function formatMarkdownText(text) {
   // Strip quotes around bracketed rules, e.g. "[Rule Title]" -> [Rule Title]
   const cleanedText = text.replace(/"\[(.*?)\]"/g, "[$1]").replace(/'\[(.*?)\]'/g, "[$1]");
   const container = el('div', 'markdown-body');
@@ -577,7 +577,7 @@ function showArticleModal(title, markdownContent) {
 }
 
 // Sub-parser to process **bold**, `code`, and [Rule Title] tags within lines
-function parseInlineMarkdown(text, parentElement) {
+export function parseInlineMarkdown(text, parentElement) {
   // Regex to match markdown syntax: bold (**), code (`), rule brackets ([...])
   const regex = /(\*\*.*?\*\*|`.*?`|\[.*?\]|[^\*`\[]+)/g;
   const matches = text.match(regex);
