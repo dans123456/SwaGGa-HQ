@@ -112,6 +112,23 @@ export function getHabits() {
         }
       }
     });
+
+    // Auto-recovery backfill for June 23, 2026 to restore habit streaks
+    if (!storage.get('june_23_backfill_applied', false)) {
+      habits.forEach(h => {
+        h.log = h.log || {};
+        h.log['2026-06-23'] = true;
+      });
+      storage.set('june_23_backfill_applied', true);
+      migrated = true;
+
+      setTimeout(() => {
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
+      }, 200);
+    }
+
     if (migrated) _saveHabits(habits);
   }
   return habits;
