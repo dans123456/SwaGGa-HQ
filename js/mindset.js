@@ -1046,6 +1046,103 @@ export function renderMindsetPage(container) {
     breathTitle.style.marginBottom = 'var(--space-6)';
     breathCard.appendChild(breathTitle);
 
+    // Helper to create SVG elements securely
+    const createSvgEl = (tag) => document.createElementNS('http://www.w3.org/2000/svg', tag);
+
+    // Responsive SVG box surrounding the breathing circle
+    const svg = createSvgEl('svg');
+    svg.setAttribute('width', '220');
+    svg.setAttribute('height', '220');
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.pointerEvents = 'none';
+
+    // SVG Defs for neon glowing filters
+    const defs = createSvgEl('defs');
+    const filterColors = ['cyan', 'purple', 'green', 'red'];
+    filterColors.forEach(color => {
+      const filter = createSvgEl('filter');
+      filter.setAttribute('id', `glow-${color}`);
+      filter.setAttribute('x', '-20%');
+      filter.setAttribute('y', '-20%');
+      filter.setAttribute('width', '140%');
+      filter.setAttribute('height', '140%');
+
+      const blur = createSvgEl('feGaussianBlur');
+      blur.setAttribute('stdDeviation', '6');
+      blur.setAttribute('result', 'blur');
+      
+      const merge = createSvgEl('feMerge');
+      const node1 = createSvgEl('feMergeNode');
+      node1.setAttribute('in', 'blur');
+      const node2 = createSvgEl('feMergeNode');
+      node2.setAttribute('in', 'SourceGraphic');
+      
+      merge.appendChild(node1);
+      merge.appendChild(node2);
+      filter.appendChild(blur);
+      filter.appendChild(merge);
+      defs.appendChild(filter);
+    });
+    svg.appendChild(defs);
+
+    // SVG Lines mapping
+    const lines = {
+      inhale: createSvgEl('line'),
+      hold1: createSvgEl('line'),
+      exhale: createSvgEl('line'),
+      hold2: createSvgEl('line')
+    };
+
+    // Set coordinates
+    // Left side (Inhale)
+    lines.inhale.setAttribute('x1', '20');
+    lines.inhale.setAttribute('y1', '200');
+    lines.inhale.setAttribute('x2', '20');
+    lines.inhale.setAttribute('y2', '20');
+    lines.inhale.id = 'breath-line-left';
+
+    // Top side (Hold 1)
+    lines.hold1.setAttribute('x1', '20');
+    lines.hold1.setAttribute('y1', '20');
+    lines.hold1.setAttribute('x2', '200');
+    lines.hold1.setAttribute('y2', '20');
+    lines.hold1.id = 'breath-line-top';
+
+    // Right side (Exhale)
+    lines.exhale.setAttribute('x1', '200');
+    lines.exhale.setAttribute('y1', '20');
+    lines.exhale.setAttribute('x2', '200');
+    lines.exhale.setAttribute('y2', '200');
+    lines.exhale.id = 'breath-line-right';
+
+    // Bottom side (Hold 2)
+    lines.hold2.setAttribute('x1', '200');
+    lines.hold2.setAttribute('y1', '200');
+    lines.hold2.setAttribute('x2', '20');
+    lines.hold2.setAttribute('y2', '200');
+    lines.hold2.id = 'breath-line-bottom';
+
+    // Set styling and dasharrays
+    Object.values(lines).forEach(line => {
+      line.setAttribute('stroke', 'rgba(255, 255, 255, 0.05)');
+      line.setAttribute('stroke-width', '4');
+      line.setAttribute('stroke-linecap', 'round');
+      line.setAttribute('stroke-dasharray', '180');
+      line.setAttribute('stroke-dashoffset', '180');
+      svg.appendChild(line);
+    });
+
+    const breathingContainer = el('div', 'box-breathing-container');
+    breathingContainer.style.position = 'relative';
+    breathingContainer.style.width = '220px';
+    breathingContainer.style.height = '220px';
+    breathingContainer.style.display = 'flex';
+    breathingContainer.style.alignItems = 'center';
+    breathingContainer.style.justifyContent = 'center';
+    breathingContainer.style.margin = 'var(--space-4) auto';
+
     // Breathing circle visualizer
     const circleOuter = el('div', 'breathing-circle-outer');
     circleOuter.style.width = '180px';
@@ -1085,7 +1182,10 @@ export function renderMindsetPage(container) {
     circleInner.appendChild(breathPrompt);
     circleInner.appendChild(breathTimer);
     circleOuter.appendChild(circleInner);
-    breathCard.appendChild(circleOuter);
+
+    breathingContainer.appendChild(svg);
+    breathingContainer.appendChild(circleOuter);
+    breathCard.appendChild(breathingContainer);
 
     // Session Progress bar
     const progressBarContainer = el('div', 'breathing-progress-bar-container');
@@ -1187,6 +1287,14 @@ export function renderMindsetPage(container) {
       circleOuter.style.boxShadow = '0 0 30px rgba(0, 212, 255, 0.05)';
       circleInner.style.border = '1px solid var(--cyan)';
       circleInner.style.boxShadow = 'var(--cyan-glow)';
+
+      // Reset all SVG lines back to default
+      Object.values(lines).forEach(line => {
+        line.setAttribute('stroke', 'rgba(255, 255, 255, 0.05)');
+        line.setAttribute('stroke-width', '4');
+        line.removeAttribute('class');
+        line.setAttribute('stroke-dashoffset', '180');
+      });
     };
 
     const completeBreathingSession = () => {
@@ -1225,37 +1333,84 @@ export function renderMindsetPage(container) {
       }
 
       const routine = routineSelect.value;
+
+      // Reset all SVG lines first
+      Object.values(lines).forEach(line => {
+        line.setAttribute('stroke', 'rgba(255, 255, 255, 0.05)');
+        line.setAttribute('stroke-width', '4');
+        line.removeAttribute('class');
+        line.setAttribute('stroke-dashoffset', '180');
+      });
+
       if (breathingState === 'inhale') {
         nativeHaptic('medium');
+        playSynthSound('click');
+
         breathPrompt.textContent = 'INHALE';
         breathPrompt.style.color = 'var(--cyan)';
         circleOuter.style.transform = 'scale(1.25)';
         circleOuter.style.borderColor = 'var(--cyan-border)';
         circleOuter.style.boxShadow = '0 0 40px rgba(0, 212, 255, 0.3)';
+
+        lines.inhale.setAttribute('stroke-width', '6');
+        lines.inhale.setAttribute('class', 'breath-line-glowing cyan');
       } else if (breathingState === 'hold1') {
         nativeHaptic('light');
+        playSynthSound('click');
+
         breathPrompt.textContent = 'HOLD';
         breathPrompt.style.color = 'var(--purple)';
         circleOuter.style.borderColor = 'var(--purple-border)';
         circleOuter.style.boxShadow = '0 0 40px rgba(168, 85, 247, 0.3)';
+
+        lines.hold1.setAttribute('stroke-width', '6');
+        lines.hold1.setAttribute('class', 'breath-line-glowing purple');
       } else if (breathingState === 'exhale') {
         nativeHaptic('medium');
+        playSynthSound('click');
+
         breathPrompt.textContent = 'EXHALE';
         breathPrompt.style.color = 'var(--neon-green)';
         circleOuter.style.transform = 'scale(0.85)';
         circleOuter.style.borderColor = 'var(--neon-green-border)';
         circleOuter.style.boxShadow = '0 0 40px rgba(57, 255, 20, 0.3)';
+
+        lines.exhale.setAttribute('stroke-width', '6');
+        lines.exhale.setAttribute('class', 'breath-line-glowing green');
       } else if (breathingState === 'hold2') {
         nativeHaptic('light');
+        playSynthSound('click');
+
         breathPrompt.textContent = 'HOLD';
         breathPrompt.style.color = 'var(--purple)';
         circleOuter.style.borderColor = 'var(--purple-border)';
         circleOuter.style.boxShadow = '0 0 40px rgba(168, 85, 247, 0.3)';
+
+        lines.hold2.setAttribute('stroke-width', '6');
+        lines.hold2.setAttribute('class', 'breath-line-glowing red');
       }
 
       if (_activeInterval) clearInterval(_activeInterval);
       breathTimer.textContent = `${breathCount}s left`;
       
+      const updateLineProgress = () => {
+        const totalDuration = routine === 'box' ? 4 : (breathingState === 'inhale' ? 4 : (breathingState === 'hold1' ? 7 : 8));
+        const progress = Math.max(0, Math.min(breathCount, totalDuration));
+        const offset = 180 * (progress / totalDuration);
+        
+        let activeLine = null;
+        if (breathingState === 'inhale') activeLine = lines.inhale;
+        else if (breathingState === 'hold1') activeLine = lines.hold1;
+        else if (breathingState === 'exhale') activeLine = lines.exhale;
+        else if (breathingState === 'hold2') activeLine = lines.hold2;
+        
+        if (activeLine) {
+          activeLine.setAttribute('stroke-dashoffset', String(offset));
+        }
+      };
+
+      updateLineProgress();
+
       _activeInterval = setInterval(() => {
         if (!isPageActive(container)) {
           stopBreathing();
@@ -1271,6 +1426,8 @@ export function renderMindsetPage(container) {
         const progressPercent = Math.min((sessionTimeElapsed / sessionTimeTarget) * 100, 100);
         progressBarFill.style.width = `${progressPercent}%`;
         
+        updateLineProgress();
+
         if (sessionTimeElapsed >= sessionTimeTarget) {
           completeBreathingSession();
           return;
@@ -1311,6 +1468,7 @@ export function renderMindsetPage(container) {
     startBtn.addEventListener('click', () => {
       playSynthSound('click');
       if (breathingState === 'off') {
+        playSynthSound('bell');
         startBtn.textContent = '⏹️ Stop';
         startBtn.classList.remove('btn-primary');
         startBtn.classList.add('btn-secondary');

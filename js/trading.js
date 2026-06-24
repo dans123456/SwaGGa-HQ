@@ -20,6 +20,7 @@ import { addXP } from './xp.js';
 import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 import { getAssignments } from './learning.js';
+import { setupVoiceDictation } from './voice.js';
 
 // --- Constants ---
 
@@ -2129,7 +2130,23 @@ export function renderTradeForm(container, onSaved) {
   notes.name = 'notes';
   notes.rows = 3;
   notes.placeholder = 'Trade notes, lessons, emotions…';
-  form.appendChild(formGroup('Notes', notes));
+  notes.classList.add('form-textarea');
+
+  const notesWrapper = el('div');
+  notesWrapper.style.display = 'flex';
+  notesWrapper.style.gap = 'var(--space-2)';
+  notesWrapper.style.alignItems = 'flex-end';
+  
+  const notesMicBtn = el('button', 'mic-btn', '🎙️');
+  notesMicBtn.type = 'button';
+  notesMicBtn.title = 'Speak to input notes';
+  
+  notesWrapper.appendChild(notes);
+  notesWrapper.appendChild(notesMicBtn);
+  
+  setupVoiceDictation(notes, notesMicBtn);
+
+  form.appendChild(formGroup('Notes', notesWrapper));
 
   // ---- Post-Trade Reflection Fields ----
   const wellTextarea = document.createElement('textarea');
@@ -3737,10 +3754,25 @@ export function openEditTradeModal(trade, onRefresh) {
   // ---- Notes ----
   const notesArea = document.createElement('textarea');
   notesArea.name = 'notes';
-  notesArea.className = 'form-input';
+  notesArea.className = 'form-textarea';
   notesArea.value = trade.notes || '';
   notesArea.rows = 3;
-  form.appendChild(formGroup('Notes', notesArea));
+
+  const notesEditWrapper = el('div');
+  notesEditWrapper.style.display = 'flex';
+  notesEditWrapper.style.gap = 'var(--space-2)';
+  notesEditWrapper.style.alignItems = 'flex-end';
+  
+  const notesEditMicBtn = el('button', 'mic-btn', '🎙️');
+  notesEditMicBtn.type = 'button';
+  notesEditMicBtn.title = 'Speak to input notes';
+  
+  notesEditWrapper.appendChild(notesArea);
+  notesEditWrapper.appendChild(notesEditMicBtn);
+  
+  setupVoiceDictation(notesArea, notesEditMicBtn);
+
+  form.appendChild(formGroup('Notes', notesEditWrapper));
 
   // ---- Post-Trade Reflection Fields ----
   const wellTextarea = document.createElement('textarea');

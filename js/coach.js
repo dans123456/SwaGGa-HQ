@@ -4,6 +4,7 @@ import { addXP } from './xp.js';
 import { triggerConfetti, showNotificationToast, el } from './utils.js';
 import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
+import { setupVoiceDictation } from './voice.js';
 
 // --- Legacy Key Migration ---
 function migrateLegacyCoachKeys() {
@@ -996,7 +997,13 @@ export function renderCoachPage(container) {
       textInput.focus();
     };
 
+    const micBtn = el('button', 'mic-btn', '🎙️');
+    micBtn.type = 'button';
+    micBtn.title = 'Speak to input text';
+    setupVoiceDictation(textInput, micBtn);
+
     inputWrapper.appendChild(textInput);
+    inputWrapper.appendChild(micBtn);
     inputWrapper.appendChild(sendBtn);
     inputArea.appendChild(inputWrapper);
     consoleCard.appendChild(inputArea);

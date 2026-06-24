@@ -2585,6 +2585,74 @@ body.theme-gold {
   user-select: none;
 }
 
+/* ── Voice Dictation Premium UI ── */
+.mic-btn {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+.mic-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+.mic-btn.recording {
+  background: var(--neon-red-bg);
+  border-color: var(--neon-red);
+  color: var(--neon-red);
+  animation: micPulse 1.5s infinite ease-in-out;
+}
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(255, 71, 87, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(255, 71, 87, 0.5); }
+}
+
+.voice-wave-container {
+  display: none;
+  animation: fadeIn 0.2s ease-in-out;
+}
+.voice-wave-status {
+  font-family: var(--font-heading);
+  animation: textFlash 1.5s infinite ease-in-out;
+}
+@keyframes textFlash {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ── Box Breathing Glowing SVG Lines ── */
+.breath-line-glowing {
+  stroke-width: 6px !important;
+  transition: stroke-dashoffset 1s linear, stroke var(--transition-base), filter var(--transition-base);
+}
+.breath-line-glowing.cyan {
+  stroke: var(--cyan) !important;
+  filter: url(#glow-cyan);
+}
+.breath-line-glowing.purple {
+  stroke: var(--purple) !important;
+  filter: url(#glow-purple);
+}
+.breath-line-glowing.green {
+  stroke: var(--neon-green) !important;
+  filter: url(#glow-green);
+}
+.breath-line-glowing.red {
+  stroke: var(--neon-red) !important;
+  filter: url(#glow-red);
+}
+
 
 
 
