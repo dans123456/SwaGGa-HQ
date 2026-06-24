@@ -154,6 +154,12 @@ export function saveAssignment(assignment) {
   const entry = { id: generateId(), ...assignment, completed: false, createdAt: new Date().toISOString() };
   assignments.push(entry);
   storage.set(STORAGE_ASSIGNMENTS, assignments);
+
+  // Push to cloud
+  import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+    if (getCurrentUser()) pushToCloud();
+  });
+
   return entry;
 }
 
@@ -1874,6 +1880,12 @@ function renderAssignments(container, onRefresh) {
       delBtn.addEventListener('click', () => {
         const all = getAssignments().filter(x => x.id !== a.id);
         storage.set(STORAGE_ASSIGNMENTS, all);
+
+        // Push to cloud
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
+
         if (typeof onRefresh === 'function') onRefresh();
       });
       actions.appendChild(delBtn);

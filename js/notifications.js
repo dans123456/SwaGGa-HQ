@@ -134,6 +134,11 @@ function showAssignmentPopup(assignment) {
     all.push(assignment);
     storage.set(STORAGE_ASSIGNMENTS, all);
 
+    // Push to cloud
+    import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+      if (getCurrentUser()) pushToCloud();
+    });
+
     overlay.classList.add('notif-closing');
     setTimeout(() => overlay.remove(), 300);
 
