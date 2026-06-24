@@ -616,6 +616,18 @@
   background: rgba(0, 212, 255, 0.2) !important;
 }
 
+/* View Steps button on assignment cards */
+.assignment-btn-steps {
+  background: rgba(168, 85, 247, 0.1) !important;
+  color: var(--purple) !important;
+  border: 1px solid rgba(168, 85, 247, 0.2) !important;
+  font-weight: 600 !important;
+}
+
+.assignment-btn-steps:hover {
+  background: rgba(168, 85, 247, 0.2) !important;
+}
+
 /* ── Exercise Popup — Premium Design ──────────────────────── */
 .exercise-overlay {
   position: fixed;
