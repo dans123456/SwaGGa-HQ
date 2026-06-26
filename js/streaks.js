@@ -80,17 +80,19 @@ export function getHabits() {
           h.baseStreak = 44;
           migrated = true;
         }
-        if (!storage.get('duolingo_backfill_68_applied', false)) {
+        if (!storage.get('duolingo_backfill_70_checked_applied', false)) {
           h.log = h.log || {};
           h.freezes = h.freezes || {};
           
-          // Force a break at May 29, 2026 to ensure the streak is exactly 68 days today (June 22, 2026)
+          // Force a break at May 30, 2026 to ensure the streak is exactly 70 days on June 25, 2026 (with today marked completed)
           delete h.log['2026-05-29'];
+          delete h.log['2026-05-30'];
           delete h.freezes['2026-05-29'];
+          delete h.freezes['2026-05-30'];
           
-          // Backfill 24 days from May 30, 2026 to June 22, 2026
-          const startDate = new Date(2026, 4, 30); // May 30, 2026 (Month is 0-indexed, so 4 is May)
-          for (let i = 0; i < 24; i++) {
+          // Backfill 25 days from May 31, 2026 to June 24, 2026
+          const startDate = new Date(2026, 4, 31); // May 31, 2026 (Month is 0-indexed, so 4 is May)
+          for (let i = 0; i < 25; i++) {
             const d = new Date(startDate);
             d.setDate(startDate.getDate() + i);
             const y = d.getFullYear();
@@ -100,7 +102,7 @@ export function getHabits() {
             h.log[key] = true;
           }
           
-          storage.set('duolingo_backfill_68_applied', true);
+          storage.set('duolingo_backfill_70_checked_applied', true);
           migrated = true;
           
           // Trigger push to cloud so that the cloud also receives the updated logs

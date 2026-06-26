@@ -11,7 +11,7 @@ import { getTrades, calculateStats } from './trading.js';
 import { getTimeAgo, formatCurrency, triggerConfetti, showNotificationToast, createModal } from './utils.js';
 import storage from './storage.js';
 import { checkAutoAssignment } from './notifications.js';
-import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser } from './firebase-sync.js';
+import { onAuthChange, signInWithGoogle, firebaseSignOut, syncNow, pushToCloud, getCurrentUser, overwriteLocalWithCloud } from './firebase-sync.js';
 import { getXPData, getLevel, getLevelProgress, getTitle, LEVELS, addXP } from './xp.js';
 import { renderCalendarPage } from './calendar.js';
 import { playSynthSound } from './audio.js';
@@ -3029,12 +3029,51 @@ function buildAppShell() {
 
   syncSection.appendChild(syncActionsRow);
 
+  // Group Restore from Cloud as a separate row below
+  const restoreActionsRow = el('div', 'sidebar-sync__restore-row');
+  restoreActionsRow.style.display = 'none';
+  restoreActionsRow.style.marginTop = 'var(--space-1)';
+
+  const restoreBtn = el('button', 'sidebar-sync__restore-btn', '📥 Restore from Cloud');
+  restoreBtn.style.width = '100%';
+  restoreBtn.style.margin = '0';
+  restoreBtn.style.padding = 'var(--space-2) var(--space-1)';
+  restoreBtn.style.fontSize = '11px';
+  restoreBtn.style.border = '1px solid rgba(0, 212, 255, 0.2)';
+  restoreBtn.style.background = 'rgba(0, 212, 255, 0.04)';
+  restoreBtn.style.color = 'var(--neon-blue)';
+  restoreBtn.style.fontWeight = '600';
+  restoreBtn.style.display = 'block';
+
+  restoreBtn.addEventListener('click', async () => {
+    if (!confirm('Warning: This will overwrite ALL local data on this browser/website with the data currently stored in your Cloud/Mobile App database. Do you want to proceed?')) {
+      return;
+    }
+    restoreBtn.textContent = '⏳ ...';
+    restoreBtn.disabled = true;
+    const ok = await overwriteLocalWithCloud();
+    restoreBtn.textContent = ok ? '✅ Done' : '❌ Fail';
+    restoreBtn.disabled = false;
+    setTimeout(() => { restoreBtn.textContent = '📥 Restore from Cloud'; }, 2000);
+    if (ok) {
+      router.init();
+      const sidebarXP = document.querySelector('.sidebar-xp');
+      if (sidebarXP) {
+        updateSidebarXP(sidebarXP);
+      }
+      showNotificationToast('Cloud data loaded successfully!', 'success');
+    }
+  });
+  restoreActionsRow.appendChild(restoreBtn);
+  syncSection.appendChild(restoreActionsRow);
+
   // Listen for auth changes
   onAuthChange(async (user) => {
     if (user) {
       signInBtn.style.display = 'none';
       userRow.style.display = 'flex';
       syncActionsRow.style.display = 'flex';
+      restoreActionsRow.style.display = 'block';
       userAvatar.src = user.photoURL || '';
       userName.textContent = user.displayName || user.email || 'User';
 
@@ -3054,6 +3093,7 @@ function buildAppShell() {
       signInBtn.style.display = 'block';
       userRow.style.display = 'none';
       syncActionsRow.style.display = 'none';
+      restoreActionsRow.style.display = 'none';
     }
   });
 

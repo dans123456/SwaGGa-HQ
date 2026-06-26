@@ -132,7 +132,13 @@ export async function signInWithGoogle() {
       let fixMsg = 'Click the <strong>Shield Icon</strong> 🛡️ next to the URL bar and toggle <strong>Enhanced Tracking Protection OFF</strong> for SwaGGa HQ, then refresh and try again!';
       let errorTitle = 'Google Sign-In Blocked by Browser Security!';
 
-      if (isMobile) {
+      if (code === 'auth/unauthorized-domain') {
+        errorTitle = 'Domain Not Authorized in Firebase!';
+        fixMsg = 'This domain is not authorized in your Firebase Project Configuration.<br><br>' +
+                 '✨ <strong>To Fix:</strong><br>' +
+                 '1. If running locally, open the app using <strong><a href="http://localhost:5500" style="color: #00d4ff; text-decoration: underline;">http://localhost:5500</a></strong> instead of http://127.0.0.1:5500.<br>' +
+                 '2. Alternatively, add this domain (or 127.0.0.1) to the <strong>Authorized Domains</strong> list under Firebase Console -> Authentication -> Settings.';
+      } else if (isMobile) {
         if (isStandalone) {
           fixMsg = 'Mobile operating systems block cross-domain auth inside installed PWAs when served from third-party domains.<br><br>' +
                    '✨ <strong>Solution:</strong> Open SwaGGa HQ using the official first-party Firebase URL: <br>' +
@@ -216,7 +222,13 @@ getRedirectResult(auth)
         let fixMsg = 'Click the <strong>Shield Icon</strong> next to the URL bar and toggle <strong>Enhanced Tracking Protection OFF</strong> for SwaGGa HQ, then refresh and try again!';
         let errorTitle = 'Google Sign-In Blocked by Firefox!';
 
-        if (isMobile) {
+        if (code === 'auth/unauthorized-domain') {
+          errorTitle = 'Domain Not Authorized in Firebase!';
+          fixMsg = 'This domain is not authorized in your Firebase Project Configuration.<br><br>' +
+                   '✨ <strong>To Fix:</strong><br>' +
+                   '1. If running locally, open the app using <strong><a href="http://localhost:5500" style="color: #00d4ff; text-decoration: underline;">http://localhost:5500</a></strong> instead of http://127.0.0.1:5500.<br>' +
+                   '2. Alternatively, add this domain (or 127.0.0.1) to the <strong>Authorized Domains</strong> list under Firebase Console -> Authentication -> Settings.';
+        } else if (isMobile) {
           errorTitle = 'Google Sign-In Blocked by Device Security!';
           if (isStandalone) {
             fixMsg = 'Mobile operating systems block cross-domain auth inside installed PWAs when served from third-party domains.<br><br>' +
@@ -423,12 +435,25 @@ export async function pullFromCloud() {
               if (h.baseStreak !== 44) {
                 h.baseStreak = 44;
               }
-              // Prevent merged log from retaining May 29, 2026, which would break the 68 streak constraint
+              // Prevent merged log from retaining May 29 & 30, 2026, which would break the streak constraint
               if (h.log) {
                 delete h.log['2026-05-29'];
+                delete h.log['2026-05-30'];
+                // Ensure logs from May 31 to June 24, 2026 are present (25 days backfill)
+                const startDate = new Date(2026, 4, 31);
+                for (let i = 0; i < 25; i++) {
+                  const d = new Date(startDate);
+                  d.setDate(startDate.getDate() + i);
+                  const y = d.getFullYear();
+                  const m = String(d.getMonth() + 1).padStart(2, '0');
+                  const day = String(d.getDate()).padStart(2, '0');
+                  const k = `${y}-${m}-${day}`;
+                  h.log[k] = true;
+                }
               }
               if (h.freezes) {
                 delete h.freezes['2026-05-29'];
+                delete h.freezes['2026-05-30'];
               }
             }
           });
@@ -626,3 +651,38 @@ export async function syncNow() {
   const ok = await pullFromCloud();
   return { success: ok, user: _currentUser };
 }
+
+export async function overwriteLocalWithCloud() {
+  if (!_currentUser) return false;
+  try {
+    const snap = await getDoc(doc(db, 'users', _currentUser.uid));
+    if (!snap.exists()) {
+      return false;
+    }
+    const cloudData = snap.data();
+    
+    // Clear all local data first
+    SYNC_KEYS.forEach(key => {
+      const fullKey = `${NAMESPACE}:${key}`;
+      localStorage.removeItem(fullKey);
+    });
+    
+    // Remove any dynamic ba_progress keys
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const fullKey = localStorage.key(i);
+      if (fullKey && fullKey.startsWith(`${NAMESPACE}:ba_progress_`)) {
+        keysToRemove.push(fullKey);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    
+    // Write cloud data directly to local storage
+    writeLocalData(cloudData);
+    return true;
+  } catch (err) {
+    console.error('Overwrite local with cloud failed:', err);
+    return false;
+  }
+}
+
