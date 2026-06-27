@@ -115,7 +115,7 @@ function showWelcomePopup() {
       overlay.style.opacity = '0';
       setTimeout(() => {
         overlay.remove();
-        router.navigate('#learning');
+        router.navigate('#practice');
       }, 300);
     });
     actions.appendChild(assignBtn);
