@@ -1104,13 +1104,32 @@ export function renderCoachPage(container) {
     loadBtn.style.padding = '4px var(--space-2)';
     loadBtn.style.borderRadius = 'var(--radius-sm)';
     loadBtn.addEventListener('click', () => {
-      if (confirm('Load EdgeFlo Strategy & Psychology rules? This will overwrite the current content.')) {
-        fullKbArea.value = EDGEFLO_KB_CONTENT;
-        localStorage.setItem('swagga:ai_kb', EDGEFLO_KB_CONTENT);
-        charBadge.textContent = `Total Chars: ${EDGEFLO_KB_CONTENT.length}`;
-        playSynthSound('click');
+      let currentKB = getCustomKB();
+      
+      // If the user already has the rules loaded, don't re-add to avoid duplicates
+      if (currentKB.includes('=== EDGEFLO STRATEGY & PSYCHOLOGY RULES ===')) {
+        showNotificationToast('⚠️ Default EdgeFlo rules are already loaded in your Knowledge Base!');
+        return;
+      }
+
+      if (confirm('Load default EdgeFlo Strategy & Psychology rules? This will add them to your custom Knowledge Base.')) {
+        if (currentKB) {
+          currentKB = currentKB + '\n\n' + EDGEFLO_KB_CONTENT;
+        } else {
+          currentKB = EDGEFLO_KB_CONTENT;
+        }
+        
+        fullKbArea.value = currentKB;
+        localStorage.setItem('swagga:ai_kb', currentKB);
+        charBadge.textContent = `Total Chars: ${currentKB.length}`;
+        
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        }).catch(() => {});
+
+        playSynthSound('success');
         nativeHaptic();
-        showNotificationToast('EdgeFlo Rules loaded successfully!');
+        showNotificationToast('EdgeFlo rules added successfully! 📚✨');
       }
     });
     kbDetailsContent.appendChild(loadBtn);
