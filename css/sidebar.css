@@ -847,4 +847,132 @@
      5 0 %   {   t r a n s f o r m :   t r a n s l a t e Y ( - 5 0 % )   s c a l e ( 1 . 2 ) ;   o p a c i t y :   1 ;   }  
      1 0 0 %   {   t r a n s f o r m :   t r a n s l a t e Y ( - 5 0 % )   s c a l e ( 0 . 9 ) ;   o p a c i t y :   0 . 5 ;   }  
  }  
- 
+ /* ============================================================
+   SwaGGa HQ â€” Grouped Sidebar Navigation (sidebar.css updates)
+   ============================================================ */
+
+/* Group labels inside sidebar list */
+.sidebar-group-label {
+  font-family: var(--font-heading);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: var(--space-3) var(--space-4) 4px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease, font-size 0.2s ease;
+}
+
+.sidebar.collapsed .sidebar-group-label {
+  display: none;
+}
+
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-2);
+}
+
+/* Quick Actions Panel */
+.sidebar-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin: var(--space-3) var(--space-4) var(--space-2);
+  padding: var(--space-2);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.sidebar.collapsed .sidebar-quick-actions {
+  display: none;
+}
+
+.quick-action-btn {
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--cyan);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px var(--space-1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  transition: all 0.2s ease;
+}
+
+.quick-action-btn:last-of-type {
+  background: rgba(245, 158, 11, 0.04);
+  border-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.quick-action-btn:hover {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.45);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.quick-action-btn:last-of-type:hover {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+}
+
+/* Quick Action NY Clock Row */
+.sidebar-clock-row {
+  grid-column: span 2;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: monospace;
+  text-align: center;
+  color: var(--cyan);
+  padding-top: 3px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  letter-spacing: 0.05em;
+}
+
+/* Live Session Status Glowing Dot */
+.sidebar-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.status-dot--green {
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+  animation: pulseGreen 1.8s infinite ease-in-out;
+}
+
+.status-dot--red {
+  background: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red);
+  animation: pulseRed 1.8s infinite ease-in-out;
+}
+
+@keyframes pulseGreen {
+  0% { transform: translateY(-50%) scale(0.9); opacity: 0.5; }
+  50% { transform: translateY(-50%) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-50%) scale(0.9); opacity: 0.5; }
+}
+
+@keyframes pulseRed {
+  0% { transform: translateY(-50%) scale(0.9); opacity: 0.5; }
+  50% { transform: translateY(-50%) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-50%) scale(0.9); opacity: 0.5; }
+}
