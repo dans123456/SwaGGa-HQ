@@ -3460,7 +3460,7 @@ function buildAppShell() {
   audioBtn.style.margin = '0';
   audioBtn.style.width = 'auto';
   audioBtn.style.flex = '1';
-  audioBtn.style.padding = 'var(--space-2) var(--space-1)';
+  audioBtn.style.padding = '6px var(--space-1)';
   const audioIcon = el('span', 'theme-switch-emoji', audioMuted ? '🔇 Sound Off' : '🔊 Sound On');
   audioBtn.appendChild(audioIcon);
 
@@ -3480,7 +3480,7 @@ function buildAppShell() {
   backupBtn.style.margin = '0';
   backupBtn.style.width = 'auto';
   backupBtn.style.flex = '1';
-  backupBtn.style.padding = 'var(--space-2) var(--space-1)';
+  backupBtn.style.padding = '6px var(--space-1)';
   backupBtn.style.background = 'rgba(0, 212, 255, 0.05)';
   backupBtn.style.border = '1px solid rgba(0, 212, 255, 0.15)';
   backupBtn.style.color = 'var(--cyan)';
@@ -3496,18 +3496,23 @@ function buildAppShell() {
   });
   utilsRow.appendChild(backupBtn);
 
+  // Spacing adjustment
+  utilsRow.style.margin = '0 var(--space-4) 4px';
   sidebar.appendChild(utilsRow);
 
   // ⚡ Update App & Version panel in sidebar
   const updatePanel = el('div', 'sidebar-update-panel');
+  updatePanel.style.margin = '0 var(--space-4) 8px';
+  updatePanel.style.padding = '4px var(--space-3)';
   
   const versionText = el('span', 'sidebar-version-text', 'v1.1.6');
   updatePanel.appendChild(versionText);
 
-  const updateBtn = el('button', 'sidebar-update-btn', '⚡ Update App');
+  const updateBtn = el('button', 'sidebar-update-btn', '⚡ Update');
   updateBtn.type = 'button';
+  updateBtn.style.padding = '4px 8px';
   updateBtn.addEventListener('click', async () => {
-    updateBtn.textContent = '⏳ Clearing...';
+    updateBtn.textContent = '⏳ ...';
     updateBtn.disabled = true;
     
     // Clear Service Workers
@@ -3534,7 +3539,7 @@ function buildAppShell() {
       }
     }
     
-    updateBtn.textContent = '🔄 Reloading...';
+    updateBtn.textContent = '🔄 ...';
     setTimeout(() => {
       window.location.reload(true);
     }, 800);
@@ -3545,6 +3550,7 @@ function buildAppShell() {
 
   const collapseBtn = el('button', 'sidebar-collapse-btn', '◀');
   collapseBtn.setAttribute('aria-label', 'Toggle sidebar');
+  collapseBtn.style.padding = 'var(--space-2)';
   collapseBtn.addEventListener('click', () => {
     sidebar.classList.toggle('collapsed');
     collapseBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
