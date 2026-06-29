@@ -1198,6 +1198,14 @@ export function renderCoachPage(container) {
 
       if (match) {
         const blogUrl = match[0];
+        
+        // Prevent duplicate URL upload check
+        let currentKB = getCustomKB();
+        if (currentKB && currentKB.includes(blogUrl)) {
+          showNotificationToast('⚠️ This blog link is already in your SwagAI Knowledge Base! 📚');
+          return;
+        }
+
         addBtn.textContent = '⏳ Fetching Blog...';
         addBtn.disabled = true;
 
@@ -1207,11 +1215,17 @@ export function renderCoachPage(container) {
         addBtn.disabled = false;
 
         if (content) {
-          let currentKB = getCustomKB();
+          // Extract title or first line as a identifier
+          const firstLine = content.split('\n')[0] || 'Strategy Rule';
+          if (currentKB && currentKB.includes(content.slice(0, 150))) {
+            showNotificationToast('⚠️ The content of this blog is already present in your KB!');
+            return;
+          }
+
           if (currentKB) {
-            currentKB += `\n\n=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\n` + content;
+            currentKB += `\n\n=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\nSource URL: ${blogUrl}\n` + content;
           } else {
-            currentKB = content;
+            currentKB = `Source URL: ${blogUrl}\n` + content;
           }
 
           localStorage.setItem('swagga:ai_kb', currentKB);
@@ -1224,7 +1238,7 @@ export function renderCoachPage(container) {
             if (getCurrentUser()) pushToCloud();
           }).catch(() => {});
           
-          showNotificationToast('EdgeFlo Blog content imported into SwagAI! 📚✨');
+          showNotificationToast(`Imported: "${firstLine.replace('===', '').trim()}"! 📚✨`);
           playSynthSound('success');
           nativeHaptic();
         } else {
@@ -1233,6 +1247,13 @@ export function renderCoachPage(container) {
       } else {
         // Fallback for regular text rules
         let currentKB = getCustomKB();
+        
+        // Prevent duplicate text check
+        if (currentKB && currentKB.includes(text)) {
+          showNotificationToast('⚠️ This exact rule is already in your Knowledge Base!');
+          return;
+        }
+
         if (currentKB) {
           currentKB += `\n\n=== Rule Added: ${new Date().toLocaleDateString()} ===\n` + text;
         } else {
@@ -1249,9 +1270,9 @@ export function renderCoachPage(container) {
           if (getCurrentUser()) pushToCloud();
         }).catch(() => {});
         
-        playSynthSound('click');
+        showNotificationToast('Custom rule added to your SwagAI Knowledge Base! 💾');
+        playSynthSound('success');
         nativeHaptic();
-        showNotificationToast('Rule added to Knowledge Base! 💾');
       }
     });
 
