@@ -46,14 +46,19 @@ const CONFLUENCES = [
   { id: 'risk_checked', text: '🛡️ Stop Loss set and Position size calculated' }
 ];
 
+const CONFLUENCE_STATE_KEY = 'war_room_confluence_state';
+
+// Load persisted state or default to false
+const savedState = storage.get(CONFLUENCE_STATE_KEY, {});
+
 export let activeConfluenceState = {
-  killzone: false,
-  htf_bias: false,
-  poi_mitigation: false,
-  liquidity_sweep: false,
-  ltf_choch: false,
-  inducement: false,
-  risk_checked: false
+  killzone: savedState.killzone || false,
+  htf_bias: savedState.htf_bias || false,
+  poi_mitigation: savedState.poi_mitigation || false,
+  liquidity_sweep: savedState.liquidity_sweep || false,
+  ltf_choch: savedState.ltf_choch || false,
+  inducement: savedState.inducement || false,
+  risk_checked: savedState.risk_checked || false
 };
 
 // Help map War Room confluences to Trading Journal confluences options
@@ -64,6 +69,13 @@ export const CONFLUENCE_MAP = {
   'liquidity_sweep': 'Liquidity Sweeps / Inducements [Ep 13]',
   'ltf_choch': 'Market Structure (BOS/CHOCH) [Ep 5]'
 };
+
+export function resetConfluenceHUDState() {
+  Object.keys(activeConfluenceState).forEach(key => {
+    activeConfluenceState[key] = false;
+  });
+  storage.set(CONFLUENCE_STATE_KEY, activeConfluenceState);
+}
 
 export function renderTradingPlanPage(container) {
   container.replaceChildren();
@@ -167,6 +179,8 @@ export function renderTradingPlanPage(container) {
 
     item.addEventListener('click', () => {
       activeConfluenceState[c.id] = !activeConfluenceState[c.id];
+      storage.set(CONFLUENCE_STATE_KEY, activeConfluenceState);
+      
       if (activeConfluenceState[c.id]) {
         playSynthSound('click');
         item.classList.add('active');

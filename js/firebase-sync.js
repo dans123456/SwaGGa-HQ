@@ -297,6 +297,8 @@ const SYNC_KEYS = [
   'gemini_api_key',
   'claude_api_key',
   'ai_kb',
+  'active_trading_plan',
+  'war_room_confluence_state',
 ];
 
 const NAMESPACE = 'swagga';

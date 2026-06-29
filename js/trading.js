@@ -21,7 +21,7 @@ import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 import { getAssignments } from './learning.js';
 import { setupVoiceDictation } from './voice.js';
-import { activeConfluenceState, CONFLUENCE_MAP } from './trading-plan.js';
+import { activeConfluenceState, CONFLUENCE_MAP, resetConfluenceHUDState } from './trading-plan.js';
 
 // --- Constants ---
 
@@ -2448,6 +2448,7 @@ export function renderTradeForm(container, onSaved) {
     } catch (e) {
       console.error(e);
     }
+    resetConfluenceHUDState();
     form.reset();
 
     // Box breathing suggest modal if outcome is loss and not locked out
