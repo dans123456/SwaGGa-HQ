@@ -1146,15 +1146,32 @@ export function renderCoachPage(container) {
       let newKB = currentKB;
 
       for (const url of urls) {
+        // Prevent resolving if this URL's content is already in the KB
         const content = await fetchAndExtractBlogContent(url);
         if (content) {
           const escapedUrl = url.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-          const blockPattern = new RegExp(`===\\s*Rule\\s+Added:\\s*\\d{2}/\\d{2}/\\d{4}\\s*===(?:\\s*===)?\\s*${escapedUrl}`, 'gi');
           
-          if (blockPattern.test(newKB)) {
-            newKB = newKB.replace(blockPattern, `=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\n` + content);
+          // Pattern matches both strategy link references or simple raw links
+          const linkBlockPattern = new RegExp(`===\\s*Strategy\\s+Link\\s+Reference:\\s*\\d{2}/\\d{2}/\\d{4}\\s*===\\s*${escapedUrl}`, 'gi');
+          const simpleUrlPattern = new RegExp(escapedUrl, 'gi');
+
+          // Check if we already have the content text loaded in newKB to prevent duplicates
+          const firstLine = content.split('\n')[0] || '';
+          if (newKB.includes(firstLine.trim())) {
+            // Already present, just strip out the raw link/header to clean up
+            if (linkBlockPattern.test(newKB)) {
+              newKB = newKB.replace(linkBlockPattern, '');
+            } else {
+              newKB = newKB.replace(simpleUrlPattern, '');
+            }
+            resolvedCount++;
+            continue;
+          }
+
+          if (linkBlockPattern.test(newKB)) {
+            newKB = newKB.replace(linkBlockPattern, `=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\nSource URL: ${url}\n` + content);
           } else {
-            newKB = newKB.replace(new RegExp(escapedUrl, 'gi'), `=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\n` + content);
+            newKB = newKB.replace(simpleUrlPattern, `=== Strategy Rule (Imported from EdgeFlo Blog): ${new Date().toLocaleDateString()} ===\nSource URL: ${url}\n` + content);
           }
           resolvedCount++;
         }
