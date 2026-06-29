@@ -2743,13 +2743,110 @@ function renderStudyJournal(container, onRefresh) {
         }
       }
 
-      const takeawaysEl = el('p', '', entry.takeaways);
-      takeawaysEl.style.fontSize = 'var(--text-xs)';
-      takeawaysEl.style.color = 'var(--text-secondary)';
-      takeawaysEl.style.lineHeight = '1.5';
-      takeawaysEl.style.whiteSpace = 'pre-wrap';
-      takeawaysEl.style.marginTop = 'var(--space-2)';
-      card.appendChild(takeawaysEl);
+      // Premium parsed notes content area
+      const notesContainer = el('div', 'study-journal-notes-container');
+      notesContainer.style.marginTop = 'var(--space-2)';
+      notesContainer.style.display = 'flex';
+      notesContainer.style.flexDirection = 'column';
+      notesContainer.style.gap = 'var(--space-1)';
+      notesContainer.style.overflow = 'hidden';
+      notesContainer.style.transition = 'max-height 0.4s cubic-bezier(0.1, 0.8, 0.3, 1)';
+      
+      const rawText = entry.takeaways || '';
+      const lines = rawText.split('\n');
+      
+      // Parse scripture patterns like "Joshua 1 8", "Proverbs 20 13", "Matthew 6 24"
+      const scriptureRegex = /^(joshua|matthew|timothy|proverbs|galatians|romans|psalms|genesis)\s+\d+[\s:]+\d+/i;
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        // 1. Scripture block
+        if (scriptureRegex.test(trimmed)) {
+          const scBlock = el('div', 'study-note-scripture');
+          scBlock.style.borderLeft = '2px solid var(--orange)';
+          scBlock.style.background = 'rgba(245, 158, 11, 0.04)';
+          scBlock.style.padding = 'var(--space-2) var(--space-3)';
+          scBlock.style.margin = 'var(--space-2) 0';
+          scBlock.style.borderRadius = '0 var(--radius-sm) var(--radius-sm) 0';
+          scBlock.style.fontStyle = 'italic';
+          scBlock.style.color = '#f59e0b';
+          scBlock.style.fontWeight = '700';
+          scBlock.style.fontSize = 'var(--text-xs)';
+          scBlock.textContent = trimmed;
+          notesContainer.appendChild(scBlock);
+        }
+        // 2. Headings (Fully uppercase lines, min 4 chars)
+        else if (trimmed.length > 4 && trimmed === trimmed.toUpperCase() && !/^[0-9\s\-_:\(\)\.\,\!\?\*\#\&\$\@\+\=\\\/]+$/.test(trimmed)) {
+          const heading = el('h5', 'study-note-header');
+          heading.style.color = '#f59e0b';
+          heading.style.fontSize = '11px';
+          heading.style.fontWeight = '800';
+          heading.style.letterSpacing = '0.05em';
+          heading.style.marginTop = 'var(--space-3)';
+          heading.style.marginBottom = 'var(--space-1)';
+          heading.style.borderBottom = '1px dashed rgba(245, 158, 11, 0.15)';
+          heading.style.paddingBottom = '3px';
+          heading.textContent = trimmed;
+          notesContainer.appendChild(heading);
+        }
+        // 3. Regular lines
+        else {
+          const p = el('p');
+          p.style.fontSize = 'var(--text-xs)';
+          p.style.color = 'var(--text-secondary)';
+          p.style.lineHeight = '1.6';
+          p.style.margin = '0';
+          p.style.whiteSpace = 'pre-wrap';
+          p.textContent = trimmed;
+          notesContainer.appendChild(p);
+        }
+      });
+
+      card.appendChild(notesContainer);
+
+      // Collapsible setup if notes are very long
+      const wordCount = rawText.split(/\s+/).length;
+      if (wordCount > 60) {
+        notesContainer.style.maxHeight = '180px';
+        notesContainer.style.position = 'relative';
+
+        // Add visual fade mask at bottom
+        const mask = el('div', 'study-notes-mask');
+        mask.style.position = 'absolute';
+        mask.style.bottom = '0';
+        mask.style.left = '0';
+        mask.style.width = '100%';
+        mask.style.height = '60px';
+        mask.style.background = 'linear-gradient(to top, rgba(13,11,15,1), rgba(13,11,15,0))';
+        mask.style.pointerEvents = 'none';
+        notesContainer.appendChild(mask);
+
+        // Toggle button
+        const toggleBtn = el('button', 'study-note-expand-btn btn btn-xs btn-ghost');
+        toggleBtn.textContent = '📖 Read Full Study Notes';
+        toggleBtn.style.color = 'var(--cyan)';
+        toggleBtn.style.fontSize = '10px';
+        toggleBtn.style.marginTop = 'var(--space-2)';
+        toggleBtn.style.width = 'fit-content';
+        
+        let expanded = false;
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          expanded = !expanded;
+          if (expanded) {
+            notesContainer.style.maxHeight = 'none';
+            mask.style.display = 'none';
+            toggleBtn.textContent = '📖 Collapse Study Notes';
+          } else {
+            notesContainer.style.maxHeight = '180px';
+            mask.style.display = 'block';
+            toggleBtn.textContent = '📖 Read Full Study Notes';
+          }
+        });
+        card.appendChild(toggleBtn);
+      }
 
       const bottomRow = el('div', '');
       bottomRow.style.display = 'flex';
