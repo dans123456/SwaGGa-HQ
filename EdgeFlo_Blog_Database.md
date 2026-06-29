@@ -3538,3 +3538,28 @@ A real trading edge compounds when you stick to it consistently. The moment you 
 
 ---
 
+## 📝 The If-Then Trading Plan: Pre-Programming Your Execution
+**Source:** https://www.edgeflo.com/blog/if-then-trading-plan
+
+> EdgeFlo is a discipline-first trading superapp built to help serious traders change their behavior so they become profitable faster. It brings execution, risk management, journaling, psychology, and AI coaching into one unified system.
+
+
+What is an If-Then plan? It is a psychological tool designed to remove decision-making in the heat of the moment. By writing down your execution rules in an "If [Market Condition], Then [My Action]" format, you pre-program your response to any market scenario.
+
+Writing Your If-Then Plan
+
+Every trade setup needs an If-Then structure:
+- **IF** price sweeps the high-timeframe liquidity level and shows a 15-minute displacement, **THEN** I will drop to the 1-minute chart to search for an entry.
+- **IF** price breaks my invalidation level before my entry trigger is met, **THEN** I will cancel the setup and walk away.
+- **IF** I experience two consecutive losses during my session, **THEN** I will close my trading terminal and log my notes in the sanctuary.
+
+The power of the If-Then plan is that it bypasses the emotional part of your brain. Instead of deciding what to do when price spikes, you simply execute the pre-determined "Then" action.
+
+**What is an If-Then trading plan?**
+
+**How do I write an If-Then plan?**
+
+**Why do If-Then plans prevent emotional trading?**
+
+---
+
