@@ -1242,7 +1242,25 @@ export function renderCoachPage(container) {
           playSynthSound('success');
           nativeHaptic();
         } else {
-          showNotificationToast('Blog link detected, but could not find matching content in local database.');
+          // Backup fallback: save the raw URL directly so it isn't lost
+          if (currentKB) {
+            currentKB += `\n\n=== Strategy Link Reference: ${new Date().toLocaleDateString()} ===\n${blogUrl}`;
+          } else {
+            currentKB = `${blogUrl}`;
+          }
+          localStorage.setItem('swagga:ai_kb', currentKB);
+          newRuleInput.value = '';
+
+          charBadge.textContent = `Total Chars: ${currentKB.length}`;
+          fullKbArea.value = currentKB;
+
+          import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+            if (getCurrentUser()) pushToCloud();
+          }).catch(() => {});
+
+          showNotificationToast('Blog not in local DB. Saved raw URL to SwagAI KB! 🔗💾');
+          playSynthSound('success');
+          nativeHaptic();
         }
       } else {
         // Fallback for regular text rules
