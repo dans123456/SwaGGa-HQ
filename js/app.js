@@ -49,6 +49,7 @@ const NAV_ITEMS = [
 ];
 
 let _killzonesInterval = null;
+let _globalKillzoneTimerInterval = null;
 
 // --- Welcome Popup ---
 
@@ -1648,7 +1649,7 @@ function renderDashboard(container) {
   const activityItems = buildActivityItems(trades, lessons, habits);
 
   if (activityItems.length === 0) {
-    actList.appendChild(el('p', 'empty-hint', 'No activity yet. Start trading, learning, or marking streaks!'));
+    actList.appendChild(el('p', 'empty-hint', 'No activity in the last 7 days. Start trading, learning, or marking streaks!'));
   } else {
     activityItems.slice(0, 8).forEach((item, idx) => {
       const row = el('div', 'activity-item');
@@ -1958,6 +1959,7 @@ function renderDashboard(container) {
   const oItems = [
     { label: 'Win Rate', value: `${tradeStats.winRate}%` },
     { label: 'Total P&L', value: formatCurrency(tradeStats.totalPnL) },
+    { label: 'Best Trade 💰', value: formatCurrency(bestTrade) },
     { label: 'EdgeScore 🛡️', value: trades.length > 0 ? `${tradeStats.avgEdgeScore}% (${scoreGrade})` : '100% (A+)' },
     { label: 'Lessons', value: `${lessons.length} / 33` },
     { label: 'Concepts', value: String(conceptSet.size) },
@@ -2100,42 +2102,64 @@ function renderDashboard(container) {
 
 function buildActivityItems(trades, lessons, habits) {
   const items = [];
+  const _now = new Date();
 
-  // Trades
+  // Cutoff: only show items from the last 7 days
+  const RECENT_DAYS = 7;
+  const cutoff = new Date(_now);
+  cutoff.setDate(cutoff.getDate() - RECENT_DAYS);
+  cutoff.setHours(0, 0, 0, 0);
+  const cutoffMs = cutoff.getTime();
+
+  // Trades — only recent ones
   trades.forEach(t => {
+    const rawDate = t.createdAt || t.date;
+    const d = new Date(rawDate);
+    if (Number.isNaN(d.getTime()) || d.getTime() < cutoffMs) return;
+
     const isWin = (t.outcome === 'win' || Number(t.pnl) > 0);
     items.push({
       title: `${isWin ? '✅' : '❌'} ${t.asset} — ${t.direction || 'trade'}`,
       desc: `P&L: ${formatCurrency(Number(t.pnl) || 0)} | ${t.outcome || 'closed'}`,
       color: isWin ? 'green' : 'red',
-      date: t.createdAt || t.date,
-      timeAgo: getTimeAgo(t.createdAt || t.date),
+      date: rawDate,
+      timeAgo: getTimeAgo(rawDate),
     });
   });
 
-  // Lessons
+  // Lessons — only recent ones
   lessons.forEach(l => {
+    const rawDate = l.date || l.loggedAt;
+    const d = new Date(rawDate);
+    if (Number.isNaN(d.getTime()) || d.getTime() < cutoffMs) return;
+
     items.push({
       title: `📖 Lesson logged`,
       desc: l.title || `Episode ${l.episodeId}`,
       color: 'cyan',
-      date: l.date || l.loggedAt,
-      timeAgo: getTimeAgo(l.date || l.loggedAt),
+      date: rawDate,
+      timeAgo: getTimeAgo(rawDate),
     });
   });
 
-  // Today's streak completions
-  const _now = new Date();
+  // Streak completions from the last 7 days (not just today)
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
   habits.forEach(h => {
-    if (h.log && h.log[today]) {
-      items.push({
-        title: `${h.emoji || '✅'} ${h.name} streak`,
-        desc: `Day checked — streak: ${calculateStreak(h.id)} days`,
-        color: 'purple',
-        date: today,
-        timeAgo: 'Today',
-      });
+    if (!h.log) return;
+    // Check each of the last RECENT_DAYS days for streak marks
+    for (let i = 0; i < RECENT_DAYS; i++) {
+      const checkDate = new Date(_now);
+      checkDate.setDate(checkDate.getDate() - i);
+      const key = `${checkDate.getFullYear()}-${String(checkDate.getMonth()+1).padStart(2,'0')}-${String(checkDate.getDate()).padStart(2,'0')}`;
+      if (h.log[key]) {
+        items.push({
+          title: `${h.emoji || '✅'} ${h.name} streak`,
+          desc: `Day checked — streak: ${calculateStreak(h.id)} days`,
+          color: 'purple',
+          date: key,
+          timeAgo: key === today ? 'Today' : getTimeAgo(key),
+        });
+      }
     }
   });
 
@@ -2211,7 +2235,8 @@ const ACHIEVEMENTS = [
       if (t.outcome === 'win') {
         currentStreak++;
         if (currentStreak > maxStreak) maxStreak = currentStreak;
-      } else if (t.outcome === 'loss') {
+      } else {
+        // Any non-win outcome (loss, breakeven, etc.) resets the win streak
         currentStreak = 0;
       }
     }
@@ -2444,14 +2469,24 @@ function openAchievementDetail(a) {
 // --- Weekly Recap Report ---
 
 function renderWeeklyRecap() {
-  // Calculate Monday–Sunday range for the current week
   const now = new Date();
   const dayIdx = now.getDay(); // 0=Sun, 1=Mon...
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((dayIdx + 6) % 7));
+  
+  // If it's Sunday (0), show the current week ending today.
+  // Otherwise (Mon-Sat), show the previous completed week.
+  const targetDate = new Date(now);
+  if (dayIdx !== 0) {
+    targetDate.setDate(now.getDate() - dayIdx - 1); // Go back to last Sunday
+  }
+  
+  const monday = new Date(targetDate);
+  const targetDayIdx = targetDate.getDay(); // This will be Sunday (0)
+  monday.setDate(targetDate.getDate() - 6); // Go back to Monday
   monday.setHours(0, 0, 0, 0);
+  
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
 
   const fmtShort = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const weekRange = `${fmtShort(monday)} – ${fmtShort(sunday)}, ${sunday.getFullYear()}`;
@@ -3405,8 +3440,11 @@ function buildAppShell() {
     }
   }
   
+  if (_globalKillzoneTimerInterval) {
+    clearInterval(_globalKillzoneTimerInterval);
+  }
   updateGlobalKillzoneTimer();
-  setInterval(updateGlobalKillzoneTimer, 1000);
+  _globalKillzoneTimerInterval = setInterval(updateGlobalKillzoneTimer, 1000);
 
   // ---- Mobile menu logic ----
   function openMobileMenu() {
