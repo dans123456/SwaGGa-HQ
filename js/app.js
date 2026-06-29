@@ -2961,19 +2961,127 @@ function buildAppShell() {
   brand.appendChild(el('span', 'brand-text', 'SwaGGa HQ'));
   sidebar.appendChild(brand);
 
-  const nav = el('nav', 'sidebar-nav');
-  NAV_ITEMS.forEach(({ hash, label, icon }) => {
-    const item = el('button', 'nav-item');
-    item.setAttribute('data-route', hash);
-    item.setAttribute('aria-label', label);
-    item.appendChild(el('span', 'nav-icon', icon));
-    item.appendChild(el('span', 'nav-label', label));
-    item.addEventListener('click', () => {
-      playSynthSound('click');
-      router.navigate(hash);
-      closeMobileMenu();
+  // ---- Sidebar Quick Actions Board ----
+  const quickActions = el('div', 'sidebar-quick-actions');
+  
+  const qaLogTrade = el('button', 'quick-action-btn', '➕ Log Trade');
+  qaLogTrade.addEventListener('click', () => {
+    import('./audio.js').then(({ playSynthSound }) => playSynthSound('click'));
+    import('./trading.js').then(({ openLogTradeModal }) => {
+      openLogTradeModal(async () => {
+        if (window.location.hash === '#trading') {
+          router.navigate('#trading');
+        }
+      });
     });
-    nav.appendChild(item);
+  });
+  quickActions.appendChild(qaLogTrade);
+
+  const qaBreathe = el('button', 'quick-action-btn', '🧘 Reset Mind');
+  qaBreathe.addEventListener('click', () => {
+    import('./audio.js').then(({ playSynthSound }) => playSynthSound('click'));
+    import('./trading.js').then(({ openPostLossBreathingModal }) => {
+      openPostLossBreathingModal();
+    });
+  });
+  quickActions.appendChild(qaBreathe);
+
+  // Live New York Clock display in quick actions
+  const clockRow = el('div', 'sidebar-clock-row', 'NY TIME: 00:00:00 EST');
+  quickActions.appendChild(clockRow);
+  sidebar.appendChild(quickActions);
+
+  function updateNYClock() {
+    try {
+      const nyStr = new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
+      clockRow.textContent = `NY TIME: ${nyStr} EST`;
+    } catch(e) {}
+  }
+  updateNYClock();
+  setInterval(updateNYClock, 1000);
+
+  // ---- Grouped Navigation Categories ----
+  const nav = el('nav', 'sidebar-nav');
+
+  const groups = [
+    {
+      title: '📊 Journal & Plans',
+      items: ['#dashboard', '#trading', '#trading-plan', '#review']
+    },
+    {
+      title: '🎯 Training & Practice',
+      items: ['#learning', '#practice', '#simulator', '#blitz']
+    },
+    {
+      title: '🧘 Inner Work & Habits',
+      items: ['#streaks', '#calendar', '#mindset', '#notebook']
+    },
+    {
+      title: '🤖 Assistance',
+      items: ['#chart', '#coach']
+    }
+  ];
+
+  groups.forEach(g => {
+    const groupWrap = el('div', 'sidebar-group');
+    const groupLabel = el('div', 'sidebar-group-label', g.title);
+    groupWrap.appendChild(groupLabel);
+
+    NAV_ITEMS.forEach(({ hash, label, icon }) => {
+      if (!g.items.includes(hash)) return;
+
+      const item = el('button', 'nav-item');
+      item.setAttribute('data-route', hash);
+      item.setAttribute('aria-label', label);
+      
+      const iconSpan = el('span', 'nav-icon', icon);
+      item.appendChild(iconSpan);
+      item.appendChild(el('span', 'nav-label', label));
+
+      // Append live status indicator dots next to key screens
+      if (hash === '#trading-plan') {
+        const dot = el('span', 'sidebar-status-dot');
+        groupWrap.appendChild(dot); // append outside button or absolute inside it
+        item.style.position = 'relative';
+        item.appendChild(dot);
+
+        // Update dot status dynamically
+        setInterval(() => {
+          const now = new Date();
+          const nyHours = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours();
+          const active = isSessionActive(nyHours, 2, 5) || isSessionActive(nyHours, 7, 10);
+          if (active) {
+            dot.className = 'sidebar-status-dot status-dot--green';
+          } else {
+            dot.className = 'sidebar-status-dot';
+          }
+        }, 5000);
+      }
+
+      if (hash === '#trading') {
+        const dot = el('span', 'sidebar-status-dot');
+        item.style.position = 'relative';
+        item.appendChild(dot);
+
+        setInterval(() => {
+          const isBlackout = storage.get('news_blackout_active', false);
+          if (isBlackout) {
+            dot.className = 'sidebar-status-dot status-dot--red';
+          } else {
+            dot.className = 'sidebar-status-dot';
+          }
+        }, 5000);
+      }
+
+      item.addEventListener('click', () => {
+        playSynthSound('click');
+        router.navigate(hash);
+        closeMobileMenu();
+      });
+      groupWrap.appendChild(item);
+    });
+
+    nav.appendChild(groupWrap);
   });
   sidebar.appendChild(nav);
 
