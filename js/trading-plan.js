@@ -46,7 +46,7 @@ const CONFLUENCES = [
   { id: 'risk_checked', text: '🛡️ Stop Loss set and Position size calculated' }
 ];
 
-let activeConfluenceState = {
+export let activeConfluenceState = {
   killzone: false,
   htf_bias: false,
   poi_mitigation: false,
@@ -54,6 +54,15 @@ let activeConfluenceState = {
   ltf_choch: false,
   inducement: false,
   risk_checked: false
+};
+
+// Help map War Room confluences to Trading Journal confluences options
+export const CONFLUENCE_MAP = {
+  'killzone': 'ICT Killzones Timing [Ep 12]',
+  'htf_bias': 'Top Down Analysis (HTF Bias) [Ep 11]',
+  'poi_mitigation': 'Supply/Demand Zone [Ep 7]',
+  'liquidity_sweep': 'Liquidity Sweeps / Inducements [Ep 13]',
+  'ltf_choch': 'Market Structure (BOS/CHOCH) [Ep 5]'
 };
 
 export function renderTradingPlanPage(container) {

@@ -21,6 +21,7 @@ import { playSynthSound } from './audio.js';
 import { nativeHaptic, nativeHapticNotification } from './native-bridge.js';
 import { getAssignments } from './learning.js';
 import { setupVoiceDictation } from './voice.js';
+import { activeConfluenceState, CONFLUENCE_MAP } from './trading-plan.js';
 
 // --- Constants ---
 
@@ -1831,11 +1832,25 @@ export function renderTradeForm(container, onSaved) {
   checklistContainer.style.gap = 'var(--space-1)';
   confFieldset.appendChild(checklistContainer);
 
-  renderCategorizedConfluencesChecklist(checklistContainer, [], () => {
+  // Pre-load confluences selected in the War Room HUD
+  const initialSelectedConfs = [];
+  Object.keys(activeConfluenceState).forEach(key => {
+    if (activeConfluenceState[key] && CONFLUENCE_MAP[key]) {
+      initialSelectedConfs.push(CONFLUENCE_MAP[key]);
+    }
+  });
+
+  renderCategorizedConfluencesChecklist(checklistContainer, initialSelectedConfs, () => {
     nativeHaptic('light');
     updateEdgePreviewBadge(confFieldset, edgePreviewBadge);
     autoSelectGradeFromConfluences();
   });
+  
+  // Set initial badge and grade selector preview state
+  updateEdgePreviewBadge(confFieldset, edgePreviewBadge);
+  setTimeout(() => {
+    autoSelectGradeFromConfluences();
+  }, 50);
 
   form.appendChild(confFieldset);
 
