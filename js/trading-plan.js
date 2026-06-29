@@ -198,6 +198,181 @@ export function renderTradingPlanPage(container) {
   rightCol.appendChild(confluenceList);
   grid.appendChild(rightCol);
 
+  // Bottom row: Trade Invalidation & Position Size Calculator
+  const calcCard = el('div', 'blueprint-card invalidation-calculator-card');
+  calcCard.style.gridColumn = 'span 2';
+  calcCard.style.border = '1px solid rgba(168, 85, 247, 0.2)';
+  calcCard.style.boxShadow = '0 0 20px rgba(168, 85, 247, 0.05)';
+  calcCard.style.marginTop = 'var(--space-2)';
+
+  const calcHeader = el('div', 'confluence-header');
+  calcHeader.style.borderBottomColor = 'rgba(168, 85, 247, 0.15)';
+  const calcTitle = el('h3', '', '🛡️ Invalidation & Position Size Calculator');
+  calcTitle.style.color = 'var(--purple)';
+  calcHeader.appendChild(calcTitle);
+  calcCard.appendChild(calcHeader);
+
+  // Grid layout for calculator inputs & outputs
+  const calcGrid = el('div', 'calc-grid');
+  calcGrid.style.display = 'grid';
+  calcGrid.style.gridTemplateColumns = '1fr 1fr';
+  calcGrid.style.gap = 'var(--space-4)';
+
+  // Left side: Inputs
+  const inputsPanel = el('div', 'calc-inputs');
+  inputsPanel.style.display = 'flex';
+  inputsPanel.style.flexDirection = 'column';
+  inputsPanel.style.gap = 'var(--space-3)';
+
+  const createCalcField = (label, placeholder, type = 'number', step = 'any', defaultValue = '') => {
+    const group = el('div', 'form-group');
+    group.style.marginBottom = '0';
+    const lbl = el('label', 'form-label', label);
+    lbl.style.fontSize = '10px';
+    lbl.style.marginBottom = '2px';
+    const input = document.createElement('input');
+    input.type = type;
+    input.step = step;
+    input.placeholder = placeholder;
+    input.className = 'form-input';
+    input.value = defaultValue;
+    group.appendChild(lbl);
+    group.appendChild(input);
+    return { group, input };
+  };
+
+  const entryField = createCalcField('Entry Price', 'e.g. 1.08200', 'number', 'any', '');
+  const slField = createCalcField('Stop Loss Price', 'e.g. 1.08050', 'number', 'any', '');
+  
+  // Default values from local storage balance & plan risk parameters
+  const currentBalance = storage.get('swagga:balance', 100000);
+  const balField = createCalcField('Account Balance ($)', 'e.g. 100000', 'number', '1', currentBalance);
+  const riskPercentField = createCalcField('Planned Risk (%)', 'e.g. 1.0', 'number', '0.1', plan.riskPerTrade || 1.0);
+
+  inputsPanel.appendChild(entryField.group);
+  inputsPanel.appendChild(slField.group);
+  inputsPanel.appendChild(balField.group);
+  inputsPanel.appendChild(riskPercentField.group);
+  calcGrid.appendChild(inputsPanel);
+
+  // Right side: Real-time results
+  const resultsPanel = el('div', 'calc-results');
+  resultsPanel.style.background = 'rgba(255, 255, 255, 0.01)';
+  resultsPanel.style.border = '1px solid rgba(255, 255, 255, 0.04)';
+  resultsPanel.style.borderRadius = 'var(--radius-md)';
+  resultsPanel.style.padding = 'var(--space-4)';
+  resultsPanel.style.display = 'flex';
+  resultsPanel.style.flexDirection = 'column';
+  resultsPanel.style.gap = 'var(--space-3)';
+
+  const createResultRow = (label, valueId, defaultText = '---') => {
+    const row = el('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.paddingBottom = 'var(--space-2)';
+    row.style.borderBottom = '1px dashed rgba(255, 255, 255, 0.04)';
+
+    const lbl = el('span', '', label);
+    lbl.style.fontSize = '11px';
+    lbl.style.color = 'var(--text-secondary)';
+
+    const val = el('span', '', defaultText);
+    val.id = valueId;
+    val.style.fontWeight = '800';
+    val.style.fontSize = '12px';
+    val.style.fontFamily = 'monospace';
+
+    row.appendChild(lbl);
+    row.appendChild(val);
+    return { row, val };
+  };
+
+  const riskCashRow = createResultRow('Total Cash at Risk', 'calc-risk-cash');
+  riskCashRow.val.style.color = 'var(--neon-red)';
+  
+  const pipDistanceRow = createResultRow('Stop Distance (Pips)', 'calc-pip-dist');
+  const sizeRow = createResultRow('Recommended Lot Size', 'calc-lot-size');
+  sizeRow.val.style.color = 'var(--neon-green)';
+
+  const tp3Row = createResultRow('1:3 TP Target Price', 'calc-tp3');
+  tp3Row.val.style.color = 'var(--cyan)';
+
+  const tp5Row = createResultRow('1:5 TP Target Price (A+ Run)', 'calc-tp5');
+  tp5Row.val.style.color = 'var(--cyan)';
+
+  resultsPanel.appendChild(riskCashRow.row);
+  resultsPanel.appendChild(pipDistanceRow.row);
+  resultsPanel.appendChild(sizeRow.row);
+  resultsPanel.appendChild(tp3Row.row);
+  resultsPanel.appendChild(tp5Row.row);
+  calcGrid.appendChild(resultsPanel);
+
+  calcCard.appendChild(calcGrid);
+  root.appendChild(calcCard);
+
+  // Calculation Logic
+  const recalculateInvalidation = () => {
+    const entry = parseFloat(entryField.input.value);
+    const sl = parseFloat(slField.input.value);
+    const balance = parseFloat(balField.input.value) || 100000;
+    const riskPct = parseFloat(riskPercentField.input.value) || 1.0;
+
+    const riskCash = balance * (riskPct / 100);
+    riskCashRow.val.textContent = formatCurrency(riskCash);
+
+    if (isNaN(entry) || isNaN(sl) || entry === sl) {
+      pipDistanceRow.val.textContent = '---';
+      sizeRow.val.textContent = '---';
+      tp3Row.val.textContent = '---';
+      tp5Row.val.textContent = '---';
+      return;
+    }
+
+    const priceDiff = Math.abs(entry - sl);
+    
+    // Auto-detect decimal digits to format outputs correctly (Forex vs Crypto vs Indices)
+    const isJpyOrIndices = entry > 50 && entry < 50000;
+    const isGold = entry > 1000 && entry < 3000;
+    let pips = 0;
+    let lotSize = 0;
+
+    if (isJpyOrIndices) {
+      // JPY pair or Index (1 pip = 0.01)
+      pips = priceDiff / 0.01;
+      lotSize = riskCash / (pips * 10);
+    } else if (isGold) {
+      // Gold ($0.10 moves = 1 pip)
+      pips = priceDiff / 0.1;
+      lotSize = riskCash / (priceDiff * 100);
+    } else if (entry < 10) {
+      // Normal Forex e.g. 1.08200 (1 pip = 0.0001)
+      pips = priceDiff / 0.0001;
+      lotSize = riskCash / (pips * 10);
+    } else {
+      // High value Crypto/BTC e.g. 60000
+      pips = priceDiff;
+      lotSize = riskCash / priceDiff;
+    }
+
+    pipDistanceRow.val.textContent = `${pips.toFixed(1)} pips`;
+    sizeRow.val.textContent = `${lotSize.toFixed(2)} lots`;
+
+    // 1:3 & 1:5 Target calculations based on buy or sell structure
+    const isBuy = entry > sl;
+    const tp3 = isBuy ? entry + (priceDiff * 3) : entry - (priceDiff * 3);
+    const tp5 = isBuy ? entry + (priceDiff * 5) : entry - (priceDiff * 5);
+
+    // Format target prices according to asset decimals
+    const decCount = (entry.toString().split('.')[1] || '').length || 5;
+    tp3Row.val.textContent = tp3.toFixed(decCount);
+    tp5Row.val.textContent = tp5.toFixed(decCount);
+  };
+
+  [entryField.input, slField.input, balField.input, riskPercentField.input].forEach(input => {
+    input.addEventListener('input', recalculateInvalidation);
+  });
+
   root.appendChild(grid);
   container.appendChild(root);
 

@@ -2989,16 +2989,108 @@ function buildAppShell() {
   // Live New York Clock display in quick actions
   const clockRow = el('div', 'sidebar-clock-row', 'NY TIME: 00:00:00 EST');
   quickActions.appendChild(clockRow);
+
+  // Live Killzone Sessions HUD
+  const sessionsHUD = el('div', 'sidebar-sessions-hud');
+  sessionsHUD.style.gridColumn = 'span 2';
+  sessionsHUD.style.display = 'flex';
+  sessionsHUD.style.flexDirection = 'column';
+  sessionsHUD.style.gap = 'var(--space-1)';
+  sessionsHUD.style.marginTop = 'var(--space-2)';
+  sessionsHUD.style.paddingTop = 'var(--space-2)';
+  sessionsHUD.style.borderTop = '1px dashed rgba(255, 255, 255, 0.05)';
+  
+  const createSessionTrack = (name, code, startHour, endHour) => {
+    const track = el('div', 'session-track');
+    track.style.display = 'flex';
+    track.style.flexDirection = 'column';
+    track.style.gap = '2px';
+
+    const infoRow = el('div');
+    infoRow.style.display = 'flex';
+    infoRow.style.justifyContent = 'space-between';
+    infoRow.style.fontSize = '8px';
+    infoRow.style.fontWeight = '700';
+
+    const nameSpan = el('span', '', `${name} (${startHour}:00-${endHour}:00)`);
+    nameSpan.style.color = 'var(--text-muted)';
+    const statusSpan = el('span', '', 'OFF');
+    statusSpan.style.color = 'var(--text-muted)';
+
+    infoRow.appendChild(nameSpan);
+    infoRow.appendChild(statusSpan);
+    track.appendChild(infoRow);
+
+    const progressBg = el('div');
+    progressBg.style.height = '3px';
+    progressBg.style.background = 'rgba(255,255,255,0.04)';
+    progressBg.style.borderRadius = 'var(--radius-full)';
+    progressBg.style.overflow = 'hidden';
+
+    const progressFill = el('div');
+    progressFill.style.height = '100%';
+    progressFill.style.width = '0%';
+    progressFill.style.background = 'var(--text-disabled)';
+    progressFill.style.borderRadius = 'var(--radius-full)';
+    progressFill.style.transition = 'width 1s linear';
+    
+    progressBg.appendChild(progressFill);
+    track.appendChild(progressBg);
+
+    return { track, nameSpan, statusSpan, progressFill, startHour, endHour, code };
+  };
+
+  const tracks = [
+    createSessionTrack('London Killzone', 'LDN', 2, 5),
+    createSessionTrack('New York Killzone', 'NY', 7, 10),
+    createSessionTrack('Asia Session', 'ASIA', 19, 24)
+  ];
+
+  tracks.forEach(t => sessionsHUD.appendChild(t.track));
+  quickActions.appendChild(sessionsHUD);
   sidebar.appendChild(quickActions);
 
-  function updateNYClock() {
+  function updateNYClockAndSessions() {
     try {
-      const nyStr = new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
+      const now = new Date();
+      const nyStr = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
       clockRow.textContent = `NY TIME: ${nyStr} EST`;
+
+      const nyHours = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours();
+      const nyMinutes = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getMinutes();
+      const decimalTime = nyHours + (nyMinutes / 60);
+
+      tracks.forEach(t => {
+        let active = false;
+        let progress = 0;
+
+        if (t.startHour <= decimalTime && decimalTime < t.endHour) {
+          active = true;
+          const totalDuration = t.endHour - t.startHour;
+          const elapsed = decimalTime - t.startHour;
+          progress = (elapsed / totalDuration) * 100;
+        }
+
+        if (active) {
+          t.nameSpan.style.color = '#fff';
+          t.statusSpan.textContent = 'ACTIVE';
+          t.statusSpan.style.color = t.code === 'ASIA' ? 'var(--cyan)' : 'var(--neon-green)';
+          t.progressFill.style.width = `${progress}%`;
+          t.progressFill.style.background = t.code === 'ASIA' ? 'var(--cyan)' : 'var(--neon-green)';
+          t.progressFill.style.boxShadow = t.code === 'ASIA' ? '0 0 8px var(--cyan)' : '0 0 8px var(--neon-green)';
+        } else {
+          t.nameSpan.style.color = 'var(--text-muted)';
+          t.statusSpan.textContent = 'OFFLINE';
+          t.statusSpan.style.color = 'var(--text-disabled)';
+          t.progressFill.style.width = '0%';
+          t.progressFill.style.background = 'rgba(255,255,255,0.08)';
+          t.progressFill.style.boxShadow = 'none';
+        }
+      });
     } catch(e) {}
   }
-  updateNYClock();
-  setInterval(updateNYClock, 1000);
+  updateNYClockAndSessions();
+  setInterval(updateNYClockAndSessions, 1000);
 
   // ---- Grouped Navigation Categories ----
   const nav = el('nav', 'sidebar-nav');
