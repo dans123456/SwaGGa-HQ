@@ -3005,18 +3005,22 @@ function buildAppShell() {
 
   const groups = [
     {
+      id: 'journal',
       title: '📊 Journal & Plans',
       items: ['#dashboard', '#trading', '#trading-plan', '#review']
     },
     {
+      id: 'training',
       title: '🎯 Training & Practice',
       items: ['#learning', '#practice', '#simulator', '#blitz']
     },
     {
+      id: 'inner',
       title: '🧘 Inner Work & Habits',
       items: ['#streaks', '#calendar', '#mindset', '#notebook']
     },
     {
+      id: 'assistance',
       title: '🤖 Assistance',
       items: ['#chart', '#coach']
     }
@@ -3024,8 +3028,26 @@ function buildAppShell() {
 
   groups.forEach(g => {
     const groupWrap = el('div', 'sidebar-group');
+    
+    // Toggle label
     const groupLabel = el('div', 'sidebar-group-label', g.title);
+    groupLabel.style.cursor = 'pointer';
+    groupLabel.style.display = 'flex';
+    groupLabel.style.justifyContent = 'space-between';
+    groupLabel.style.alignItems = 'center';
+    
+    const chevron = el('span', '', '▼');
+    chevron.style.fontSize = '8px';
+    chevron.style.transition = 'transform 0.2s ease';
+    groupLabel.appendChild(chevron);
     groupWrap.appendChild(groupLabel);
+
+    const itemsContainer = el('div', 'sidebar-group-items');
+    itemsContainer.style.display = 'flex';
+    itemsContainer.style.flexDirection = 'column';
+    itemsContainer.style.gap = '2px';
+    itemsContainer.style.overflow = 'hidden';
+    itemsContainer.style.transition = 'max-height 0.25s ease-out';
 
     NAV_ITEMS.forEach(({ hash, label, icon }) => {
       if (!g.items.includes(hash)) return;
@@ -3041,7 +3063,6 @@ function buildAppShell() {
       // Append live status indicator dots next to key screens
       if (hash === '#trading-plan') {
         const dot = el('span', 'sidebar-status-dot');
-        groupWrap.appendChild(dot); // append outside button or absolute inside it
         item.style.position = 'relative';
         item.appendChild(dot);
 
@@ -3078,7 +3099,32 @@ function buildAppShell() {
         router.navigate(hash);
         closeMobileMenu();
       });
-      groupWrap.appendChild(item);
+      itemsContainer.appendChild(item);
+    });
+
+    groupWrap.appendChild(itemsContainer);
+
+    // Collapsible Logic
+    const storageKey = `sidebar_group_${g.id}_collapsed`;
+    let isCollapsed = storage.get(storageKey, false);
+
+    const applyCollapsedState = (collapsed) => {
+      if (collapsed) {
+        itemsContainer.style.maxHeight = '0px';
+        chevron.style.transform = 'rotate(-90deg)';
+      } else {
+        itemsContainer.style.maxHeight = '250px'; // ample room for 4 items
+        chevron.style.transform = 'rotate(0deg)';
+      }
+    };
+
+    applyCollapsedState(isCollapsed);
+
+    groupLabel.addEventListener('click', () => {
+      import('./audio.js').then(({ playSynthSound }) => playSynthSound('click'));
+      isCollapsed = !isCollapsed;
+      storage.set(storageKey, isCollapsed);
+      applyCollapsedState(isCollapsed);
     });
 
     nav.appendChild(groupWrap);
