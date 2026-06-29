@@ -3167,9 +3167,38 @@ function generateMentorCritique(mentorKey, trade) {
   const hasLiquidity = confluences.some(c => c.includes('Liquidity') || c.includes('Sweep') || c.includes('Inducements'));
   
   if (mentorKey === 'bradGoh') {
+    // Fetch active trading plan to perform compliance checks
+    let planViolationText = '';
+    try {
+      const plan = JSON.parse(localStorage.getItem('swagga:active_trading_plan'));
+      if (plan) {
+        const tradeRisk = parseFloat(trade.riskPct) || 0;
+        const maxAllowedRisk = parseFloat(plan.riskPerTrade) || 1.0;
+        
+        if (tradeRisk > maxAllowedRisk) {
+          planViolationText += `🚨 **Plan Violation:** You risked **${tradeRisk}%** on this trade, exceeding your maximum allowed plan limit of **${maxAllowedRisk}%**! Over-leveraging violates our core risk rules! `;
+        }
+        
+        const isFocusAsset = plan.focusAssets.some(a => trade.asset && trade.asset.toUpperCase().includes(a.toUpperCase()));
+        if (plan.focusAssets.length > 0 && !isFocusAsset) {
+          planViolationText += `🚨 **Plan Violation:** **${asset}** is not listed in your focus assets (${plan.focusAssets.join(', ')}). Protect your focus by sticking to your main pairs! `;
+        }
+
+        if (!trade.stop || parseFloat(trade.stop) === 0) {
+          planViolationText += `🚨 **Plan Violation:** This trade was executed without a Stop Loss! Entering without protection is gambling, not professional execution. `;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse trading plan for critique:', e);
+    }
+
     if (isWin) {
       let text = `Let's go, SwaGGa! 🚀 That was an absolutely beautiful **${dir}** trade execution on **${asset}**! `;
       
+      if (planViolationText) {
+        text += planViolationText;
+      }
+
       if (hasKillzone) {
         text += `I love that you respected the **ICT Killzone Timing**. Trading high volume windows is how we get rapid expansions and avoid consolidations! ⏱️ `;
       } else {
@@ -3189,6 +3218,10 @@ function generateMentorCritique(mentorKey, trade) {
     } else {
       let text = `Hey SwaGGa, don't sweat the loss at all! A loss is just data and tuition for the market. Let's break down this **${dir}** on **${asset}** to learn from it: `;
       
+      if (planViolationText) {
+        text += planViolationText;
+      }
+
       if (trade.mistake && trade.mistake !== 'none') {
         const mistakeStr = trade.mistake.replace(/_/g, ' ');
         text += `You logged a psychology leak: **"${mistakeStr}"**. Emotional triggers are the number one account killer. Re-read **Ep 4 on Trading Psychology** and get your head back in the game! 🧠 `;

@@ -1,0 +1,213 @@
+/* SwaGGa HQ — War Room & Confluence Engine Stylesheet */
+
+.war-room-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-4);
+  animation: fadeIn 0.4s ease;
+}
+
+.war-room-hero {
+  background: linear-gradient(135deg, rgba(13, 11, 15, 0.9) 0%, rgba(20, 10, 30, 0.7) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  box-shadow: 0 0 25px rgba(0, 212, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  position: relative;
+  overflow: hidden;
+}
+
+.war-room-hero::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.war-room-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 var(--space-1) 0;
+}
+
+.war-room-subtitle {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+/* Two-column layout */
+.war-room-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+@media (max-width: 1024px) {
+  .war-room-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Confluence HUD styling */
+.confluence-card {
+  border: 1px solid rgba(57, 255, 20, 0.15);
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.05);
+  background: rgba(13, 11, 15, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+.confluence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: var(--space-3);
+}
+
+.confluence-header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--neon-green);
+}
+
+.confluence-meter-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.confluence-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-green), var(--cyan));
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+  transition: width 0.4s cubic-bezier(0.1, 0.8, 0.3, 1);
+}
+
+.confluence-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.confluence-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confluence-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(57, 255, 20, 0.25);
+  transform: translateX(4px);
+}
+
+.confluence-item.active {
+  background: rgba(57, 255, 20, 0.06);
+  border-color: var(--neon-green);
+}
+
+.confluence-item.active .confluence-checkbox {
+  background: var(--neon-green);
+  border-color: var(--neon-green);
+}
+
+.confluence-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #000;
+  transition: all 0.2s ease;
+}
+
+.confluence-text {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Plan Blueprint Display Card */
+.blueprint-card {
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  background: rgba(13, 11, 15, 0.8);
+  backdrop-filter: blur(10px);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.blueprint-section {
+  margin-bottom: var(--space-4);
+}
+
+.blueprint-section-title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--cyan);
+  margin-bottom: var(--space-2);
+}
+
+.blueprint-section-content {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Wizard / Editing form overlay */
+.builder-wizard-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: slideInUp 0.3s ease;
+}
+
+.wizard-step {
+  display: none;
+}
+
+.wizard-step.active {
+  display: block;
+}
+
+.wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: var(--space-4);
+}

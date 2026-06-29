@@ -23,6 +23,7 @@ import { renderReviewPage } from './review.js';
 import { renderNotebookPage } from './notebook.js';
 import { renderCoachPage } from './coach.js';
 import { createEquityCurve } from './charts.js';
+import { renderTradingPlanPage } from './trading-plan.js';
 
 // Simple DOM element builder helper
 function el(tag, cls = '', text = '') {
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { hash: '#dashboard', label: 'Dashboard', icon: '🏠' },
   { hash: '#streaks', label: 'Streaks', icon: '🔥' },
   { hash: '#trading', label: 'Trading', icon: '💹' },
+  { hash: '#trading-plan', label: 'War Room', icon: '⚔️' },
   { hash: '#calendar', label: 'Calendar', icon: '📅' },
   { hash: '#chart', label: 'Live Chart', icon: '📊' },
   { hash: '#practice', label: 'Practice Hub', icon: '🎯' },
@@ -3311,8 +3313,8 @@ function buildAppShell() {
     { hash: '#dashboard', label: 'Dashboard', icon: '🏠' },
     { hash: '#streaks', label: 'Streaks', icon: '🔥' },
     { hash: '#trading', label: 'Trading', icon: '💹' },
+    { hash: '#trading-plan', label: 'War Room', icon: '⚔️' },
     { hash: '#calendar', label: 'Calendar', icon: '📅' },
-    { hash: '#learning', label: 'Learning', icon: '📚' },
   ];
   
   bottomNavItems.forEach(({ hash, label, icon }) => {
@@ -3369,7 +3371,7 @@ function buildAppShell() {
   focusBanner.style.display = 'none';
   main.appendChild(focusBanner);
 
-  const pages = ['dashboard', 'streaks', 'trading', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'news-blackout', 'mindset', 'blitz', 'review', 'notebook', 'coach', 'practice'];
+  const pages = ['dashboard', 'streaks', 'trading', 'trading-plan', 'calendar', 'chart', 'learning', 'simulator', 'premarket-lockout', 'cooldown-lockout', 'news-blackout', 'mindset', 'blitz', 'review', 'notebook', 'coach', 'practice'];
   pages.forEach((page) => {
     const pageEl = el('div', 'page');
     pageEl.id = `page-${page}`;
@@ -3755,6 +3757,7 @@ async function launchApp() {
 
   router.registerRoute('#dashboard', renderDashboard);
   router.registerRoute('#trading', renderTradingPage);
+  router.registerRoute('#trading-plan', renderTradingPlanPage);
   router.registerRoute('#chart', renderChartPage);
   router.registerRoute('#practice', renderPracticePage);
   router.registerRoute('#learning', renderLearningPage);
