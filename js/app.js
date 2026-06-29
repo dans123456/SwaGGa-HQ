@@ -3380,12 +3380,16 @@ function buildAppShell() {
     }
   });
 
-  // ---- Sidebar XP & Level widget ----
+  // Spacing optimizations for Sync Section
+  syncSection.style.padding = '4px var(--space-4)';
+  syncSection.style.marginBottom = 'var(--space-5)'; // Spacing under "Restore from Cloud" button
+  sidebar.appendChild(syncSection);
+
+  // ---- Sidebar XP & Level widget (Legend Card) moved below Sync ----
   const sidebarXP = el('div', 'sidebar-xp');
+  sidebarXP.style.margin = '4px var(--space-4) var(--space-4)';
   sidebar.appendChild(sidebarXP);
   updateSidebarXP(sidebarXP);
-
-  sidebar.appendChild(syncSection);
 
   // --- Cyber-Neon Theme Presets Selector in sidebar ---
   const themeContainer = el('div', 'sidebar-theme-container');
@@ -3395,8 +3399,8 @@ function buildAppShell() {
   themeContainer.style.background = 'rgba(255, 255, 255, 0.02)';
   themeContainer.style.border = '1px dashed rgba(255, 255, 255, 0.06)';
   themeContainer.style.borderRadius = 'var(--radius-md)';
-  themeContainer.style.padding = 'var(--space-2) var(--space-3)';
-  themeContainer.style.margin = 'var(--space-3) var(--space-4) var(--space-2)';
+  themeContainer.style.padding = '4px var(--space-3)';
+  themeContainer.style.margin = '4px var(--space-4) var(--space-3)';
 
   const themeLabel = el('span', 'theme-switch-label');
   themeLabel.textContent = '🎨 Color:';
