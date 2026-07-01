@@ -452,10 +452,28 @@ export async function pullFromCloud() {
                   const k = `${y}-${m}-${day}`;
                   h.log[k] = true;
                 }
+
+                // Break at June 1, 2026
+                delete h.log['2026-06-01'];
+                // Backfill 28 days from June 2, 2026 to June 29, 2026
+                const syncStartDate = new Date(2026, 5, 2);
+                for (let i = 0; i < 28; i++) {
+                  const d = new Date(syncStartDate);
+                  d.setDate(syncStartDate.getDate() + i);
+                  const y = d.getFullYear();
+                  const m = String(d.getMonth() + 1).padStart(2, '0');
+                  const day = String(d.getDate()).padStart(2, '0');
+                  const k = `${y}-${m}-${day}`;
+                  h.log[k] = true;
+                }
+                // Set June 30, 2026 to frozen
+                delete h.log['2026-06-30'];
               }
               if (h.freezes) {
                 delete h.freezes['2026-05-29'];
                 delete h.freezes['2026-05-30'];
+                delete h.freezes['2026-06-01'];
+                h.freezes['2026-06-30'] = true;
               }
             }
           });

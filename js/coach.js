@@ -318,6 +318,7 @@ Your goals:
    - For winding down after a tough session: Suggest the "Post-Session Adrenaline Flush" (5 Min) or "Trading Day Closure Routine" (10 Min).
 7. Format your responses using clean Markdown, bullets, and bold text. Keep paragraphs short (1-3 sentences).
 8. When referencing a strategy or psychology rule from the Knowledge Base, write it as [Rule Title] (using square brackets) and DO NOT put quotation marks around it. For example, write Refer to [Your Trading Reflects Your Weaknesses: Use That] instead of "Your Trading Reflects Your Weaknesses" or "[Your Trading Reflects...]".
+9. Maintain high conversational intelligence. Do not simply regurgitate or repeat the Custom Knowledge Base rules or system statistics. Instead, synthesize this context with your broader reasoning capabilities to hold a dynamic, supportive, and natural dialogue, acting like a true mentor rather than a lookup bot.
 `;
 
 // TODO(security): Personal API key is stored locally on-device for direct client-to-API calls.
@@ -667,6 +668,32 @@ async function queryAI(userText, mode = 'chat') {
       let lastError = null;
       let finalResponse = null;
 
+      // Construct conversational history for Gemini multi-turn chat if in chat mode
+      let contents = [];
+      if (mode === 'chat') {
+        _chatHistory.forEach(msg => {
+          const role = msg.sender === 'user' ? 'user' : 'model';
+          if (contents.length === 0) {
+            if (role === 'user') {
+              contents.push({ role, parts: [{ text: msg.text }] });
+            }
+          } else {
+            const lastTurn = contents[contents.length - 1];
+            if (lastTurn.role === role) {
+              // Merge consecutive messages from same sender to alternate roles
+              lastTurn.parts[0].text += '\n' + msg.text;
+            } else {
+              contents.push({ role, parts: [{ text: msg.text }] });
+            }
+          }
+        });
+        if (contents.length === 0) {
+          contents = [{ role: 'user', parts: [{ text: userText }] }];
+        }
+      } else {
+        contents = [{ role: 'user', parts: [{ text: userText }] }];
+      }
+
       for (const modelName of modelsToTry) {
         try {
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -674,7 +701,7 @@ async function queryAI(userText, mode = 'chat') {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: userText }] }],
+              contents: contents,
               systemInstruction: { parts: [{ text: fullSystemPrompt }] }
             })
           });
@@ -718,6 +745,31 @@ async function queryAI(userText, mode = 'chat') {
       return data.candidates[0].content.parts[0].text;
     } else {
       // Claude
+      // Construct messages list containing conversational history for Claude's messages API
+      let messages = [];
+      if (mode === 'chat') {
+        _chatHistory.forEach(msg => {
+          const role = msg.sender === 'user' ? 'user' : 'assistant';
+          if (messages.length === 0) {
+            if (role === 'user') {
+              messages.push({ role, content: msg.text });
+            }
+          } else {
+            const lastTurn = messages[messages.length - 1];
+            if (lastTurn.role === role) {
+              lastTurn.content += '\n' + msg.text;
+            } else {
+              messages.push({ role, content: msg.text });
+            }
+          }
+        });
+        if (messages.length === 0) {
+          messages = [{ role: 'user', content: userText }];
+        }
+      } else {
+        messages = [{ role: 'user', content: userText }];
+      }
+
       const response = await fetch(CLAUDE_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -730,7 +782,7 @@ async function queryAI(userText, mode = 'chat') {
           model: 'claude-3-5-sonnet-20241022',
           max_tokens: 1024,
           system: fullSystemPrompt,
-          messages: [{ role: 'user', content: userText }]
+          messages: messages
         })
       });
       if (!response.ok) {

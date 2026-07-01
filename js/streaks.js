@@ -131,6 +131,44 @@ export function getHabits() {
       }, 200);
     }
 
+    // Auto-recovery backfill to set Duolingo streak to 72 (frozen on June 30) and 73 (if completed on July 1)
+    if (!storage.get('duolingo_backfill_73_applied', false)) {
+      habits.forEach(h => {
+        if (h.id === 'duolingo') {
+          h.log = h.log || {};
+          h.freezes = h.freezes || {};
+          
+          // Break at June 1, 2026
+          delete h.log['2026-06-01'];
+          delete h.freezes['2026-06-01'];
+          
+          // Backfill 28 days from June 2, 2026 to June 29, 2026
+          const startDate = new Date(2026, 5, 2); // June 2, 2026 (Month is 0-indexed, so 5 is June)
+          for (let i = 0; i < 28; i++) {
+            const d = new Date(startDate);
+            d.setDate(startDate.getDate() + i);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const key = `${y}-${m}-${day}`;
+            h.log[key] = true;
+          }
+          
+          // Set June 30, 2026 to frozen (keeps chain alive, shows as gray/freeze day)
+          delete h.log['2026-06-30'];
+          h.freezes['2026-06-30'] = true;
+        }
+      });
+      storage.set('duolingo_backfill_73_applied', true);
+      migrated = true;
+
+      setTimeout(() => {
+        import('./firebase-sync.js').then(({ pushToCloud, getCurrentUser }) => {
+          if (getCurrentUser()) pushToCloud();
+        });
+      }, 300);
+    }
+
     if (migrated) _saveHabits(habits);
   }
   return habits;

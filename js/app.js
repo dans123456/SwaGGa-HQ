@@ -2986,9 +2986,7 @@ function buildAppShell() {
   });
   quickActions.appendChild(qaBreathe);
 
-  // Live New York Clock display in quick actions
-  const clockRow = el('div', 'sidebar-clock-row', 'NY TIME: 00:00:00 EST');
-  quickActions.appendChild(clockRow);
+  // Live New York Clock display in quick actions (Removed by user request)
 
   // Live Killzone Sessions HUD
   const sessionsHUD = el('div', 'sidebar-sessions-hud');
@@ -3053,9 +3051,6 @@ function buildAppShell() {
   function updateNYClockAndSessions() {
     try {
       const now = new Date();
-      const nyStr = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
-      clockRow.textContent = `NY TIME: ${nyStr} EST`;
-
       const nyHours = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours();
       const nyMinutes = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getMinutes();
       const decimalTime = nyHours + (nyMinutes / 60);
