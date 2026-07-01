@@ -3302,6 +3302,19 @@ function generateMentorCritique(mentorKey, trade) {
   return '';
 }
 
+// Open a modal to log a new trade
+export function openLogTradeModal(onSaved) {
+  const { overlay, modal, body, close } = createModal('➕ Log New Trade');
+  modal.style.maxWidth = '600px';
+  body.style.maxHeight = '80vh';
+  body.style.overflowY = 'auto';
+
+  renderTradeForm(body, () => {
+    close();
+    if (onSaved) onSaved();
+  });
+}
+
 // Render form to edit an existing trade
 export function openEditTradeModal(trade, onRefresh) {
   const overlay = el('div', 'trade-modal-overlay');
@@ -4660,7 +4673,7 @@ function openDailyReviewModal(onRefresh) {
   requestAnimationFrame(() => overlay.classList.add('trade-modal-overlay--visible'));
 }
 
-function openPostLossBreathingModal() {
+export function openPostLossBreathingModal() {
   const overlay = el('div', 'trade-modal-overlay');
   const modal = el('div', 'trade-modal post-loss-modal');
   modal.style.maxWidth = '450px';

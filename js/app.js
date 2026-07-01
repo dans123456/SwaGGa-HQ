@@ -3045,6 +3045,15 @@ function buildAppShell() {
   ];
 
   tracks.forEach(t => sessionsHUD.appendChild(t.track));
+
+  const noSessionsPlaceholder = el('div', '', 'All Sessions Offline 💤');
+  noSessionsPlaceholder.style.fontSize = '8px';
+  noSessionsPlaceholder.style.fontWeight = '700';
+  noSessionsPlaceholder.style.color = 'var(--text-disabled)';
+  noSessionsPlaceholder.style.textAlign = 'center';
+  noSessionsPlaceholder.style.padding = '4px 0';
+  sessionsHUD.appendChild(noSessionsPlaceholder);
+
   quickActions.appendChild(sessionsHUD);
   sidebar.appendChild(quickActions);
 
@@ -3055,18 +3064,21 @@ function buildAppShell() {
       const nyMinutes = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getMinutes();
       const decimalTime = nyHours + (nyMinutes / 60);
 
+      let anyActive = false;
       tracks.forEach(t => {
         let active = false;
         let progress = 0;
 
         if (t.startHour <= decimalTime && decimalTime < t.endHour) {
           active = true;
+          anyActive = true;
           const totalDuration = t.endHour - t.startHour;
           const elapsed = decimalTime - t.startHour;
           progress = (elapsed / totalDuration) * 100;
         }
 
         if (active) {
+          t.track.style.display = 'flex';
           t.nameSpan.style.color = '#fff';
           t.statusSpan.textContent = 'ACTIVE';
           t.statusSpan.style.color = t.code === 'ASIA' ? 'var(--cyan)' : 'var(--neon-green)';
@@ -3074,14 +3086,11 @@ function buildAppShell() {
           t.progressFill.style.background = t.code === 'ASIA' ? 'var(--cyan)' : 'var(--neon-green)';
           t.progressFill.style.boxShadow = t.code === 'ASIA' ? '0 0 8px var(--cyan)' : '0 0 8px var(--neon-green)';
         } else {
-          t.nameSpan.style.color = 'var(--text-muted)';
-          t.statusSpan.textContent = 'OFFLINE';
-          t.statusSpan.style.color = 'var(--text-disabled)';
-          t.progressFill.style.width = '0%';
-          t.progressFill.style.background = 'rgba(255,255,255,0.08)';
-          t.progressFill.style.boxShadow = 'none';
+          t.track.style.display = 'none';
         }
       });
+
+      noSessionsPlaceholder.style.display = anyActive ? 'none' : 'block';
     } catch(e) {}
   }
   updateNYClockAndSessions();
