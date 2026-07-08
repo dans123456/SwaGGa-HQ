@@ -475,6 +475,7 @@ export async function scheduleReviewReminders() {
             schedule: {
               at: fireAt,
               repeats: false, // scheduled once, will reschedule when app opens next quarter
+              allowWhileIdle: true
             },
             sound: 'default',
             smallIcon: 'ic_stat_icon_config_sample',
