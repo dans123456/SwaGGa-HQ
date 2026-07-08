@@ -270,6 +270,13 @@ export async function scheduleDailyReminder(id, title, body, hour, minute) {
       await LocalNotifications.cancel({ notifications: existing });
     }
 
+    // Calculate next trigger date
+    const triggerDate = new Date();
+    triggerDate.setHours(hour, minute, 0, 0);
+    if (triggerDate.getTime() <= Date.now()) {
+      triggerDate.setDate(triggerDate.getDate() + 1);
+    }
+
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -277,12 +284,10 @@ export async function scheduleDailyReminder(id, title, body, hour, minute) {
           title,
           body,
           schedule: {
+            at: triggerDate,
             repeats: true,
             every: 'day',
-            on: {
-              hour,
-              minute
-            }
+            allowWhileIdle: true
           },
           sound: 'default',
           smallIcon: 'ic_stat_icon_config_sample',
@@ -290,7 +295,7 @@ export async function scheduleDailyReminder(id, title, body, hour, minute) {
         },
       ],
     });
-    console.log(`[NativeBridge] Scheduled daily reminder ID ${id} (Every day at ${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')})`);
+    console.log(`[NativeBridge] Scheduled daily reminder ID ${id} (Every day starting at ${triggerDate.toString()})`);
   } catch (err) {
     console.warn('[NativeBridge] scheduleDailyReminder error:', err);
   }
@@ -364,6 +369,15 @@ export async function scheduleReviewReminders() {
         await LocalNotifications.cancel({ notifications: existing });
       }
 
+      // Calculate next Sunday (weekday 1 in Capacitor, getDay() 0 in JS) at hr:min
+      const triggerDate = new Date();
+      triggerDate.setHours(hr, min, 0, 0);
+      let daysUntil = (0 - triggerDate.getDay() + 7) % 7;
+      if (daysUntil === 0 && triggerDate.getTime() <= Date.now()) {
+        daysUntil = 7;
+      }
+      triggerDate.setDate(triggerDate.getDate() + daysUntil);
+
       await LocalNotifications.schedule({
         notifications: [
           {
@@ -371,13 +385,10 @@ export async function scheduleReviewReminders() {
             title: '🪖 Weekly Performance Review',
             body: 'Stop escaping! Weekly reflection is due now. Open the app, review your leaks, and face the data. No excuses!',
             schedule: {
+              at: triggerDate,
               repeats: true,
               every: 'week',
-              on: {
-                weekday: 1, // Sunday (Capacitor Weekday.Sunday is 1)
-                hour: hr,
-                minute: min,
-              }
+              allowWhileIdle: true
             },
             sound: 'default',
             smallIcon: 'ic_stat_icon_config_sample',
@@ -385,7 +396,7 @@ export async function scheduleReviewReminders() {
           }
         ]
       });
-      console.log(`[NativeBridge] Scheduled Weekly review reminder (Every Sunday at ${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')})`);
+      console.log(`[NativeBridge] Scheduled Weekly review reminder (Every Sunday starting at ${triggerDate.toString()})`);
     } else {
       await cancelNotification(2001);
     }
@@ -406,6 +417,14 @@ export async function scheduleReviewReminders() {
         await LocalNotifications.cancel({ notifications: existing });
       }
 
+      // Calculate next 1st of the month at hr:min
+      const triggerDate = new Date();
+      triggerDate.setDate(1);
+      triggerDate.setHours(hr, min, 0, 0);
+      if (triggerDate.getTime() <= Date.now()) {
+        triggerDate.setMonth(triggerDate.getMonth() + 1);
+      }
+
       await LocalNotifications.schedule({
         notifications: [
           {
@@ -413,13 +432,10 @@ export async function scheduleReviewReminders() {
             title: '📆 Monthly Trading Audit',
             body: 'A month of trading has passed. Are you actually getting better, or just repeating mistakes? Audit your setups now!',
             schedule: {
+              at: triggerDate,
               repeats: true,
               every: 'month',
-              on: {
-                day: 1, // 1st of the month
-                hour: hr,
-                minute: min,
-              }
+              allowWhileIdle: true
             },
             sound: 'default',
             smallIcon: 'ic_stat_icon_config_sample',
@@ -427,7 +443,7 @@ export async function scheduleReviewReminders() {
           }
         ]
       });
-      console.log(`[NativeBridge] Scheduled Monthly review reminder (1st of the month at ${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')})`);
+      console.log(`[NativeBridge] Scheduled Monthly review reminder (1st of the month starting at ${triggerDate.toString()})`);
     } else {
       await cancelNotification(2002);
     }
