@@ -506,7 +506,7 @@ export async function initNative() {
         m !== undefined && !isNaN(m) ? m : 30
       );
     }
-    const habitEnabled = storage.get('habit_reminder_enabled', false);
+    const habitEnabled = storage.get('habit_reminder_enabled', true);
     if (habitEnabled) {
       const timeStr = storage.get('habit_reminder_time', '20:00');
       const [h, m] = timeStr.split(':').map(Number);

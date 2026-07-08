@@ -10,7 +10,9 @@ import {
   nativeHapticNotification,
   sendLocalNotification,
   scheduleDailyReminder,
-  cancelNotification
+  cancelNotification,
+  isNative,
+  requestNotificationPermission
 } from './native-bridge.js';
 
 // --- Constants ---
@@ -1778,7 +1780,7 @@ function renderRemindersPanel(container) {
   // Settings state loading
   let pmEnabled = storage.get('premarket_reminder_enabled', true);
   let pmTime = storage.get('premarket_reminder_time', '08:30');
-  let hbEnabled = storage.get('habit_reminder_enabled', false);
+  let hbEnabled = storage.get('habit_reminder_enabled', true);
   let hbTime = storage.get('habit_reminder_time', '20:00');
 
   // Option 1: Premarket routine reminder
@@ -1973,19 +1975,26 @@ export function renderStreaksPage(container) {
 
 // Request notification permission and schedule streak reminders.
 export function initStreakNotifications() {
-  if (!('Notification' in window)) return;
+  if (isNative()) {
+    // Request permission on mobile
+    requestNotificationPermission().then(granted => {
+      console.log('[Streaks] Native notifications permission:', granted);
+    });
+  } else {
+    if (!('Notification' in window)) return;
 
-  // Request permission on first visit
-  if (Notification.permission === 'default') {
-    try {
-      const p = Notification.requestPermission();
-      if (p && typeof p.catch === 'function') {
-        p.catch(err => {
-          console.warn('[Notifications] Permission request was blocked or rejected:', err);
-        });
+    // Request permission on first visit
+    if (Notification.permission === 'default') {
+      try {
+        const p = Notification.requestPermission();
+        if (p && typeof p.catch === 'function') {
+          p.catch(err => {
+            console.warn('[Notifications] Permission request was blocked or rejected:', err);
+          });
+        }
+      } catch (err) {
+        console.warn('[Notifications] Notification.requestPermission error:', err);
       }
-    } catch (err) {
-      console.warn('[Notifications] Notification.requestPermission error:', err);
     }
   }
 
@@ -1999,7 +2008,9 @@ export function initStreakNotifications() {
 }
 
 function checkAndNotify() {
-  if (Notification.permission !== 'granted') return;
+  if (!isNative()) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  }
 
   const now = new Date();
   const hour = now.getHours();
